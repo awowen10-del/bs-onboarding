@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bodysculpt — The First 42 Days</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+<style>
+  :root{
+    --navy:#0f1b2d; --navy-2:#16273f; --card:#1b2c45; --card-2:#203552;
+    --line:#2c405e; --ink:#eaf0f8; --ink-dim:#9fb1c7; --ink-faint:#6b7f99;
+    --orange:#e8732a; --orange-soft:#f0935a;
+    --green:#3fbf7f; --amber:#e8a93a; --red:#e25555;
+    --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.35);
+    --display:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--navy);color:var(--ink)}
+  body{font-family:var(--body);line-height:1.5;-webkit-font-smoothing:antialiased;padding-bottom:56px}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 20px}
+
+  /* ---------- Masthead ---------- */
+  header.mast{padding-top:env(safe-area-inset-top)}
+  .mast-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:26px 0 18px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  .brand .mark{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:#000;
+    display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
+  .brand .mark img{width:100%;height:100%;object-fit:cover;display:block}
+  .brand .btxt{display:flex;flex-direction:column;gap:1px}
+  .brand h1{font-size:15px;font-weight:800;letter-spacing:-.2px}
+  .brand .sub{font-size:12px;color:var(--ink-faint);font-weight:600}
+  .mast-meta{text-align:right;font-size:12px;color:var(--ink-faint);font-weight:600;flex-shrink:0}
+  .mast-meta strong{display:block;font-size:24px;font-family:var(--display);color:var(--orange-soft);font-weight:800}
+
+  /* ---------- Tabs (matches .viewtoggle) ---------- */
+  nav.tabs{display:inline-flex;gap:4px;background:var(--navy-2);border:1px solid var(--line);
+    border-radius:12px;padding:4px;margin-bottom:8px;flex-wrap:wrap}
+  nav.tabs button{appearance:none;background:transparent;border:none;color:var(--ink-dim);
+    font-family:inherit;font-size:13px;font-weight:700;padding:9px 16px;border-radius:8px;cursor:pointer;
+    transition:background .15s ease,color .15s ease}
+  nav.tabs button .count{font-size:11px;color:#fff;background:var(--red);border-radius:20px;padding:1px 7px;margin-left:6px;font-weight:700;vertical-align:middle}
+  nav.tabs button[aria-selected="false"]:hover{color:var(--ink)}
+  nav.tabs button[aria-selected="true"]{background:var(--orange);color:#fff}
+  nav.tabs button[aria-selected="true"] .count{background:rgba(0,0,0,.25)}
+  main{padding-top:22px}
+  .view{display:none;animation:fade .25s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+  /* ---------- Buttons ---------- */
+  .btn{appearance:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;
+    border-radius:10px;padding:9px 15px;border:1px solid var(--line);background:var(--card);color:var(--ink);
+    transition:transform .08s ease,border-color .15s ease,background .15s ease}
+  .btn:hover{border-color:var(--ink-faint)}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--orange);border-color:var(--orange);color:#fff}
+  .btn.primary:hover{background:var(--orange-soft);border-color:var(--orange-soft)}
+  .btn.ghost{background:transparent;color:var(--ink-dim)}
+  .btn.sm{padding:6px 11px;font-size:12px;border-radius:8px}
+  .btn.danger{color:var(--red)}
+  .btn.danger:hover{border-color:var(--red)}
+
+  /* ---------- Section heading ---------- */
+  .sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;flex-wrap:wrap}
+  .sec-head h2{font-size:15px;letter-spacing:.3px;text-transform:uppercase;color:var(--ink);font-weight:800}
+  .sub{font-size:13px;color:var(--ink-dim);margin-bottom:18px;max-width:64ch}
+  .sub b{color:var(--ink)}
+
+  /* ---------- Today banner ---------- */
+  .day-banner{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--card),var(--card-2));
+    border:1px solid var(--line);border-radius:var(--radius);padding:15px 18px;margin-bottom:8px;box-shadow:var(--shadow)}
+  .day-banner .dot{width:9px;height:9px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 4px rgba(232,115,42,.18);flex-shrink:0}
+  .day-banner .txt{font-size:13.5px;color:var(--ink-dim)}
+  .day-banner .txt strong{color:var(--ink)}
+
+  /* ---------- Group label (fix #2: prominent, full-width divider rule) ---------- */
+  .group-label{display:flex;align-items:center;gap:12px;margin:26px 2px 12px;
+    font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink);font-weight:800}
+  .group-label .gcount{font-size:11px;font-weight:700;color:var(--ink-faint);background:var(--navy-2);
+    border:1px solid var(--line);border-radius:20px;padding:2px 9px;letter-spacing:0}
+  .group-label::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  /* ---------- Action row (fix #3: compact, tap to expand) ---------- */
+  .action{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);
+    border-left:4px solid var(--line);border-radius:12px;padding:12px 15px;margin-bottom:8px}
+  .action.physical{border-left-color:var(--orange)}
+  .action.digital{border-left-color:var(--amber)}
+  .action.inperson{border-left-color:var(--green)}
+  .action .ch{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;padding:3px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0}
+  .ch.physical{background:rgba(232,115,42,.16);color:var(--orange-soft)}
+  .ch.digital{background:rgba(232,169,58,.16);color:var(--amber)}
+  .ch.inperson{background:rgba(63,191,127,.14);color:var(--green)}
+  .action .body{flex:1;min-width:0;cursor:pointer}
+  .action .who{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .action .who .nm{color:var(--ink)}
+  .action .who .ttl{font-weight:600;color:var(--ink-dim)}
+  .action .who .day{font-size:11px;font-weight:700;color:var(--ink-faint);background:var(--navy-2);border:1px solid var(--line);border-radius:6px;padding:1px 7px}
+  .action .chev{color:var(--ink-faint);font-size:12px;transition:transform .2s ease;flex-shrink:0}
+  .action.open .chev{transform:rotate(90deg)}
+  .action .detail{display:none;flex-basis:100%;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:13px;color:var(--ink-dim);line-height:1.55}
+  .action.open{flex-wrap:wrap}
+  .action.open .detail{display:block}
+  .action .detail b{color:var(--ink)}
+  .action .mark{flex-shrink:0}
+  .overdue{display:inline-block;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:800;color:#fff;background:var(--red);border-radius:5px;padding:2px 7px}
+
+  /* checklist inside detail (fix #4) */
+  .walk-link{display:flex;align-items:center;gap:6px;width:100%;margin-top:11px;font-size:12px;font-weight:700;
+    color:var(--orange-soft);text-decoration:none;border:1px solid var(--line);background:var(--navy-2);
+    border-radius:8px;padding:8px 12px;transition:border-color .15s ease}
+  .walk-link:hover{border-color:var(--orange)}
+  .checklist{margin-top:10px;display:flex;flex-direction:column;gap:7px}
+  .checklist .ci{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink);cursor:pointer}
+  .checklist .ci .box{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--ink-faint);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:transparent;transition:all .15s ease}
+  .checklist .ci.checked .box{background:var(--green);border-color:var(--green);color:#fff}
+  .checklist .ci.checked span{color:var(--ink-faint);text-decoration:line-through}
+  .checklist-progress{margin-top:8px;font-size:11px;font-weight:700;color:var(--ink-faint);letter-spacing:.04em}
+
+  /* welcome message block */
+  .wm{margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--navy-2)}
+  .wm-toggle{display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:none;
+    color:var(--ink);font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 13px;cursor:pointer;text-align:left}
+  .wm-chev{color:var(--ink-faint);font-size:10px;transition:transform .2s ease;flex-shrink:0}
+  .wm.open .wm-chev{transform:rotate(90deg)}
+  .wm-hint{margin-left:auto;font-size:11px;font-weight:600;color:var(--ink-faint)}
+  .wm-body{display:none;padding:4px 15px 15px;border-top:1px solid var(--line)}
+  .wm.open .wm-body{display:block}
+  .wm-title{font-size:14px;font-weight:800;color:var(--ink);margin:12px 0 8px}
+  .wm-h{font-size:12px;font-weight:800;color:var(--orange-soft);margin-top:12px;text-transform:uppercase;letter-spacing:.03em}
+  .wm-b{font-size:13px;color:var(--ink-dim);line-height:1.55;margin-top:3px;word-break:break-word}
+  .wm-copy{margin-top:14px;background:var(--card);border:1px solid var(--line);color:var(--ink-dim)}
+  .wm-copy:hover{border-color:var(--ink-faint);color:var(--ink)}
+
+  .empty{text-align:center;padding:46px 20px;color:var(--ink-dim)}
+  .empty .big{font-size:17px;font-weight:800;color:var(--ink);margin-bottom:6px}
+
+  /* ---------- Member table ---------- */
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+  .toolbar input[type=search]{flex:1;min-width:180px;font-family:inherit;font-size:14px;padding:9px 13px;
+    border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+  .toolbar input::placeholder{color:var(--ink-faint)}
+  .toolbar input:focus{outline:none;border-color:var(--orange)}
+  .toolbar select{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 13px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer}
+
+  .mcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px;box-shadow:var(--shadow)}
+  .mcard.paused{background:repeating-linear-gradient(135deg,var(--card),var(--card) 14px,var(--card-2) 14px,var(--card-2) 28px)}
+  .mcard .top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .mcard .name{font-size:17px;font-weight:800;letter-spacing:-.2px}
+  .mcard .name .tag{font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;padding:2px 8px;border-radius:6px;margin-left:9px;vertical-align:middle}
+  .tag.live{background:rgba(63,191,127,.14);color:var(--green)}
+  .tag.paused{background:rgba(232,169,58,.16);color:var(--amber)}
+  .tag.done{background:var(--navy-2);color:var(--ink-dim)}
+  .tag.notstarted{background:rgba(159,177,199,.14);color:var(--ink-dim)}
+  .mcard.notstarted{border-style:dashed}
+  .start-box{margin-top:14px;background:rgba(63,191,127,.08);border:1px solid rgba(63,191,127,.3);border-radius:12px;padding:13px 15px}
+  .start-txt{font-size:12.5px;color:var(--ink-dim);margin-bottom:10px}
+  .btn.start-btn{background:var(--green);border-color:var(--green);color:#fff;font-weight:700}
+  .btn.start-btn:hover{filter:brightness(1.08)}
+  .startblock{margin-top:12px;background:rgba(63,191,127,.08);border:1px solid rgba(63,191,127,.3);border-radius:10px;padding:12px 14px}
+  .startblock.started{background:rgba(63,191,127,.12)}
+  .startblock .sb-label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--ink-dim);margin-bottom:8px}
+  .startblock .sb-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .startblock .sb-date{font-family:inherit;font-size:13px;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--navy-2);color:var(--ink)}
+  .startblock .sb-date:focus{outline:none;border-color:var(--green)}
+  .startblock .sb-hint{font-size:11.5px;color:var(--ink-faint);margin-top:9px;line-height:1.5}
+  .startblock .sb-tick{color:var(--green);font-weight:800;font-size:15px}
+  .startblock .sb-txt{font-size:13px;color:var(--ink);flex:1}
+  .startblock .sb-txt b{color:var(--green)}
+  .tag.member{background:rgba(232,115,42,.16);color:var(--orange-soft)}
+  .mcard .sub{font-size:12.5px;color:var(--ink-dim);margin-top:3px;margin-bottom:0}
+  .mcard .day-no{text-align:right;flex-shrink:0}
+  .mcard .day-no .n{font-size:30px;font-weight:800;line-height:1;color:var(--orange-soft)}
+  .mcard .day-no .l{font-size:11px;color:var(--ink-faint);letter-spacing:.05em;font-weight:600}
+
+  .rail{margin:14px 0 4px}
+  .rail .track{height:7px;background:var(--navy-2);border-radius:5px;overflow:hidden}
+  .rail .fill{height:100%;background:linear-gradient(90deg,var(--orange),var(--orange-soft));border-radius:5px;transition:width .4s ease}
+  .rail .fill.paused-fill{background:var(--amber)}
+  .rail .ticks{display:flex;justify-content:space-between;margin-top:6px}
+  .rail .ticks span{font-size:10px;color:var(--ink-faint);font-weight:600}
+  .mcard .controls{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .mcard .ext-note{font-size:11.5px;color:var(--amber);font-weight:700;margin-top:8px}
+
+  /* ---------- Modal ---------- */
+  .modal-bg{position:fixed;inset:0;background:rgba(8,14,24,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal-bg.show{display:flex;animation:fade .2s ease}
+  .modal{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);max-width:460px;width:100%;padding:24px;box-shadow:var(--shadow);max-height:90vh;overflow:auto}
+  .modal h3{font-size:19px;font-weight:800;margin-bottom:4px}
+  .modal p.note{font-size:13px;color:var(--ink-dim);margin-bottom:18px}
+  .modal p.note b{color:var(--ink)}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:700;color:var(--ink-dim);margin-bottom:5px;letter-spacing:.02em}
+  .field input,.field select,.field textarea{width:100%;font-family:inherit;font-size:14px;padding:10px 12px;
+    border:1px solid var(--line);border-radius:9px;background:var(--navy-2);color:var(--ink)}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--orange)}
+  .field textarea{resize:vertical;min-height:70px}
+  .modal-acts{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+  .field-row{display:flex;gap:12px}
+  .field-row .field{flex:1}
+
+  /* ---------- Playbook ---------- */
+  .pb-intro{background:linear-gradient(135deg,var(--card),var(--card-2));border:1px solid var(--line);
+    border-radius:var(--radius);padding:16px 20px;margin-bottom:24px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .pb-intro::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(var(--orange),var(--orange-soft))}
+  .pb-intro p{font-size:13.5px;color:var(--ink-dim)}
+  .pb-intro p em{font-style:italic;color:var(--ink)}
+  .pb-intro p b{color:var(--ink)}
+  .timeline{position:relative;margin-left:8px;padding-left:28px;border-left:2px solid var(--line)}
+  .pb{position:relative;margin-bottom:16px}
+  .pb::before{content:"";position:absolute;left:-35px;top:6px;width:13px;height:13px;border-radius:50%;background:var(--navy);border:2px solid var(--orange)}
+  .pb.physical::before{border-color:var(--orange)}
+  .pb.digital::before{border-color:var(--amber)}
+  .pb.inperson::before{border-color:var(--green)}
+  .pb .pb-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 17px}
+  .pb .pb-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .pb .pb-day{font-size:13px;font-weight:800;color:var(--orange-soft)}
+  .pb .pb-title{font-size:14px;font-weight:700}
+  .pb .pb-script{font-size:13px;color:var(--ink-dim);margin-top:4px;line-height:1.55}
+  .pb .pb-script b{color:var(--ink)}
+
+  footer{text-align:center;font-size:12px;color:var(--ink-faint);padding:34px 0 0}
+
+  /* ---------- Cards/Table toggle (matches dashboard .viewtoggle) ---------- */
+  .viewtoggle{display:inline-flex;gap:4px;background:var(--navy-2);border:1px solid var(--line);border-radius:10px;padding:4px}
+  .viewtoggle .vt{background:transparent;border:none;color:var(--ink-dim);font-family:inherit;font-size:13px;font-weight:700;padding:8px 16px;border-radius:7px;cursor:pointer}
+  .viewtoggle .vt.active{background:var(--orange);color:#fff}
+
+  /* ---------- Member table (mirrors the sheet) ---------- */
+  .tbl-scroll{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table.journey{border-collapse:collapse;width:100%;font-size:12.5px;min-width:760px}
+  table.journey th,table.journey td{padding:9px 7px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.journey thead th{position:sticky;top:0;background:var(--card-2);color:var(--ink-dim);font-weight:700;
+    font-size:11px;letter-spacing:.04em;text-transform:uppercase;z-index:1}
+  table.journey thead th.grp{color:var(--orange-soft);font-size:10px}
+  table.journey th.who,table.journey td.who{position:sticky;left:0;background:var(--card);text-align:left;
+    z-index:1;min-width:140px;max-width:160px;white-space:normal}
+  table.journey thead th.who{background:var(--card-2);z-index:2}
+  table.journey td.who .nm{font-weight:700;color:var(--ink);font-size:13px}
+  table.journey td.who .meta{font-size:11px;color:var(--ink-faint);margin-top:1px}
+  table.journey tr:hover td{background:rgba(255,255,255,.025)}
+  table.journey tr:hover td.who{background:var(--card-2)}
+  table.journey td.day{font-weight:800;color:var(--orange-soft);font-size:14px}
+  .cell{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800;transition:all .12s ease}
+  .cell.done{background:var(--green);color:#fff}
+  .cell.due{background:rgba(232,169,58,.18);color:var(--amber);border:1px solid rgba(232,169,58,.5)}
+  .cell.overdue{background:var(--red);color:#fff}
+  .cell.future{color:var(--ink-faint)}
+  .cell.na{color:var(--line)}
+  .cell:hover{transform:scale(1.12)}
+  .tbl-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;color:var(--ink-dim)}
+  .tbl-legend span{display:inline-flex;align-items:center;gap:6px}
+  .tbl-legend i{width:13px;height:13px;border-radius:4px;display:inline-block}
+  .tbl-legend i.done{background:var(--green)} .tbl-legend i.due{background:rgba(232,169,58,.18);border:1px solid rgba(232,169,58,.5)}
+  .tbl-legend i.overdue{background:var(--red)} .tbl-legend i.future{background:var(--navy-2);border:1px solid var(--line)}
+
+  /* ---------- Conversion bar ---------- */
+  .conv{display:flex;gap:16px;align-items:stretch;margin-bottom:18px;flex-wrap:wrap}
+  .conv-main{background:linear-gradient(135deg,var(--card),var(--card-2));border:1px solid var(--line);
+    border-radius:var(--radius);padding:16px 22px;box-shadow:var(--shadow);position:relative;overflow:hidden;min-width:180px}
+  .conv-main::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--ink-faint)}
+  .conv-main.good::before{background:var(--green)} .conv-main.warn::before{background:var(--amber)} .conv-main.low::before{background:var(--red)}
+  .conv-pct{font-size:38px;font-weight:800;line-height:1;letter-spacing:-1px;color:var(--orange-soft)}
+  .conv-main.good .conv-pct{color:var(--green)} .conv-main.warn .conv-pct{color:var(--amber)} .conv-main.low .conv-pct{color:var(--red)}
+  .conv-lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;margin-top:6px}
+  .conv-split{display:flex;gap:10px;flex:1;flex-wrap:wrap}
+  .conv-split .cs{flex:1;min-width:90px;background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:14px 16px;display:flex;flex-direction:column;justify-content:center}
+  .cs .csn{font-size:24px;font-weight:800;line-height:1}
+  .cs .csn.stayed{color:var(--green)} .cs .csn.leftn{color:var(--red)} .cs .csn.pend{color:var(--amber)}
+  .cs .csl{font-size:11px;color:var(--ink-faint);font-weight:600;margin-top:4px;letter-spacing:.03em}
+
+  /* ---------- Membership decision on card ---------- */
+  .decision{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  .decision.prompt{background:rgba(232,115,42,.1);border:1px solid rgba(232,115,42,.32);border-radius:10px;padding:11px 13px}
+  .decision .dlabel{flex-basis:100%;font-size:12px;font-weight:700;color:var(--orange-soft);margin-bottom:2px}
+  .btn.stayed{background:var(--green);border-color:var(--green);color:#fff}
+  .btn.stayed:hover{filter:brightness(1.08)}
+  .btn.leftbtn{background:transparent;border-color:var(--line);color:var(--ink-dim)}
+  .btn.leftbtn:hover{border-color:var(--red);color:var(--red)}
+  .tag.left{background:rgba(226,85,85,.16);color:var(--red)}
+  .mcard.inactive{opacity:.62}
+  .mcard.inactive .name{color:var(--ink-dim)}
+
+  .hide{display:none !important}
+  @media (max-width:640px){
+    .mast-meta{text-align:left}
+    .action{flex-wrap:wrap}
+    .action .body{flex-basis:calc(100% - 130px)}
+  }
+
+  /* ---------- Password gate ---------- */
+  .gate{position:fixed;inset:0;z-index:200;background:var(--navy);display:flex;align-items:center;justify-content:center;padding:24px}
+  .gate.hide{display:none}
+  .gate-box{background:linear-gradient(135deg,var(--card),var(--card-2));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:32px 28px;width:100%;max-width:360px;text-align:center}
+  .gate-mark{width:56px;height:56px;border-radius:12px;border:1px solid var(--line);background:#000;margin:0 auto 16px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+  .gate-mark img{width:100%;height:100%;object-fit:cover}
+  .gate-box h2{font-size:20px;font-weight:800;margin-bottom:4px}
+  .gate-sub{font-size:13px;color:var(--ink-dim);margin-bottom:20px}
+  .gate-box input{width:100%;font-family:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--navy-2);color:var(--ink);margin-bottom:12px}
+  .gate-box input:focus{outline:none;border-color:var(--orange)}
+  .gate-box .btn{width:100%;padding:11px;font-size:15px}
+  .gate-err{font-size:13px;color:var(--red);font-weight:600;margin-top:12px;min-height:18px}
+
+  /* ---------- Sync status banner ---------- */
+  .sync-banner{position:fixed;top:0;left:0;right:0;z-index:150;text-align:center;font-size:12.5px;font-weight:600;padding:7px 14px}
+  .sync-banner.hide{display:none}
+  .sync-banner.err{background:var(--red);color:#fff}
+  .sync-banner.warn{background:var(--amber);color:#1a1408}
+  .sync-banner.ok{background:var(--green);color:#06210f}
+</style>
+
+<!-- ============================================================ -->
+<!--  SETTINGS — paste your three values here (see DEPLOY notes)   -->
+<!-- ============================================================ -->
+<script>
+  window.BSJ_CONFIG = {
+    // 1 & 2: From Supabase → Project Settings → API
+    SUPABASE_URL:  "https://wxqnfvvgzqnibrgklbri.supabase.co",
+    SUPABASE_ANON_KEY: "sb_publishable_4m2hMzluKnsnGtEaddJ7bw_0jHrti6a",
+    // 3: The shared gym password the team types to get in. Change this to whatever you like.
+    GYM_PASSWORD: "bodysculpt"
+  };
+</script>
+<!-- Supabase browser client (loaded from their CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ===== Password gate (covers everything until unlocked) ===== -->
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <div class="gate-mark"><img src="" alt="" id="gateLogo"></div>
+    <h2>The First 42 Days</h2>
+    <p class="gate-sub">Enter the gym password to continue.</p>
+    <input type="password" id="gatePw" placeholder="Password" autocomplete="current-password">
+    <button class="btn primary" id="gateBtn">Enter</button>
+    <div class="gate-err" id="gateErr"></div>
+  </div>
+</div>
+<!-- ===== Connection / sync status banner ===== -->
+<div id="syncBanner" class="sync-banner hide"></div>
+
+<header class="mast">
+  <div class="wrap mast-inner">
+    <div class="brand">
+      <div class="mark"><img src="data:image/png;base64,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" alt="Bodysculpt"></div>
+      <div class="btxt">
+        <h1>The First 42 Days</h1>
+        <span class="sub">Warrington · membership journey</span>
+      </div>
+    </div>
+    <div class="mast-meta">
+      <strong id="liveCount">0</strong>
+      live
+    </div>
+  </div>
+  <div class="wrap">
+    <nav class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-view="today">Today's moves <span class="count" id="todayCount">0</span></button>
+      <button role="tab" aria-selected="false" data-view="members">Challengers</button>
+      <button role="tab" aria-selected="false" data-view="playbook">The Playbook</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ===== TODAY ===== -->
+  <section class="view active" id="view-today">
+    <div class="sec-head">
+      <h2>Today's moves</h2>
+    </div>
+    <p class="sub" style="margin-top:-2px;margin-bottom:18px">Every challenger, sorted by what they need from us right now. The system tells you the day — you bring the warmth.</p>
+    <div class="day-banner">
+      <span class="dot"></span>
+      <span class="txt" id="todayBanner">Loading…</span>
+    </div>
+    <div id="todayList"></div>
+  </section>
+
+  <!-- ===== MEMBERS ===== -->
+  <section class="view" id="view-members">
+    <div class="sec-head">
+      <h2>Challengers</h2>
+      <button class="btn primary" onclick="openAdd()">+ Add challenger</button>
+    </div>
+    <p class="sub" style="margin-top:-2px;margin-bottom:14px">The 6 weeks begin when you mark a challenger's <b>first session complete</b> — that's their Day 0. Pause to freeze the clock while they're away; add time to push everything still ahead of them along together.</p>
+    <div id="convBar"></div>
+    <div class="viewtoggle" id="memViewToggle">
+      <button class="vt active" data-mview="cards" onclick="setMemView('cards')">Cards</button>
+      <button class="vt" data-mview="table" onclick="setMemView('table')">Table</button>
+    </div>
+    <div class="toolbar" style="margin-top:14px">
+      <input type="search" id="search" placeholder="Search by name…" oninput="renderMembers()">
+      <select id="filter" class="btn" onchange="renderMembers()" style="font-weight:500">
+        <option value="active">Active (live + paused)</option>
+        <option value="all">Everyone</option>
+        <option value="stayed">Stayed on</option>
+        <option value="inactive">Left / inactive</option>
+        <option value="paused">Paused only</option>
+        <option value="done">Finished 6 weeks</option>
+      </select>
+    </div>
+    <div id="memberList"></div>
+    <div id="memberTable" class="hide"></div>
+  </section>
+
+  <!-- ===== PLAYBOOK ===== -->
+  <section class="view" id="view-playbook">
+    <div class="sec-head">
+      <h2>The Playbook</h2>
+    </div>
+    <div class="pb-intro">
+      <p><em>"Hospitality is the sense that you're on someone's side."</em> — the whole point of these 42 days. Each moment below is designed to feel personal, to anticipate rather than react, and to make a challenger feel seen. Front-load the effort: the first two weeks decide whether someone stays.</p>
+      <p style="margin-top:10px;font-size:13px">For the posted touchpoints, UK services that print &amp; mail for you: <b>ClickSend</b> (no minimums, pay-as-you-go), <b>Thanks.io</b> (handwriting + one all-in price), or <b>Scribeless</b> (UK facility, handwriting styles). Any of them can eventually be triggered straight from this tracker once it's on a shared backend.</p>
+    </div>
+    <div class="timeline" id="playbookList"></div>
+  </section>
+
+</main>
+
+<footer class="wrap">Bodysculpt Warrington · The First 42 Days · saved on this device</footer>
+
+<!-- ===== Add / Edit modal ===== -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3 id="modalTitle">Add challenger</h3>
+    <p class="note" id="modalNote">Add them when they book in. You'll set their first session date and start the clock at the intro.</p>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="f-name" placeholder="e.g. Sarah Doyle">
+    </div>
+    <div class="field">
+      <label>Coach</label>
+      <select id="f-coach">
+        <option>Dan</option><option>Grace</option><option>Gaz</option><option>Ash</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>One personal thing (learn this at the intro — what to remember)</label>
+      <textarea id="f-personal" placeholder="Why they joined, a kid's name, an event coming up…"></textarea>
+    </div>
+    <div class="modal-acts">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn primary" id="saveBtn" onclick="saveMember()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Extend modal ===== -->
+<div class="modal-bg" id="extBg">
+  <div class="modal">
+    <h3>Add time to the journey</h3>
+    <p class="note">Pushed back a week or two? Add the days here and <i>everything still ahead of them</i> — texts, postcards, check-ins, the box — slides along together. Touchpoints already done stay put.</p>
+    <div class="field">
+      <label>Days to add</label>
+      <input type="number" id="ext-days" min="1" max="42" value="7">
+    </div>
+    <div class="field">
+      <label>Reason (optional)</label>
+      <input type="text" id="ext-reason" placeholder="e.g. holiday, illness">
+    </div>
+    <div class="modal-acts">
+      <button class="btn ghost" onclick="closeExt()">Cancel</button>
+      <button class="btn primary" onclick="confirmExt()">Add time</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   THE FIRST 42 DAYS — day-based journey engine
+   ============================================================ */
+
+const STORE = 'bsj_v1';
+const MS_DAY = 86400000;
+
+/* ---- The journey: every touchpoint hangs off a DAY NUMBER ---- */
+const JOURNEY = [
+  {day:-1, id:'intro', ch:'inperson', title:'Intro session', owner:'coach', phase:'intro',
+   what:'Before Day 0. The first taste of how we do things — make them feel set-up and looked-after, not sold to.',
+   checklist:[
+     'Add the 6 Week Challenge to their GoTeamUp account (create one if it’s not on the system yet)',
+     'Add their Nutrition Goals to their Trainerize app (use their InBody stats)',
+     'Add the 6 Week Challenge Calendar to their Trainerize app',
+     'Move their Profile Card to “Intro Session Complete” on Ontraport',
+     'Send the Welcome Message on Trainerize'
+   ],
+   welcomeMsg:true,
+   walkthrough:'https://www.loom.com/share/084d5cdcb55e47198783d4d84803741c?sid=a5a966e2-f4c8-4666-9b38-4b54ffd3e61c',
+   script:'This sets the standard everything else is judged against. Warm, unhurried, no pitch.',
+   why:'The intro sets the standard. Everything else is judged against this first impression.'},
+  {day:1,  id:'d1_text', ch:'digital',  title:'Morning-after text',    owner:'coach', phase:'journey',
+   what:'Text them the morning after their <b>first session</b>.',
+   script:'“How are the legs today? 😄 Proud of you for starting — the hardest bit’s done.”',
+   why:'Reacting to what they actually feel (soreness) signals you get it.'},
+  {day:3,  id:'d3_postcard', ch:'physical', title:'Send the postcard',     owner:'team', phase:'journey',
+   what:'Same week as their first session — send a <b>postcard</b> to their house. Trigger via Scribeless / ClickSend / Thanks.io, or write one by hand.',
+   script:'“Loved having you in this week. You’ve started something — we’re right behind you.” Small, specific, no ask.',
+   why:'A physical thing on their doormat cuts through the digital noise. Almost always gets opened.'},
+  {day:7,  id:'wk1', ch:'digital', title:'Week 1 check-in (Trainerize)', owner:'coach', phase:'journey',
+   what:'Check-in via <b>Trainerize</b>. How’s week one landed?',
+   script:'Keep it warm and short. Log a note so the team can see who’s thriving and who’s gone quiet.',
+   why:'A weekly rhythm means no one slips through quietly.'},
+  {day:14, id:'wk2', ch:'digital', title:'Week 2 check-in (Trainerize)', owner:'coach', phase:'journey',
+   what:'Check-in via <b>Trainerize</b>. The trust deposit before halfway.',
+   script:'“How’s it feeling? What’s surprised you?” Reference their intro personal note.',
+   why:'Being remembered is the whole game.'},
+  {day:21, id:'wk3', ch:'digital', title:'Week 3 check-in (Trainerize)', owner:'coach', phase:'journey',
+   what:'Check-in via <b>Trainerize</b>. Halfway mark — acknowledge the consistency.',
+   script:'Celebrate how far they’ve come already. Log a note.',
+   why:'Keeps the weekly thread unbroken at the point motivation can dip.'},
+  {day:28, id:'box', ch:'physical', title:'The unexpected box 🎁',  owner:'team', phase:'journey',
+   what:'The Bodysculpt box — the unearned, unexpected gift. Pack and hand over (or post).',
+   checklist:['Fridge magnet (“bored or hungry?”)','Cup / shaker','Whey protein samples','Handwritten card — name at top, reference something specific'],
+   script:'The card is the part that matters most — handwritten, personal, no ask.',
+   why:'The unearned, unexpected gift. Lands hardest because nothing is being asked in return.'},
+  {day:28, id:'wk4', ch:'digital', title:'Week 4 check-in (Trainerize)', owner:'coach', phase:'journey',
+   what:'Check-in via <b>Trainerize</b> alongside the box.',
+   script:'Keep it short — the box is doing the heavy lifting this week.',
+   why:'Maintains the weekly rhythm.'},
+  {day:35, id:'wk5', ch:'digital', title:'Week 5 — future-pacing (Trainerize)', owner:'coach', phase:'journey',
+   what:'Check-in via <b>Trainerize</b> with the month-two seed planted.',
+   script:'“Have you thought about what month two looks like?” A vision, not a sell.',
+   why:'Plants the long-term idea before the decision window opens.'},
+  {day:42, id:'wk6', ch:'digital', title:'Week 6 check-in (Trainerize)', owner:'coach', phase:'journey',
+   what:'Final <b>Trainerize</b> check-in. The 6 weeks are done — set up the where-next conversation.',
+   script:'Celebrate the finish. “Let’s grab 10 mins to chat about where you go from here.”',
+   why:'Frames the membership chat as care, from a place of genuine relationship.'},
+  {day:43, id:'welcome_card', ch:'physical', title:'Welcome card — IF they sign up 🎉', owner:'team', phase:'signup', conditional:'signedUp',
+   what:'Only once they’ve <b>signed up as a member</b>. Send a <b>welcome card</b> to mark them joining the family.',
+   script:'“Welcome to Bodysculpt properly. This is the start of the good bit.”',
+   why:'The card celebrates the decision — it rewards joining, rather than chasing it.'},
+  {day:72, id:'month1', ch:'digital', title:'Month 1 follow-up', owner:'coach', phase:'member', conditional:'signedUp',
+   what:'~30 days after they join. Check how month one as a full member has gone.',
+   script:'“A month in as a member — how’s it feeling? Anything you want to tweak?”',
+   why:'The first month as a paying member is where retention is won or lost.'},
+  {day:103, id:'month2', ch:'digital', title:'Month 2 follow-up', owner:'coach', phase:'member', conditional:'signedUp',
+   what:'~60 days after they join. Embed the habit, head off any wobble.',
+   script:'“Two months down. Let’s look at what’s next for you.”',
+   why:'Keeps the relationship warm well past the trial, so they never feel like just a number.'},
+];
+
+const CH_LABEL = {physical:'Physical', digital:'Digital', inperson:'In person'};
+
+/* Trainerize welcome message — sent at the end of the intro (last checklist step).
+   Kept as structured sections so it renders formatted, and copies as clean plain text. */
+const WELCOME_MSG = {
+  title:'Welcome to Week 1 🎉',
+  sections:[
+    {h:'', body:'Hey [First Name]\nWelcome to your 6-Week Transformation Program. We’re excited to have you on board and can’t wait to see you start making progress with us.\n\nA couple of quick things to set you up for a strong start:'},
+    {h:'Calories & Protein', body:'We’ve uploaded your personal targets into your profile (check the Nutrition tab in the app).'},
+    {h:'Members Area', body:'Useful videos on hitting protein, planning food, weekends, eating out & more.\nhttps://bodysculptwarrington1.members-only.online/login'},
+    {h:'Facebook Group', body:'Join for support, wins and community.\nhttps://www.facebook.com/groups/1682899088395867'},
+    {h:'Your Biggest Struggle', body:'Please tell us the #1 thing that usually trips you up (e.g. weekends, snacking, low protein) and let’s make fixing that our focus this week. We’ll send you simple, quick-win tips straight away.'},
+    {h:'💡 Your Wins in Your First Week', body:'Start logging food to see how close you are to your calories and protein. Don’t stress about perfection, just track and get a feel for where you’re at right now.\nOnce you’ve done 3 days, send it across to us for review, please.\nIf you don’t want to track your food, that’s fair enough — pen, paper and a food log works too.\n[Video for MyFitnessPal] https://vimeo.com/992076569\n[Video for Nutracheck] https://vimeo.com/766463190'},
+    {h:'💡 Your Second Win', body:'Book your first 3 sessions (expect a bit of muscle soreness this week… it’s just your body saying “hey, we’re doing something new!”). Think of it like breaking in new shoes — a little discomfort at first, then you’re good to go.'},
+    {h:'', body:'Let’s make your first week count 🙌\n— The Bodysculpt Team'},
+    {h:'💬 Stay connected with us', body:'We’ll check in with you every week to see how you’re getting on. The people who get the best results are the ones who reply — even if it’s just a quick update. It helps us spot roadblocks early and give you the right support.'}
+  ]
+};
+function welcomeMsgPlainText(){
+  let out = WELCOME_MSG.title + '\n\n';
+  WELCOME_MSG.sections.forEach(s=>{
+    if(s.h) out += s.h + ':\n';
+    out += s.body + '\n\n';
+  });
+  return out.trim();
+}
+
+/* Table column order — mirrors the Google sheet left-to-right */
+const TABLE_COLS = ['intro','d1_text','d3_postcard','wk1','wk2','wk3','wk4','wk5','wk6','box','welcome_card','month1','month2'];
+const COL_LABEL = {intro:'Intro',d1_text:'Text',d3_postcard:'Postcard',wk1:'Wk1',wk2:'Wk2',wk3:'Wk3',wk4:'Wk4',wk5:'Wk5',wk6:'Wk6',box:'Box',welcome_card:'Card',month1:'Mth1',month2:'Mth2'};
+
+/* ---------------- state + persistence (Supabase-backed) ---------------- */
+let members = [];          // in-memory working copy; all journey logic uses this
+let sb = null;             // supabase client
+const ROW_KEY = 'roster';  // single JSON blob row holding the whole challenger list
+const CACHE = 'bsj_cache'; // local offline cache (NOT the source of truth)
+
+/* normalise/upgrade any record shape so older or imported data never breaks */
+function migrateList(arr){
+  if(!Array.isArray(arr)) return [];
+  arr.forEach(m=>{
+    if(m.start!=null && m.day0===undefined){ m.day0=m.start; m.booked=m.start; m.firstSessionDone=true; }
+    if(m.booked===undefined) m.booked = m.day0||null;
+    if(m.firstSessionDone===undefined) m.firstSessionDone = !!m.day0;
+    if(m.checks===undefined) m.checks = {};
+    if(m.outcome===undefined) m.outcome = null;
+  });
+  return arr;
+}
+
+function showSync(kind, msg, autohide){
+  const el=document.getElementById('syncBanner');
+  el.className = 'sync-banner '+kind;
+  el.textContent = msg;
+  if(autohide){ setTimeout(()=>{ el.className='sync-banner hide'; }, 2200); }
+}
+
+/* read the local cache (used only as offline fallback) */
+function readCache(){
+  try{ const r=JSON.parse(localStorage.getItem(CACHE)); return migrateList(Array.isArray(r)?r:[]); }
+  catch(e){ return []; }
+}
+function writeCache(){ try{ localStorage.setItem(CACHE, JSON.stringify(members)); }catch(e){} }
+
+/* save(): keep the cache instant + push to Supabase (debounced). All existing
+   code calls save() synchronously and that still works — the cloud write
+   happens in the background and a banner reports failures. */
+let saveTimer=null;
+function save(){
+  writeCache();                       // instant local copy so nothing is ever lost mid-edit
+  if(!sb) return;                     // not connected yet; cache will sync on next successful save
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(pushToCloud, 400);
+}
+async function pushToCloud(){
+  if(!sb) return;
+  try{
+    const { error } = await sb.from('bodysculpt')
+      .upsert({ key: ROW_KEY, value: members, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    if(error) throw error;
+    showSync('ok','Saved ✓', true);
+  }catch(e){
+    showSync('err','Couldn’t save to the cloud — your changes are stored on this device and will retry. ('+(e.message||e)+')');
+  }
+}
+
+/* boot: connect, pull the roster, render */
+async function bootData(){
+  const cfg = window.BSJ_CONFIG||{};
+  const configured = cfg.SUPABASE_URL && !cfg.SUPABASE_URL.includes('PASTE_') &&
+                     cfg.SUPABASE_ANON_KEY && !cfg.SUPABASE_ANON_KEY.includes('PASTE_');
+  if(!configured || typeof supabase==='undefined'){
+    // Not set up yet — run from local cache so the app still works for testing.
+    members = readCache();
+    seedIfEmpty();
+    showSync('warn','Running in local-only mode — set your Supabase keys to sync across devices.');
+    renderAll();
+    return;
+  }
+  sb = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+  try{
+    const { data, error } = await sb.from('bodysculpt').select('value').eq('key', ROW_KEY).maybeSingle();
+    if(error) throw error;
+    members = migrateList(data && Array.isArray(data.value) ? data.value : []);
+    if(members.length===0) seedIfEmpty(true);   // first ever run -> seed + push
+    writeCache();
+    showSync('ok','Connected ✓', true);
+    renderAll();
+    // live updates: if Dan changes something, Ash sees it (and vice versa)
+    sb.channel('roster-changes')
+      .on('postgres_changes', { event:'*', schema:'public', table:'bodysculpt', filter:'key=eq.'+ROW_KEY },
+        payload=>{
+          const incoming = payload.new && payload.new.value;
+          if(Array.isArray(incoming)){ members = migrateList(incoming); writeCache(); renderAll(); }
+        })
+      .subscribe();
+  }catch(e){
+    // connection failed — fall back to cache so the team can still work offline
+    members = readCache();
+    showSync('err','Offline — showing this device’s last copy. Changes will sync when the connection returns. ('+(e.message||e)+')');
+    renderAll();
+  }
+}
+
+function today0(){ const d=new Date(); d.setHours(0,0,0,0); return d.getTime(); }
+function parseDate(str){ const d=new Date(str+'T00:00:00'); d.setHours(0,0,0,0); return d.getTime(); }
+function fmt(ts){ return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }
+
+/* The 6 weeks begin the day the FIRST SESSION is completed (m.day0), not the
+   booked date (m.booked, planning only). Until firstSessionDone is ticked the
+   clock hasn't started — only the intro is live.
+   We track:
+     booked   – planned first-session date (fires nothing)
+     day0     – the real start: stamped when first session is marked done
+     extraDays – days added; shifts EVERY remaining touchpoint along
+     pausedAt / pausedDays – freeze handling
+   "currentDay" = journey-days elapsed since day0. */
+function hasStarted(m){ return !!m.firstSessionDone && !!m.day0; }
+function currentDay(m){
+  if(!hasStarted(m)) return 0;                 // clock hasn't begun
+  let elapsed = Math.floor((today0() - m.day0)/MS_DAY);
+  elapsed -= (m.pausedDays||0);                // banked paused days
+  if(m.pausedAt){                              // days sitting in the current pause
+    elapsed -= Math.floor((today0() - m.pausedAt)/MS_DAY);
+  }
+  return Math.max(0, elapsed);
+}
+function totalDays(m){ return 42 + (m.extraDays||0); }
+function status(m){
+  if(!hasStarted(m)) return 'notstarted';
+  if(m.pausedAt) return 'paused';
+  // live through the final day (day 42) so the Week 6 check-in can fire;
+  // only 'done' once they've passed the last day.
+  if(currentDay(m) > totalDays(m)) return 'done';
+  return 'live';
+}
+
+/* A touchpoint's due-day in THIS member's journey.
+   - Intro (day < 0) is pre-journey: handled separately, always before the clock.
+   - Every dated touchpoint shifts by extraDays, so adding time pushes the whole
+     journey (everything still ahead) along together. Done touchpoints don't
+     re-trigger because completion is tracked by id, not by day. */
+function effectiveDay(item, m){
+  if(item.day < 0) return item.day;            // intro stays pre-journey
+  return item.day + (m.extraDays||0);          // all dated touchpoints ride with added time
+}
+function dayKeyFor(m,item){ return item.id; }     // stable key, never collides
+function isDone(m,key){ return (m.completed||[]).includes(key); }
+
+function dueToday(m){
+  if(status(m)==='paused') return [];
+  if(isInactive(m)) return [];        // left = inactive, off Today's moves
+  const cd = currentDay(m);
+  const out = [];
+  JOURNEY.forEach(it=>{
+    // conditional items only appear once their condition is met
+    if(it.conditional && !m[it.conditional]) return;
+
+    if(it.phase==='intro'){
+      // intro is due until done, and only matters before/at the start
+      if(!isDone(m,it.id) && status(m)!=='done') out.push(it);
+      return;
+    }
+    if(it.id==='welcome_card'){
+      // once signed up, the card is due until sent (regardless of day)
+      if(!isDone(m,it.id)) out.push(it);
+      return;
+    }
+    if(it.phase==='member'){
+      // Month 1/2 follow-ups happen AFTER the 6 weeks, so they fire even though
+      // status is 'done'. Conditional on signedUp (handled above). Day-gated with grace.
+      const edm = effectiveDay(it,m);
+      const GRACE_M = 10;
+      if(cd >= edm && cd <= edm + GRACE_M && !isDone(m,it.id)) out.push(it);
+      return;
+    }
+    // standard touchpoints: due from their effective day, and stay due for a
+    // grace window if missed. After that they drop off Today (recorded as
+    // missed on the member card) so old postcards don't pile up on later days.
+    const ed = effectiveDay(it,m);
+    const GRACE = 7; // days a missed touchpoint keeps showing before it expires
+    if(cd >= ed && cd <= ed + GRACE && !isDone(m,it.id) && status(m)==='live') out.push(it);
+  });
+  return out;
+}
+
+/* ---------------- TODAY view ---------------- */
+function renderToday(){
+  const banner = document.getElementById('todayBanner');
+  const list = document.getElementById('todayList');
+  const live = members.filter(m=>status(m)==='live');
+  banner.innerHTML = `It’s <strong>${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</strong>. `+
+    `<strong>${live.length}</strong> challenger${live.length===1?'':'s'} on the journey right now.`;
+
+  // gather all due items across members
+  let rows = [];
+  members.forEach(m=>{
+    dueToday(m).forEach(item=>{
+      const key = dayKeyFor(m,item);
+      const cd = currentDay(m);
+      const ed = effectiveDay(item,m);
+      // overdue = a dated touchpoint whose day has already passed
+      const overdue = item.phase==='journey' && item.day>=0 && cd > ed;
+      rows.push({m,item,key,overdue});
+    });
+  });
+
+  // within each channel group, order chronologically by journey day
+  // (Day 1 text before Day 7 check-in; Day 3 postcard before Day 28 box)
+  const order = {physical:0,inperson:1,digital:2};
+  rows.sort((a,b)=> order[a.item.ch]-order[b.item.ch] || a.item.day-b.item.day);
+
+  document.getElementById('todayCount').textContent = rows.length;
+
+  if(rows.length===0){
+    list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
+      No touchpoints due right now. Consistency is the magic — check the Challengers tab to see where everyone sits.</div>`;
+    return;
+  }
+
+  // group: intros, then the three channels
+  const groups = [
+    ['intro','Intro sessions to run', r=>r.item.phase==='intro'],
+    ['physical','Postcards, boxes & cards', r=>r.item.phase!=='intro' && r.item.ch==='physical'],
+    ['inperson','Moments in the room', r=>r.item.phase!=='intro' && r.item.ch==='inperson'],
+    ['digital','Texts & Trainerize check-ins', r=>r.item.phase!=='intro' && r.item.ch==='digital'],
+  ];
+  let html='';
+  groups.forEach(([gid,label,test])=>{
+    const g = rows.filter(test);
+    if(!g.length) return;
+    html += `<div class="group-label">${label}<span class="gcount">${g.length}</span></div>`;
+    g.forEach(r=>{
+      const {m,item,key,overdue}=r;
+      const chClass = item.ch==='inperson'?'inperson':item.ch;
+      const cd = currentDay(m);
+      const dayLabel = item.phase==='intro' ? 'Pre-start'
+                     : item.id==='welcome_card' ? 'Signed up'
+                     : 'Day '+cd;
+      // build the expandable detail (the action, plus a checklist where there is one)
+      const cl = item.checklist ? buildChecklist(m,item) : '';
+      const detail = `<div class="detail">
+        ${esc(stripTags(item.what))}
+        ${cl}
+      </div>`;
+      html += `<div class="action ${chClass}" id="act-${m.id}-${item.id}">
+        <span class="ch ${chClass}">${CH_LABEL[item.ch]}</span>
+        <div class="body" onclick="toggleExpand('${m.id}','${item.id}')">
+          <div class="who">
+            <span class="nm">${esc(m.name)}</span>
+            <span class="ttl">${esc(item.title)}</span>
+            <span class="day">${dayLabel}</span>
+            ${overdue?'<span class="overdue">Overdue</span>':''}
+          </div>
+          ${detail}
+        </div>
+        <span class="chev" onclick="toggleExpand('${m.id}','${item.id}')">▶</span>
+        <button class="btn sm primary mark" onclick="event.stopPropagation();toggleDone('${m.id}','${key}',true)">Done</button>
+      </div>`;
+    });
+  });
+  list.innerHTML = html;
+}
+
+/* expandable detail (fix #3) */
+function toggleExpand(mid,iid){
+  const el=document.getElementById('act-'+mid+'-'+iid);
+  if(el) el.classList.toggle('open');
+}
+
+/* Jump to a member's intro card on Today's moves (used from the Challengers tab) */
+function goToIntro(mid){
+  // switch to the Today tab
+  document.querySelectorAll('nav.tabs button').forEach(x=>x.setAttribute('aria-selected','false'));
+  const todayBtn=document.querySelector('nav.tabs button[data-view="today"]');
+  if(todayBtn) todayBtn.setAttribute('aria-selected','true');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const todayView=document.getElementById('view-today');
+  if(todayView) todayView.classList.add('active');
+  // expand that member's intro card and scroll to it
+  const el=document.getElementById('act-'+mid+'-intro');
+  if(el){ el.classList.add('open'); el.scrollIntoView({behavior:'smooth', block:'center'}); }
+}
+
+/* per-member checklist state (fix #4) */
+function buildChecklist(m,item){
+  const state = (m.checks&&m.checks[item.id])||[];
+  const done = state.filter(Boolean).length;
+  let rows = item.checklist.map((label,i)=>{
+    const checked = state[i];
+    return `<div class="ci ${checked?'checked':''}" onclick="event.stopPropagation();toggleCheck('${m.id}','${item.id}',${i})">
+      <span class="box">✓</span><span>${esc(label)}</span>
+    </div>`;
+  }).join('');
+  const msg = item.welcomeMsg ? buildWelcomeMsg(m) : '';
+  const start = item.phase==='intro' ? buildStartBlock(m) : '';
+  const walk = item.walkthrough ? `<a class="walk-link" href="${item.walkthrough}" target="_blank" rel="noopener" onclick="event.stopPropagation()">▶ New to this? Watch the walkthrough</a>` : '';
+  return `${walk}<div class="checklist">${rows}</div>
+    <div class="checklist-progress">${done} of ${item.checklist.length} done</div>${start}${msg}`;
+}
+
+/* booked-date + start-the-clock block, shown inside the intro card */
+function buildStartBlock(m){
+  const dateVal = m.booked ? new Date(m.booked).toISOString().slice(0,10) : '';
+  if(hasStarted(m)){
+    return `<div class="startblock started">
+      <div class="sb-row">
+        <span class="sb-tick">✓</span>
+        <span class="sb-txt">Clock started — Day 0 was <b>${fmt(m.day0)}</b></span>
+        <button class="btn sm ghost" onclick="event.stopPropagation();markFirstSession('${m.id}',false)">Undo</button>
+      </div>
+    </div>`;
+  }
+  return `<div class="startblock">
+    <div class="sb-label">First session booked for</div>
+    <div class="sb-row">
+      <input type="date" class="sb-date" value="${dateVal}" onclick="event.stopPropagation()"
+        onchange="event.stopPropagation();setBookedDate('${m.id}', this.value)">
+      <button class="btn sm start-btn" onclick="event.stopPropagation();markFirstSession('${m.id}',true)">✓ First session done — start clock</button>
+    </div>
+    <div class="sb-hint">The 6 weeks begin from the session date above. Set it, then start the clock once they’ve attended.</div>
+  </div>`;
+}
+
+/* the long Trainerize welcome message — collapsed by default, expandable, copyable */
+function buildWelcomeMsg(m){
+  const open = m._wmOpen ? 'open' : '';
+  const inner = WELCOME_MSG.sections.map(s=>
+    `${s.h?`<div class="wm-h">${esc(s.h)}</div>`:''}<div class="wm-b">${esc(s.body).replace(/\n/g,'<br>')}</div>`
+  ).join('');
+  return `<div class="wm ${open}">
+    <button class="wm-toggle" onclick="event.stopPropagation();toggleWelcome('${m.id}')">
+      <span class="wm-chev">▶</span> Trainerize welcome message
+      <span class="wm-hint">tap to ${m._wmOpen?'hide':'view'}</span>
+    </button>
+    <div class="wm-body">
+      <div class="wm-title">${esc(WELCOME_MSG.title)}</div>
+      ${inner}
+      <button class="btn sm wm-copy" onclick="event.stopPropagation();copyWelcome(this)">Copy message</button>
+    </div>
+  </div>`;
+}
+function toggleWelcome(mid){
+  const m=members.find(x=>x.id===mid); if(!m) return;
+  m._wmOpen = !m._wmOpen;           // transient UI state, not persisted
+  renderToday();
+  const el=document.getElementById('act-'+mid+'-intro');
+  if(el) el.classList.add('open');
+}
+function copyWelcome(btn){
+  const txt = welcomeMsgPlainText();
+  const done=()=>{ btn.textContent='Copied ✓'; setTimeout(()=>btn.textContent='Copy message',1800); };
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done)); }
+  else fallbackCopy(txt,done);
+}
+function fallbackCopy(txt,done){
+  const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); done(); }catch(e){}
+  document.body.removeChild(ta);
+}
+function toggleCheck(mid,iid,i){
+  const m=members.find(x=>x.id===mid); if(!m) return;
+  m.checks = m.checks||{};
+  const item = JOURNEY.find(j=>j.id===iid);
+  m.checks[iid] = m.checks[iid]||new Array(item.checklist.length).fill(false);
+  m.checks[iid][i] = !m.checks[iid][i];
+  save();
+  // re-render only this row's detail so the panel doesn't collapse
+  renderToday();
+  const el=document.getElementById('act-'+mid+'-'+iid);
+  if(el) el.classList.add('open');
+}
+
+function toggleDone(id,key,val){
+  const m = members.find(x=>x.id===id); if(!m) return;
+  m.completed = m.completed||[];
+  m.doneMeta = m.doneMeta||{};
+  if(val){
+    if(!m.completed.includes(key)) m.completed.push(key);
+    m.doneMeta[key] = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  }else{
+    m.completed = m.completed.filter(k=>k!==key);
+    delete m.doneMeta[key];
+  }
+  save(); renderAll();
+}
+
+/* ---------------- MEMBERS view ---------------- */
+let memView = 'cards';
+function setMemView(v){
+  memView = v;
+  document.querySelectorAll('#memViewToggle .vt').forEach(b=>b.classList.toggle('active', b.dataset.mview===v));
+  document.getElementById('memberList').classList.toggle('hide', v!=='cards');
+  document.getElementById('memberTable').classList.toggle('hide', v!=='table');
+  renderMembers();
+}
+function filteredMembers(){
+  const q = (document.getElementById('search').value||'').toLowerCase();
+  const f = document.getElementById('filter').value;
+  let arr = members.filter(m=>m.name.toLowerCase().includes(q));
+  arr = arr.filter(m=>{
+    const s=status(m);
+    if(f==='all') return true;
+    if(f==='active') return (s==='live'||s==='paused'||s==='notstarted') && !isInactive(m);
+    if(f==='inactive') return isInactive(m);
+    if(f==='stayed') return m.outcome==='stayed';
+    return s===f;
+  });
+  arr.sort((a,b)=> (a.day0||a.booked||0) - (b.day0||b.booked||0));
+  return arr;
+}
+
+function renderConvBar(){
+  const host=document.getElementById('convBar'); if(!host) return;
+  const stayed = members.filter(m=>m.outcome==='stayed').length;
+  const left = members.filter(m=>m.outcome==='left').length;
+  const decided = stayed+left;
+  const pct = decided ? Math.round(stayed/decided*100) : null;
+  const pending = members.filter(m=> !m.outcome && (status(m)==='done' || currentDay(m)>=35)).length;
+  const flag = pct==null ? '' : pct>=60?'good':pct>=40?'warn':'low';
+  host.innerHTML = `<div class="conv">
+    <div class="conv-main ${flag}">
+      <div class="conv-pct">${pct==null?'—':pct+'%'}</div>
+      <div class="conv-lbl">Membership conversion</div>
+    </div>
+    <div class="conv-split">
+      <div class="cs"><span class="csn stayed">${stayed}</span><span class="csl">stayed on</span></div>
+      <div class="cs"><span class="csn leftn">${left}</span><span class="csl">left</span></div>
+      <div class="cs"><span class="csn pend">${pending}</span><span class="csl">awaiting decision</span></div>
+    </div>
+  </div>`;
+}
+
+function renderMembers(){
+  if(memView==='table'){ renderMemberTable(); return; }
+  const list = document.getElementById('memberList');
+  let arr = filteredMembers();
+
+  if(!arr.length){
+    list.innerHTML = `<div class="empty"><div class="big">No challengers here yet.</div>
+      ${members.length?'Try a different filter.':'Add your first challenger to start their 42-day journey.'}</div>`;
+    return;
+  }
+  list.innerHTML = arr.map(m=>{
+    const cd = currentDay(m), tot = totalDays(m), s = status(m);
+    const started = hasStarted(m);
+    const pct = started ? Math.min(100, Math.round(cd/tot*100)) : 0;
+    const ext = (started && m.extraDays) ? `<div class="ext-note">+${m.extraDays} days added · finishes ${fmt(finishDate(m))}</div>`:'';
+    const tag = s==='notstarted' ? `<span class="tag notstarted">Not started</span>`
+              : s==='live'?`<span class="tag live">Day ${cd} of ${tot}</span>`
+              : s==='paused'?`<span class="tag paused">Paused</span>`
+              : `<span class="tag done">Finished 6 weeks</span>`;
+    const outcomeTag = m.outcome==='stayed' ? `<span class="tag member">Stayed ✓</span>`
+                     : m.outcome==='left' ? `<span class="tag left">Left</span>`
+                     : '';
+    const applicable = JOURNEY.filter(it=> !it.conditional || m[it.conditional]);
+    const doneCount = applicable.filter(it=> isDone(m,it.id)).length;
+    const introPending = !isDone(m,'intro');
+
+    // ── Not started: the clock hasn't begun. Show the start action prominently. ──
+    if(s==='notstarted'){
+      const bookedTxt = m.booked ? fmt(m.booked) : 'not set yet';
+      return `<div class="mcard notstarted">
+        <div class="top">
+          <div>
+            <div class="name">${esc(m.name)}${tag}</div>
+            <div class="sub">Coach ${esc(m.coach)} · 1st session ${bookedTxt}${m.personal?' · '+esc(m.personal):''}</div>
+          </div>
+          <div class="day-no"><div class="n">—</div><div class="l">not started</div></div>
+        </div>
+        <div class="start-box">
+          <div class="start-txt">Their 6 weeks begin when you run the intro and start the clock. ${introPending?'The intro is still to run.':'Intro done — start the clock from the intro card on Today\u2019s moves.'}</div>
+          <button class="btn sm start-btn" onclick="goToIntro('${m.id}')">Go to the intro on Today\u2019s moves →</button>
+        </div>
+        <div class="sub" style="margin-top:10px">${doneCount} of ${applicable.length} touchpoints done${introPending?' · <span style="color:var(--amber);font-weight:700">intro still to run</span>':''}</div>
+        <div class="controls">
+          <button class="btn sm ghost" onclick="openEdit('${m.id}')">Edit</button>
+          <button class="btn sm ghost danger" onclick="removeMember('${m.id}')">Remove</button>
+        </div>
+      </div>`;
+    }
+
+    // ── Started: normal journey card ──
+    const decisionDue = (cd >= 35 || s==='done') && !m.outcome;
+    const decisionBlock = !m.outcome
+      ? `<div class="decision ${decisionDue?'prompt':''}">
+           ${decisionDue?'<span class="dlabel">Membership conversation — what did they decide?</span>':''}
+           <button class="btn sm stayed" onclick="setOutcome('${m.id}','stayed')">✓ Stayed on</button>
+           <button class="btn sm leftbtn" onclick="setOutcome('${m.id}','left')">Left</button>
+         </div>`
+      : `<div class="decision"><button class="btn sm ghost" onclick="setOutcome('${m.id}',null)">Undo decision (${m.outcome==='stayed'?'stayed':'left'})</button></div>`;
+    return `<div class="mcard ${s==='paused'?'paused':''} ${m.outcome==='left'?'inactive':''}">
+      <div class="top">
+        <div>
+          <div class="name">${esc(m.name)}${tag}${outcomeTag}</div>
+          <div class="sub">Coach ${esc(m.coach)} · started ${fmt(m.day0)}${m.personal?' · '+esc(m.personal):''}</div>
+        </div>
+        <div class="day-no"><div class="n">${s==='done'?'✓':cd}</div><div class="l">${s==='done'?'done':'of '+tot}</div></div>
+      </div>
+      <div class="rail">
+        <div class="track"><div class="fill ${s==='paused'?'paused-fill':''}" style="width:${pct}%"></div></div>
+        <div class="ticks"><span>Day 0</span><span>Day ${tot}</span></div>
+      </div>
+      ${ext}
+      <div class="sub" style="margin-top:8px">${doneCount} of ${applicable.length} touchpoints done</div>
+      ${decisionBlock}
+      <div class="controls">
+        ${s==='paused'
+          ? `<button class="btn sm primary" onclick="resume('${m.id}')">▶ Resume journey</button>`
+          : (s==='live' && !isInactive(m)) ? `<button class="btn sm" onclick="pause('${m.id}')">⏸ Pause</button>
+                          <button class="btn sm" onclick="openExt('${m.id}')">+ Add time</button>`
+          : ''}
+        ${started && !isInactive(m) ? `<button class="btn sm ghost" onclick="markFirstSession('${m.id}',false)">Reset start</button>`:''}
+        <button class="btn sm ghost" onclick="openEdit('${m.id}')">Edit</button>
+        <button class="btn sm ghost danger" onclick="removeMember('${m.id}')">Remove</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* status of a single touchpoint cell for a member */
+function cellStatus(m,it){
+  // not applicable: conditional item where the condition isn't met
+  if(it.conditional && !m[it.conditional]) return 'na';
+  if(isDone(m,it.id)) return 'done';
+  // before the clock starts: intro is due, everything else just waits
+  if(!hasStarted(m)) return it.phase==='intro' ? 'due' : 'future';
+  if(status(m)==='paused') return 'future';
+  const cd = currentDay(m);
+  if(it.phase==='intro') return cd>3 ? 'overdue' : 'due';
+  if(it.id==='welcome_card') return 'due';
+  const ed = effectiveDay(it,m);
+  if(cd < ed) return 'future';
+  if(cd <= ed + 7) return 'due';     // within grace window
+  return 'overdue';                   // missed
+}
+
+function renderMemberTable(){
+  const host = document.getElementById('memberTable');
+  const arr = filteredMembers();
+  if(!arr.length){
+    host.innerHTML = `<div class="empty"><div class="big">No challengers here yet.</div>
+      ${members.length?'Try a different filter.':'Add your first challenger to get started.'}</div>`;
+    return;
+  }
+  const cols = TABLE_COLS.map(id=>JOURNEY.find(j=>j.id===id));
+  // header: grouped sections to echo the sheet (trial / weekly / full-member)
+  const head = `<thead>
+    <tr>
+      <th class="who">Challenger</th>
+      <th>Day</th>
+      ${cols.map(c=>`<th>${COL_LABEL[c.id]}</th>`).join('')}
+    </tr>
+  </thead>`;
+  const body = arr.map(m=>{
+    const s=status(m);
+    const dayCell = s==='notstarted'?'–':(s==='paused'?'⏸':(s==='done'?'✓':currentDay(m)));
+    const cells = cols.map(c=>{
+      const st = cellStatus(m,c);
+      const glyph = st==='done'?'✓' : st==='overdue'?'!' : st==='due'?'•' : st==='na'?'·' : '–';
+      const title = `${m.name} · ${c.title} · ${st}`;
+      // clicking a cell toggles done (only meaningful if applicable)
+      const click = st==='na' ? '' : `onclick="tableCellTap('${m.id}','${c.id}')"`;
+      return `<td><span class="cell ${st}" title="${esc(title)}" ${click}>${glyph}</span></td>`;
+    }).join('');
+    const meta = `Coach ${esc(m.coach)}${m.signedUp?' · Member':''}${m.extraDays?` · +${m.extraDays}d`:''}`;
+    return `<tr>
+      <td class="who"><div class="nm">${esc(m.name)}</div><div class="meta">${meta}</div></td>
+      <td class="day">${dayCell}</td>
+      ${cells}
+    </tr>`;
+  }).join('');
+  host.innerHTML = `<div class="tbl-scroll"><table class="journey">${head}<tbody>${body}</tbody></table></div>
+    <div class="tbl-legend">
+      <span><i class="done"></i> Done</span>
+      <span><i class="due"></i> Due now</span>
+      <span><i class="overdue"></i> Overdue / missed</span>
+      <span><i class="future"></i> Not yet due</span>
+      <span>· Tap any cell to mark done</span>
+    </div>`;
+}
+function tableCellTap(mid,iid){
+  const m=members.find(x=>x.id===mid); if(!m) return;
+  m.completed=m.completed||[]; m.doneMeta=m.doneMeta||{};
+  if(m.completed.includes(iid)){
+    m.completed=m.completed.filter(k=>k!==iid); delete m.doneMeta[iid];
+  }else{
+    m.completed.push(iid);
+    m.doneMeta[iid]=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  }
+  save(); renderAll();
+}
+
+function setOutcome(id,outcome){
+  const m=members.find(x=>x.id===id); if(!m) return;
+  // outcome: 'stayed' | 'left' | null (undecided)
+  m.outcome = outcome;
+  if(outcome==='stayed'){
+    m.signedUp = true;            // unlocks welcome card + month follow-ups
+  }else if(outcome==='left'){
+    m.signedUp = false;           // inactive: no member touchpoints
+  }else{ // undecided / undo
+    m.signedUp = false;
+    m.completed=(m.completed||[]).filter(k=>k!=='welcome_card');
+    if(m.doneMeta) delete m.doneMeta['welcome_card'];
+  }
+  save(); renderAll();
+}
+function isInactive(m){ return m.outcome==='left'; }
+
+/* Set the first-session date (captured at the intro). Planning only until started. */
+function setBookedDate(id, dateStr){
+  const m=members.find(x=>x.id===id); if(!m) return;
+  m.booked = dateStr ? parseDate(dateStr) : null;
+  if(m.firstSessionDone && m.booked){
+    // already started: changing the session date moves day0, so the journey
+    // shifts and we do need a re-render (re-open the card afterwards).
+    m.day0 = m.booked;
+    save();
+    renderToday();
+    const el=document.getElementById('act-'+id+'-intro');
+    if(el) el.classList.add('open');
+  }else{
+    // not started yet: nothing else on screen depends on this, so just save
+    // quietly — re-rendering here is what was collapsing the card mid-edit.
+    save();
+  }
+}
+
+/* Mark the first session complete — this is what starts the 6-week clock.
+   Day 0 = the session date (the booked date they actually attended); if none was
+   set, fall back to today. Untick to reset back to not-started. */
+function markFirstSession(id, done){
+  const m=members.find(x=>x.id===id); if(!m) return;
+  if(done){
+    m.firstSessionDone = true;
+    m.day0 = m.booked || today0();
+  }else{
+    m.firstSessionDone = false;
+    m.day0 = null;
+    // resetting the start clears any pause/extension that only made sense once running
+    m.pausedAt = null; m.pausedDays = 0; m.extraDays = 0;
+  }
+  save(); renderAll();
+}
+function setFirstSessionDate(id, dateStr){
+  const m=members.find(x=>x.id===id); if(!m||!m.firstSessionDone) return;
+  m.day0 = parseDate(dateStr);   // dateStr is a YYYY-MM-DD string from a date input
+  save(); renderAll();
+}
+
+function finishDate(m){
+  // calendar date when currentDay would reach totalDays, accounting for current pause
+  const remainingDays = totalDays(m) - currentDay(m);
+  let base = today0();
+  if(m.pausedAt) base = m.pausedAt; // while paused the finish floats; show projected from now anyway
+  return today0() + remainingDays*MS_DAY;
+}
+
+function pause(id){
+  const m=members.find(x=>x.id===id); if(!m) return;
+  if(m.pausedAt) return;           // already paused — don't reset and lose banked days
+  if(!hasStarted(m)) return;       // can't pause a clock that hasn't started
+  m.pausedAt = today0(); save(); renderAll();
+}
+function resume(id){
+  const m=members.find(x=>x.id===id); if(!m||!m.pausedAt) return;
+  const banked = Math.floor((today0()-m.pausedAt)/MS_DAY);
+  m.pausedDays = (m.pausedDays||0)+banked;
+  m.pausedAt = null; save(); renderAll();
+}
+
+/* extend modal */
+let extTarget=null;
+function openExt(id){ extTarget=id; document.getElementById('ext-days').value=7; document.getElementById('ext-reason').value=''; document.getElementById('extBg').classList.add('show'); }
+function closeExt(){ document.getElementById('extBg').classList.remove('show'); }
+function confirmExt(){
+  const m=members.find(x=>x.id===extTarget); if(!m) return;
+  const d=parseInt(document.getElementById('ext-days').value)||0;
+  m.extraDays=(m.extraDays||0)+d;
+  closeExt(); save(); renderAll();
+}
+
+/* add/edit modal */
+let editTarget=null;
+function openAdd(){
+  editTarget=null;
+  document.getElementById('modalTitle').textContent='Add challenger';
+  document.getElementById('modalNote').innerHTML='Add them when they book in. You’ll set their first session date and start the clock at the intro.';
+  document.getElementById('f-name').value='';
+  document.getElementById('f-coach').value='Dan';
+  document.getElementById('f-personal').value='';
+  document.getElementById('modalBg').classList.add('show');
+}
+function openEdit(id){
+  const m=members.find(x=>x.id===id); if(!m) return;
+  editTarget=id;
+  document.getElementById('modalTitle').textContent='Edit challenger';
+  document.getElementById('modalNote').textContent='Update their details.';
+  document.getElementById('f-name').value=m.name;
+  document.getElementById('f-coach').value=m.coach;
+  document.getElementById('f-personal').value=m.personal||'';
+  document.getElementById('modalBg').classList.add('show');
+}
+function closeModal(){ document.getElementById('modalBg').classList.remove('show'); }
+function saveMember(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){ alert('Add a name.'); return; }
+  const coach=document.getElementById('f-coach').value;
+  const personal=document.getElementById('f-personal').value.trim();
+  if(editTarget){
+    const m=members.find(x=>x.id===editTarget);
+    m.name=name; m.coach=coach; m.personal=personal;
+  }else{
+    members.push({id:'m'+Date.now()+Math.random().toString(36).slice(2,6),
+      name,booked:null,day0:null,firstSessionDone:false,coach,personal,
+      extraDays:0,pausedDays:0,pausedAt:null,signedUp:false,outcome:null,completed:[],doneMeta:{},checks:{}});
+  }
+  closeModal(); save(); renderAll();
+}
+function removeMember(id){
+  const m=members.find(x=>x.id===id);
+  if(!confirm(`Remove ${m?m.name:'this challenger'}? This can’t be undone.`)) return;
+  members=members.filter(x=>x.id!==id); save(); renderAll();
+}
+
+/* ---------------- PLAYBOOK view ---------------- */
+function dayBadge(it){
+  if(it.phase==='intro') return 'Before Day 0';
+  if(it.id==='welcome_card') return 'On sign-up';
+  if(it.id==='wk4') return 'Day 28';
+  return 'Day '+it.day;
+}
+function renderPlaybook(){
+  const el=document.getElementById('playbookList');
+  el.innerHTML = JOURNEY.map(it=>{
+    const chClass = it.ch==='inperson'?'inperson':it.ch;
+    return `<div class="pb ${chClass}">
+      <div class="pb-card">
+        <div class="pb-head">
+          <span class="pb-day">${dayBadge(it)}</span>
+          <span class="ch ${chClass}">${CH_LABEL[it.ch]}</span>
+          <span class="pb-title">${it.title}</span>
+        </div>
+        <div class="pb-script">${it.what}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------------- shared ---------------- */
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function stripTags(s){ return (s==null?'':String(s)).replace(/<[^>]*>/g,''); }
+
+function renderAll(){
+  renderConvBar(); renderToday(); renderMembers(); renderPlaybook();
+  const live = members.filter(m=>(status(m)==='live'||status(m)==='paused'||status(m)==='notstarted') && !isInactive(m)).length;
+  document.getElementById('liveCount').textContent = live;
+}
+
+/* tabs */
+document.querySelectorAll('nav.tabs button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('nav.tabs button').forEach(x=>x.setAttribute('aria-selected','false'));
+    b.setAttribute('aria-selected','true');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+b.dataset.view).classList.add('active');
+  });
+});
+/* close modals on backdrop */
+document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
+document.getElementById('extBg').addEventListener('click',e=>{if(e.target.id==='extBg')closeExt();});
+
+/* seed friendly examples — only when the roster is genuinely empty */
+function seedIfEmpty(pushAfter){
+  if(members.length>0) return;
+  const t=today0();
+  members=[
+    {id:'seed0',name:'Jess Hartley',booked:t+2*MS_DAY,day0:null,firstSessionDone:false,coach:'Dan',personal:'Booked in, intro this week',
+     extraDays:0,pausedDays:0,pausedAt:null,signedUp:false,outcome:null,completed:[],doneMeta:{},checks:{}},
+    {id:'seed1',name:'Sarah Doyle',booked:t-1*MS_DAY,day0:t-1*MS_DAY,firstSessionDone:true,coach:'Dan',personal:'Joined for her daughter’s wedding in Sept',
+     extraDays:0,pausedDays:0,pausedAt:null,signedUp:false,outcome:null,completed:['intro'],doneMeta:{intro:'yesterday'},checks:{}},
+    {id:'seed2',name:'Mark Reilly',booked:t-28*MS_DAY,day0:t-28*MS_DAY,firstSessionDone:true,coach:'Grace',personal:'Shift worker, early sessions only',
+     extraDays:0,pausedDays:0,pausedAt:null,signedUp:false,outcome:null,
+     completed:['intro','d1_text','d3_postcard','wk1','wk2','wk3'],doneMeta:{},checks:{}},
+    {id:'seed3',name:'Priya Shah',booked:t-21*MS_DAY,day0:t-21*MS_DAY,firstSessionDone:true,coach:'Gaz',personal:'Came back after a knee injury',
+     extraDays:7,pausedDays:0,pausedAt:null,signedUp:false,outcome:null,
+     completed:['intro','d1_text','d3_postcard','wk1','wk2'],doneMeta:{},checks:{}},
+    {id:'seed4',name:'Hannah Webb',booked:t-50*MS_DAY,day0:t-50*MS_DAY,firstSessionDone:true,coach:'Dan',personal:'Wanted to feel strong again post-baby',
+     extraDays:0,pausedDays:0,pausedAt:null,signedUp:true,outcome:'stayed',
+     completed:['intro','d1_text','d3_postcard','wk1','wk2','wk3','wk4','wk5','wk6','box','welcome_card'],doneMeta:{},checks:{}},
+    {id:'seed5',name:'Tom Begley',booked:t-49*MS_DAY,day0:t-49*MS_DAY,firstSessionDone:true,coach:'Gaz',personal:'Trial only, busy work schedule',
+     extraDays:0,pausedDays:0,pausedAt:null,signedUp:false,outcome:'left',
+     completed:['intro','d1_text','d3_postcard','wk1','wk2','wk3','wk4','wk5','wk6'],doneMeta:{},checks:{}},
+  ];
+  writeCache();
+  if(pushAfter && sb) pushToCloud();
+}
+
+/* ---------------- password gate + boot ---------------- */
+(function setupGate(){
+  const gate=document.getElementById('gate');
+  const pw=document.getElementById('gatePw');
+  const btn=document.getElementById('gateBtn');
+  const err=document.getElementById('gateErr');
+  // show the logo in the gate (reuse the masthead logo's base64)
+  const logoImg=document.querySelector('.mark img');
+  const gateLogo=document.getElementById('gateLogo');
+  if(logoImg && gateLogo){ gateLogo.src=logoImg.src; gateLogo.alt='Bodysculpt'; }
+
+  function tryEnter(){
+    const want=(window.BSJ_CONFIG&&window.BSJ_CONFIG.GYM_PASSWORD)||'';
+    if(pw.value===want){
+      gate.classList.add('hide');
+      bootData();               // only load data once they're in
+    }else{
+      err.textContent='Wrong password — try again.';
+      pw.value=''; pw.focus();
+    }
+  }
+  btn.addEventListener('click', tryEnter);
+  pw.addEventListener('keydown', e=>{ if(e.key==='Enter') tryEnter(); });
+  pw.focus();
+})();
+</script>
+</body>
+</html>

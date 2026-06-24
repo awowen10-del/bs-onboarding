@@ -372,12 +372,19 @@
     <div class="sec-head">
       <h2>Today's moves</h2>
     </div>
-    <p class="sub" style="margin-top:-2px;margin-bottom:18px">Every challenger, sorted by what they need from us right now. The system tells you the day — you bring the warmth.</p>
-    <div class="day-banner">
-      <span class="dot"></span>
-      <span class="txt" id="todayBanner">Loading…</span>
+    <p class="sub" style="margin-top:-2px;margin-bottom:14px">Every challenger, sorted by what they need from us right now. The system tells you the day — you bring the warmth.</p>
+    <div class="viewtoggle" id="todayViewToggle">
+      <button class="vt active" data-tview="moves" onclick="setTodayView('moves')">Today's moves</button>
+      <button class="vt" data-tview="table" onclick="setTodayView('table')">Whole journey</button>
     </div>
-    <div id="todayList"></div>
+    <div id="todayMoves" style="margin-top:14px">
+      <div class="day-banner">
+        <span class="dot"></span>
+        <span class="txt" id="todayBanner">Loading…</span>
+      </div>
+      <div id="todayList"></div>
+    </div>
+    <div id="todayTable" class="hide" style="margin-top:14px"></div>
   </section>
 
   <!-- ===== MEMBERS ===== -->
@@ -388,10 +395,6 @@
     </div>
     <p class="sub" style="margin-top:-2px;margin-bottom:14px">The 6 weeks begin when you mark a challenger's <b>first session complete</b> — that's their Day 0. Pause to freeze the clock while they're away; add time to push everything still ahead of them along together.</p>
     <div id="convBar"></div>
-    <div class="viewtoggle" id="memViewToggle">
-      <button class="vt active" data-mview="cards" onclick="setMemView('cards')">Cards</button>
-      <button class="vt" data-mview="table" onclick="setMemView('table')">Table</button>
-    </div>
     <div class="toolbar" style="margin-top:14px">
       <input type="search" id="search" placeholder="Search by name…" oninput="renderMembers()">
       <select id="filter" class="btn" onchange="renderMembers()" style="font-weight:500">
@@ -404,7 +407,6 @@
       </select>
     </div>
     <div id="memberList"></div>
-    <div id="memberTable" class="hide"></div>
   </section>
 
   <!-- ===== PLAYBOOK ===== -->
@@ -611,6 +613,7 @@ function writeCache(){ try{ localStorage.setItem(CACHE, JSON.stringify(members))
    code calls save() synchronously and that still works — the cloud write
    happens in the background and a banner reports failures. */
 let saveTimer=null;
+let lastOwnWrite=0;     // timestamp of our most recent push, so we can ignore its echo
 function save(){
   writeCache();                       // instant local copy so nothing is ever lost mid-edit
   if(!sb) return;                     // not connected yet; cache will sync on next successful save
@@ -619,9 +622,11 @@ function save(){
 }
 async function pushToCloud(){
   if(!sb) return;
+  const stamp = new Date().toISOString();
+  lastOwnWrite = Date.parse(stamp);
   try{
     const { error } = await sb.from('bodysculpt')
-      .upsert({ key: ROW_KEY, value: members, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      .upsert({ key: ROW_KEY, value: members, updated_at: stamp }, { onConflict: 'key' });
     if(error) throw error;
     showSync('ok','Saved ✓', true);
   }catch(e){
@@ -644,18 +649,31 @@ async function bootData(){
   }
   sb = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
   try{
-    const { data, error } = await sb.from('bodysculpt').select('value').eq('key', ROW_KEY).maybeSingle();
+    // pull both the roster and a one-time "seeded" marker in one go
+    const { data, error } = await sb.from('bodysculpt').select('key,value,updated_at').in('key', [ROW_KEY, 'seeded']);
     if(error) throw error;
-    members = migrateList(data && Array.isArray(data.value) ? data.value : []);
-    if(members.length===0) seedIfEmpty(true);   // first ever run -> seed + push
+    const rosterRow = (data||[]).find(r=>r.key===ROW_KEY);
+    const seededRow = (data||[]).find(r=>r.key==='seeded');
+    members = migrateList(rosterRow && Array.isArray(rosterRow.value) ? rosterRow.value : []);
+    // Seed the examples ONLY on the very first run ever (no seeded marker yet).
+    // After that, an empty list stays empty — removing everyone is respected.
+    if(!seededRow){
+      if(members.length===0) seedIfEmpty(true);
+      await sb.from('bodysculpt').upsert({ key:'seeded', value:true, updated_at:new Date().toISOString() }, { onConflict:'key' });
+    }
     writeCache();
     showSync('ok','Connected ✓', true);
     renderAll();
-    // live updates: if Dan changes something, Ash sees it (and vice versa)
+    // live updates: if Dan changes something, Ash sees it (and vice versa).
+    // We skip the echo of our OWN writes so quick edits (e.g. removing several
+    // challengers) don't get stomped by a stale round-trip.
     sb.channel('roster-changes')
       .on('postgres_changes', { event:'*', schema:'public', table:'bodysculpt', filter:'key=eq.'+ROW_KEY },
         payload=>{
           const incoming = payload.new && payload.new.value;
+          const incomingTime = payload.new && Date.parse(payload.new.updated_at||0);
+          // ignore the echo of a write we just made
+          if(incomingTime && Math.abs(incomingTime - lastOwnWrite) < 1500) return;
           if(Array.isArray(incoming)){ members = migrateList(incoming); writeCache(); renderAll(); }
         })
       .subscribe();
@@ -840,8 +858,10 @@ function goToIntro(mid){
   const todayBtn=document.querySelector('nav.tabs button[data-view="today"]');
   if(todayBtn) todayBtn.setAttribute('aria-selected','true');
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  const todayView=document.getElementById('view-today');
-  if(todayView) todayView.classList.add('active');
+  const todaySection=document.getElementById('view-today');
+  if(todaySection) todaySection.classList.add('active');
+  // make sure we're on the moves sub-view (not the table) so the intro card shows
+  setTodayView('moves');
   // expand that member's intro card and scroll to it
   const el=document.getElementById('act-'+mid+'-intro');
   if(el){ el.classList.add('open'); el.scrollIntoView({behavior:'smooth', block:'center'}); }
@@ -951,15 +971,17 @@ function toggleDone(id,key,val){
   save(); renderAll();
 }
 
-/* ---------------- MEMBERS view ---------------- */
-let memView = 'cards';
-function setMemView(v){
-  memView = v;
-  document.querySelectorAll('#memViewToggle .vt').forEach(b=>b.classList.toggle('active', b.dataset.mview===v));
-  document.getElementById('memberList').classList.toggle('hide', v!=='cards');
-  document.getElementById('memberTable').classList.toggle('hide', v!=='table');
-  renderMembers();
+/* ---------------- Today view toggle (moves vs whole-journey table) ---------------- */
+let todayView = 'moves';
+function setTodayView(v){
+  todayView = v;
+  document.querySelectorAll('#todayViewToggle .vt').forEach(b=>b.classList.toggle('active', b.dataset.tview===v));
+  document.getElementById('todayMoves').classList.toggle('hide', v!=='moves');
+  document.getElementById('todayTable').classList.toggle('hide', v!=='table');
+  if(v==='table') renderMemberTable();
 }
+
+/* ---------------- MEMBERS view (cards only now) ---------------- */
 function filteredMembers(){
   const q = (document.getElementById('search').value||'').toLowerCase();
   const f = document.getElementById('filter').value;
@@ -998,7 +1020,6 @@ function renderConvBar(){
 }
 
 function renderMembers(){
-  if(memView==='table'){ renderMemberTable(); return; }
   const list = document.getElementById('memberList');
   let arr = filteredMembers();
 
@@ -1102,7 +1123,7 @@ function cellStatus(m,it){
 }
 
 function renderMemberTable(){
-  const host = document.getElementById('memberTable');
+  const host = document.getElementById('todayTable');
   const arr = filteredMembers();
   if(!arr.length){
     host.innerHTML = `<div class="empty"><div class="big">No challengers here yet.</div>
@@ -1320,6 +1341,7 @@ function stripTags(s){ return (s==null?'':String(s)).replace(/<[^>]*>/g,''); }
 
 function renderAll(){
   renderConvBar(); renderToday(); renderMembers(); renderPlaybook();
+  if(todayView==='table') renderMemberTable();
   const live = members.filter(m=>(status(m)==='live'||status(m)==='paused'||status(m)==='notstarted') && !isInactive(m)).length;
   document.getElementById('liveCount').textContent = live;
 }

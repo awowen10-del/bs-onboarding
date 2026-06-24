@@ -398,8 +398,8 @@
     <div class="toolbar" style="margin-top:14px">
       <input type="search" id="search" placeholder="Search by name…" oninput="renderMembers()">
       <select id="filter" class="btn" onchange="renderMembers()" style="font-weight:500">
-        <option value="active">Active (live + paused)</option>
         <option value="all">Everyone</option>
+        <option value="active">Active (live + paused)</option>
         <option value="stayed">Stayed on</option>
         <option value="inactive">Left / inactive</option>
         <option value="paused">Paused only</option>
@@ -1361,28 +1361,9 @@ document.getElementById('extBg').addEventListener('click',e=>{if(e.target.id==='
 
 /* seed friendly examples — only when the roster is genuinely empty */
 function seedIfEmpty(pushAfter){
-  if(members.length>0) return;
-  const t=today0();
-  members=[
-    {id:'seed0',name:'Jess Hartley',booked:t+2*MS_DAY,day0:null,firstSessionDone:false,coach:'Dan',personal:'Booked in, intro this week',
-     extraDays:0,pausedDays:0,pausedAt:null,signedUp:false,outcome:null,completed:[],doneMeta:{},checks:{}},
-    {id:'seed1',name:'Sarah Doyle',booked:t-1*MS_DAY,day0:t-1*MS_DAY,firstSessionDone:true,coach:'Dan',personal:'Joined for her daughter’s wedding in Sept',
-     extraDays:0,pausedDays:0,pausedAt:null,signedUp:false,outcome:null,completed:['intro'],doneMeta:{intro:'yesterday'},checks:{}},
-    {id:'seed2',name:'Mark Reilly',booked:t-28*MS_DAY,day0:t-28*MS_DAY,firstSessionDone:true,coach:'Grace',personal:'Shift worker, early sessions only',
-     extraDays:0,pausedDays:0,pausedAt:null,signedUp:false,outcome:null,
-     completed:['intro','d1_text','d3_postcard','wk1','wk2','wk3'],doneMeta:{},checks:{}},
-    {id:'seed3',name:'Priya Shah',booked:t-21*MS_DAY,day0:t-21*MS_DAY,firstSessionDone:true,coach:'Gaz',personal:'Came back after a knee injury',
-     extraDays:7,pausedDays:0,pausedAt:null,signedUp:false,outcome:null,
-     completed:['intro','d1_text','d3_postcard','wk1','wk2'],doneMeta:{},checks:{}},
-    {id:'seed4',name:'Hannah Webb',booked:t-50*MS_DAY,day0:t-50*MS_DAY,firstSessionDone:true,coach:'Dan',personal:'Wanted to feel strong again post-baby',
-     extraDays:0,pausedDays:0,pausedAt:null,signedUp:true,outcome:'stayed',
-     completed:['intro','d1_text','d3_postcard','wk1','wk2','wk3','wk4','wk5','wk6','box','welcome_card'],doneMeta:{},checks:{}},
-    {id:'seed5',name:'Tom Begley',booked:t-49*MS_DAY,day0:t-49*MS_DAY,firstSessionDone:true,coach:'Gaz',personal:'Trial only, busy work schedule',
-     extraDays:0,pausedDays:0,pausedAt:null,signedUp:false,outcome:'left',
-     completed:['intro','d1_text','d3_postcard','wk1','wk2','wk3','wk4','wk5','wk6'],doneMeta:{},checks:{}},
-  ];
-  writeCache();
-  if(pushAfter && sb) pushToCloud();
+  // No example data — the app starts empty and ready for real challengers.
+  // (Kept as a no-op so the boot sequence that references it stays intact.)
+  return;
 }
 
 /* ---------------- password gate + boot ---------------- */

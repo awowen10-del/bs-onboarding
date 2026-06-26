@@ -102,6 +102,9 @@
   .action.open{flex-wrap:wrap}
   .action.open .detail{display:block}
   .action .detail b{color:var(--ink)}
+  .seed-line{margin-top:11px;background:rgba(232,115,42,.1);border:1px solid rgba(232,115,42,.32);border-radius:10px;padding:11px 13px}
+  .seed-line .seed-label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--orange-soft);margin-bottom:6px}
+  .seed-line .seed-text{font-size:13.5px;color:var(--ink);font-style:italic;line-height:1.5}
   .action .mark{flex-shrink:0}
   .overdue{display:inline-block;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:800;color:#fff;background:var(--red);border-radius:5px;padding:2px 7px}
 
@@ -481,68 +484,42 @@ const MS_DAY = 86400000;
 
 /* ---- The journey: every touchpoint hangs off a DAY NUMBER ---- */
 const JOURNEY = [
-  {day:-1, id:'intro', ch:'inperson', title:'Intro session', owner:'coach', phase:'intro',
-   what:'Before Day 0. The first taste of how we do things — make them feel set-up and looked-after, not sold to.',
+  {day:-1, id:'intro', ch:'inperson', title:'Intro / Welcome experience', owner:'coach', phase:'intro',
+   what:'Day One. Make them feel expected and looked-after from the moment they walk in — not sold to.',
    checklist:[
-     'Add the 6 Week Challenge to their GoTeamUp account (create one if it’s not on the system yet)',
-     'Add their Nutrition Goals to their Trainerize app (use their InBody stats)',
-     'Add the 6 Week Challenge Calendar to their Trainerize app',
-     'Move their Profile Card to “Intro Session Complete” on Ontraport',
+     'Welcome book + logbook in an A5 envelope, name handwritten on the front (InBody sheet added later)',
+     'Add their name to the TV welcome screen so they see themselves welcomed on arrival',
+     'Offer a hot or cold drink — don’t wait for them to ask',
+     'Set them up on the apps (incl. Trainerize) — don’t rush it, confirm they know how before they leave',
+     'Book their first session before they leave — they don’t go without knowing when they’re next in',
      'Send the Welcome Message on Trainerize'
    ],
    welcomeMsg:true,
-   walkthrough:'https://www.loom.com/share/084d5cdcb55e47198783d4d84803741c?sid=a5a966e2-f4c8-4666-9b38-4b54ffd3e61c',
-   script:'This sets the standard everything else is judged against. Warm, unhurried, no pitch.',
-   why:'The intro sets the standard. Everything else is judged against this first impression.'},
-  {day:1,  id:'d1_text', ch:'digital',  title:'Morning-after text',    owner:'coach', phase:'journey',
-   what:'Text them the morning after their <b>first session</b>.',
-   script:'“How are the legs today? 😄 Proud of you for starting — the hardest bit’s done.”',
-   why:'Reacting to what they actually feel (soreness) signals you get it.'},
-  {day:3,  id:'d3_postcard', ch:'physical', title:'Send the postcard',     owner:'team', phase:'journey',
-   what:'Same week as their first session — send a <b>postcard</b> to their house. Trigger via Scribeless / ClickSend / Thanks.io, or write one by hand.',
-   script:'“Loved having you in this week. You’ve started something — we’re right behind you.” Small, specific, no ask.',
-   why:'A physical thing on their doormat cuts through the digital noise. Almost always gets opened.'},
-  {day:7,  id:'wk1', ch:'digital', title:'Week 1 check-in (Trainerize)', owner:'coach', phase:'journey',
-   what:'Check-in via <b>Trainerize</b>. How’s week one landed?',
-   script:'Keep it warm and short. Log a note so the team can see who’s thriving and who’s gone quiet.',
-   why:'A weekly rhythm means no one slips through quietly.'},
-  {day:14, id:'wk2', ch:'digital', title:'Week 2 check-in (Trainerize)', owner:'coach', phase:'journey',
-   what:'Check-in via <b>Trainerize</b>. The trust deposit before halfway.',
-   script:'“How’s it feeling? What’s surprised you?” Reference their intro personal note.',
-   why:'Being remembered is the whole game.'},
-  {day:21, id:'wk3', ch:'digital', title:'Week 3 check-in (Trainerize)', owner:'coach', phase:'journey',
-   what:'Check-in via <b>Trainerize</b>. Halfway mark — acknowledge the consistency.',
-   script:'Celebrate how far they’ve come already. Log a note.',
-   why:'Keeps the weekly thread unbroken at the point motivation can dip.'},
+   walkthrough:'https://www.loom.com/share/084d5cdcb55e47198783d4d84803741c?sid=a5a966e2-f4c8-4666-9b38-4b54ffd3e61c'},
+  {day:1,  id:'d1_text', ch:'digital',  title:'Morning-after-first-session text', owner:'coach', phase:'journey',
+   what:'The morning after their <b>first session</b>. Not generic — prove we noticed them. Mention something specific from the session, something they told us, or something they did well. The hardest session is the first one — make them feel seen after it.'},
+  {day:7,  id:'d3_postcard', ch:'physical', title:'Handwritten postcard to their house', owner:'team', phase:'journey',
+   what:'Start of Week 2 — a handwritten postcard to their home. An unexpected touch. Short, warm, specific. Reinforce that they’ve made a proper start and we’re glad they’re here. Write it by hand or trigger via Scribeless / ClickSend / Thanks.io.'},
+  {day:7,  id:'wk2', ch:'digital', title:'Start of Week 2 check-in', owner:'coach', phase:'journey', win:true,
+   what:'Voice note (or text if better). Warm personal check-in, reference their effort/attendance, give a <b>named win</b>, set a focus for the week, and remind them they can ask for help before they struggle.'},
+  {day:14, id:'wk3', ch:'digital', title:'Start of Week 3 check-in — plant the seed', owner:'coach', phase:'journey', win:true,
+   what:'The midpoint. Gently frame the challenge as the start of a longer routine — don’t hard-sell membership. Still give a <b>named win</b>. End the voice note with the seed line below.',
+   seed:'You’re starting to settle in now. This is the bit we want — not just a 6-week push, but getting you into a routine you can actually keep. Over the next couple of weeks we’ll help you figure out what that looks like after the challenge.'},
+  {day:21, id:'wk4', ch:'digital', title:'Start of Week 4 check-in', owner:'coach', phase:'journey', win:true,
+   what:'Voice note check-in. Warm, reference their effort, give a <b>named win</b>, set a focus, remind them help is there before they struggle.'},
   {day:28, id:'box', ch:'physical', title:'The unexpected box 🎁',  owner:'team', phase:'journey',
    what:'The Bodysculpt box — the unearned, unexpected gift. Pack and hand over (or post).',
-   checklist:['Fridge magnet (“bored or hungry?”)','Cup / shaker','Whey protein samples','Handwritten card — name at top, reference something specific'],
-   script:'The card is the part that matters most — handwritten, personal, no ask.',
-   why:'The unearned, unexpected gift. Lands hardest because nothing is being asked in return.'},
-  {day:28, id:'wk4', ch:'digital', title:'Week 4 check-in (Trainerize)', owner:'coach', phase:'journey',
-   what:'Check-in via <b>Trainerize</b> alongside the box.',
-   script:'Keep it short — the box is doing the heavy lifting this week.',
-   why:'Maintains the weekly rhythm.'},
-  {day:35, id:'wk5', ch:'digital', title:'Week 5 — future-pacing (Trainerize)', owner:'coach', phase:'journey',
-   what:'Check-in via <b>Trainerize</b> with the month-two seed planted.',
-   script:'“Have you thought about what month two looks like?” A vision, not a sell.',
-   why:'Plants the long-term idea before the decision window opens.'},
-  {day:42, id:'wk6', ch:'digital', title:'Week 6 check-in (Trainerize)', owner:'coach', phase:'journey',
-   what:'Final <b>Trainerize</b> check-in. The 6 weeks are done — set up the where-next conversation.',
-   script:'Celebrate the finish. “Let’s grab 10 mins to chat about where you go from here.”',
-   why:'Frames the membership chat as care, from a place of genuine relationship.'},
-  {day:43, id:'welcome_card', ch:'physical', title:'Welcome card — IF they sign up 🎉', owner:'team', phase:'signup', conditional:'signedUp',
-   what:'Only once they’ve <b>signed up as a member</b>. Send a <b>welcome card</b> to mark them joining the family.',
-   script:'“Welcome to Bodysculpt properly. This is the start of the good bit.”',
-   why:'The card celebrates the decision — it rewards joining, rather than chasing it.'},
+   checklist:['Fridge magnet (“bored or hungry?”)','Cup / shaker','Whey protein samples','Handwritten card — name at top, reference something specific']},
+  {day:28, id:'wk5', ch:'digital', title:'Start of Week 5 check-in', owner:'coach', phase:'journey', win:true,
+   what:'Voice note check-in alongside the box. Warm, reference their effort, give a <b>named win</b>, set a focus for the week.'},
+  {day:35, id:'wk6', ch:'digital', title:'Start of Week 6 check-in', owner:'coach', phase:'journey', win:true,
+   what:'Final week check-in. Celebrate how far they’ve come, give a <b>named win</b>, and set up the where-next chat from a place of genuine care.'},
+  {day:43, id:'welcome_card', ch:'physical', title:'Welcome card — IF they stay 🎉', owner:'team', phase:'signup', conditional:'signedUp',
+   what:'Only once they’ve <b>stayed on as a member</b>. Send a welcome card to mark them properly joining the Bodysculpt family.'},
   {day:72, id:'month1', ch:'digital', title:'Month 1 follow-up', owner:'coach', phase:'member', conditional:'signedUp',
-   what:'~30 days after they join. Check how month one as a full member has gone.',
-   script:'“A month in as a member — how’s it feeling? Anything you want to tweak?”',
-   why:'The first month as a paying member is where retention is won or lost.'},
+   what:'~30 days after they join. Check how month one as a full member has gone — anything they want to tweak?'},
   {day:103, id:'month2', ch:'digital', title:'Month 2 follow-up', owner:'coach', phase:'member', conditional:'signedUp',
-   what:'~60 days after they join. Embed the habit, head off any wobble.',
-   script:'“Two months down. Let’s look at what’s next for you.”',
-   why:'Keeps the relationship warm well past the trial, so they never feel like just a number.'},
+   what:'~60 days after they join. Embed the habit, head off any wobble, look at what’s next.'},
 ];
 
 const CH_LABEL = {physical:'Physical', digital:'Digital', inperson:'In person'};
@@ -573,8 +550,8 @@ function welcomeMsgPlainText(){
 }
 
 /* Table column order — mirrors the Google sheet left-to-right */
-const TABLE_COLS = ['intro','d1_text','d3_postcard','wk1','wk2','wk3','wk4','wk5','wk6','box','welcome_card','month1','month2'];
-const COL_LABEL = {intro:'Intro',d1_text:'Text',d3_postcard:'Postcard',wk1:'Wk1',wk2:'Wk2',wk3:'Wk3',wk4:'Wk4',wk5:'Wk5',wk6:'Wk6',box:'Box',welcome_card:'Card',month1:'Mth1',month2:'Mth2'};
+const TABLE_COLS = ['intro','d1_text','d3_postcard','wk2','wk3','wk4','box','wk5','wk6','welcome_card','month1','month2'];
+const COL_LABEL = {intro:'Intro',d1_text:'Text',d3_postcard:'Postcard',wk2:'Wk2',wk3:'Wk3',wk4:'Wk4',box:'Box',wk5:'Wk5',wk6:'Wk6',welcome_card:'Card',month1:'Mth1',month2:'Mth2'};
 
 /* ---------------- state + persistence (Supabase-backed) ---------------- */
 let members = [];          // in-memory working copy; all journey logic uses this
@@ -822,9 +799,14 @@ function renderToday(){
                      : 'Day '+cd;
       // build the expandable detail (the action, plus a checklist where there is one)
       const cl = item.checklist ? buildChecklist(m,item) : '';
+      const seedBlock = item.seed ? `<div class="seed-line">
+        <div class="seed-label">End the voice note with this:</div>
+        <div class="seed-text">“${esc(item.seed)}”</div>
+      </div>` : '';
       const detail = `<div class="detail">
         ${esc(stripTags(item.what))}
         ${cl}
+        ${seedBlock}
       </div>`;
       html += `<div class="action ${chClass}" id="act-${m.id}-${item.id}">
         <span class="ch ${chClass}">${CH_LABEL[item.ch]}</span>

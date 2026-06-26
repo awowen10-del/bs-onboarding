@@ -222,6 +222,10 @@
   .pb .pb-title{font-size:14px;font-weight:700}
   .pb .pb-script{font-size:13px;color:var(--ink-dim);margin-top:4px;line-height:1.55}
   .pb .pb-script b{color:var(--ink)}
+  .pb .pb-list{margin:8px 0 0;padding-left:18px;color:var(--ink-dim);font-size:12.5px;line-height:1.6}
+  .pb .pb-list li{margin-bottom:2px}
+  .pb .pb-seed{margin-top:9px;background:rgba(232,115,42,.1);border:1px solid rgba(232,115,42,.3);border-radius:9px;padding:9px 11px;font-size:12.5px;color:var(--ink);font-style:italic;line-height:1.5}
+  .pb .pb-seed-label{display:block;font-style:normal;font-weight:700;text-transform:uppercase;font-size:10.5px;letter-spacing:.05em;color:var(--orange-soft);margin-bottom:4px}
 
   footer{text-align:center;font-size:12px;color:var(--ink-faint);padding:34px 0 0}
 
@@ -507,11 +511,8 @@ const JOURNEY = [
    seed:'You’re starting to settle in now. This is the bit we want — not just a 6-week push, but getting you into a routine you can actually keep. Over the next couple of weeks we’ll help you figure out what that looks like after the challenge.'},
   {day:21, id:'wk4', ch:'digital', title:'Start of Week 4 check-in', owner:'coach', phase:'journey', win:true,
    what:'Voice note check-in. Warm, reference their effort, give a <b>named win</b>, set a focus, remind them help is there before they struggle.'},
-  {day:28, id:'box', ch:'physical', title:'The unexpected box 🎁',  owner:'team', phase:'journey',
-   what:'The Bodysculpt box — the unearned, unexpected gift. Pack and hand over (or post).',
-   checklist:['Fridge magnet (“bored or hungry?”)','Cup / shaker','Whey protein samples','Handwritten card — name at top, reference something specific']},
   {day:28, id:'wk5', ch:'digital', title:'Start of Week 5 check-in', owner:'coach', phase:'journey', win:true,
-   what:'Voice note check-in alongside the box. Warm, reference their effort, give a <b>named win</b>, set a focus for the week.'},
+   what:'Voice note check-in. Warm, reference their effort, give a <b>named win</b>, set a focus for the week.'},
   {day:35, id:'wk6', ch:'digital', title:'Start of Week 6 check-in', owner:'coach', phase:'journey', win:true,
    what:'Final week check-in. Celebrate how far they’ve come, give a <b>named win</b>, and set up the where-next chat from a place of genuine care.'},
   {day:43, id:'welcome_card', ch:'physical', title:'Welcome card — IF they stay 🎉', owner:'team', phase:'signup', conditional:'signedUp',
@@ -550,8 +551,8 @@ function welcomeMsgPlainText(){
 }
 
 /* Table column order — mirrors the Google sheet left-to-right */
-const TABLE_COLS = ['intro','d1_text','d3_postcard','wk2','wk3','wk4','box','wk5','wk6','welcome_card','month1','month2'];
-const COL_LABEL = {intro:'Intro',d1_text:'Text',d3_postcard:'Postcard',wk2:'Wk2',wk3:'Wk3',wk4:'Wk4',box:'Box',wk5:'Wk5',wk6:'Wk6',welcome_card:'Card',month1:'Mth1',month2:'Mth2'};
+const TABLE_COLS = ['intro','d1_text','d3_postcard','wk2','wk3','wk4','wk5','wk6','welcome_card','month1','month2'];
+const COL_LABEL = {intro:'Intro',d1_text:'Text',d3_postcard:'Postcard',wk2:'Wk2',wk3:'Wk3',wk4:'Wk4',wk5:'Wk5',wk6:'Wk6',welcome_card:'Card',month1:'Mth1',month2:'Mth2'};
 
 /* ---------------- state + persistence (Supabase-backed) ---------------- */
 let members = [];          // in-memory working copy; all journey logic uses this
@@ -1304,6 +1305,8 @@ function renderPlaybook(){
   const el=document.getElementById('playbookList');
   el.innerHTML = JOURNEY.map(it=>{
     const chClass = it.ch==='inperson'?'inperson':it.ch;
+    const checklist = it.checklist ? `<ul class="pb-list">${it.checklist.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>` : '';
+    const seed = it.seed ? `<div class="pb-seed"><span class="pb-seed-label">End the voice note with this:</span> “${esc(it.seed)}”</div>` : '';
     return `<div class="pb ${chClass}">
       <div class="pb-card">
         <div class="pb-head">
@@ -1312,6 +1315,8 @@ function renderPlaybook(){
           <span class="pb-title">${it.title}</span>
         </div>
         <div class="pb-script">${it.what}</div>
+        ${checklist}
+        ${seed}
       </div>
     </div>`;
   }).join('');

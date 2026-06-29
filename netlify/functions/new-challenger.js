@@ -30,12 +30,18 @@ exports.handler = async (event) => {
   // 2. Check the shared secret (query string ?secret=... or x-webhook-secret header)
   const provided = (event.queryStringParameters && event.queryStringParameters.secret)
     || event.headers['x-webhook-secret'];
-  if (!WEBHOOK_SECRET || provided !== WEBHOOK_SECRET) {
-    return resp(401, { error: 'Unauthorized' });
+  if (!WEBHOOK_SECRET) {
+    console.log('REJECT: WEBHOOK_SECRET env var is not set in Netlify');
+    return resp(401, { error: 'Unauthorized (no secret configured)' });
+  }
+  if (provided !== WEBHOOK_SECRET) {
+    console.log('REJECT: secret mismatch. Provided=' + JSON.stringify(provided));
+    return resp(401, { error: 'Unauthorized (secret mismatch)' });
   }
 
   // 3. Make sure the server is configured
   if (!SUPABASE_URL || !SERVICE_KEY) {
+    console.log('REJECT: missing env vars. URL set=' + !!SUPABASE_URL + ' KEY set=' + !!SERVICE_KEY);
     return resp(500, { error: 'Server not configured (missing Supabase env vars)' });
   }
 
@@ -51,19 +57,25 @@ exports.handler = async (event) => {
       data = Object.fromEntries(new URLSearchParams(event.body || ''));
     }
   } catch (e) {
+    console.log('REJECT: could not parse body. Raw body=' + (event.body || '').slice(0, 300));
     return resp(400, { error: 'Could not parse body' });
   }
+  console.log('PAYLOAD received: ' + JSON.stringify(data).slice(0, 400));
 
   // Pull a name from the most likely fields
   const first = data.firstname || data.first_name || data.firstName || '';
   const last  = data.lastname  || data.last_name  || data.lastName  || '';
   let name = (data.name || `${first} ${last}`).trim();
-  if (!name) return resp(400, { error: 'No name in payload' });
+  if (!name) {
+    console.log('REJECT: no name found in payload. Keys=' + Object.keys(data).join(','));
+    return resp(400, { error: 'No name in payload', keysReceived: Object.keys(data) });
+  }
 
   // Coach: use what's sent, else default to a placeholder the team can change
   const validCoaches = ['Dan', 'Grace', 'Gaz', 'Ash'];
   let coach = (data.coach || '').trim();
   if (!validCoaches.includes(coach)) coach = 'Dan';
+  console.log('OK: creating challenger name="' + name + '" coach="' + coach + '"');
 
   try {
     // 5. Read the current roster row
@@ -116,8 +128,10 @@ exports.handler = async (event) => {
     );
     if (!putRes.ok) throw new Error(`write failed: ${putRes.status} ${await putRes.text()}`);
 
+    console.log('SUCCESS: challenger "' + name + '" added. Roster now has ' + roster.length + ' people.');
     return resp(200, { ok: true, created: name, coach });
   } catch (e) {
+    console.log('ERROR during read/write: ' + String(e.message || e));
     return resp(500, { error: String(e.message || e) });
   }
 };

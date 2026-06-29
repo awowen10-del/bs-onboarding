@@ -173,6 +173,7 @@
   .startblock .sb-txt b{color:var(--green)}
 
   /* ---------- Nutrition calculator ---------- */
+  .ci-tool{margin:6px 0 10px 26px}
   .nutblock{margin-top:12px;background:var(--navy-2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
   .nut-toggle{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;font-weight:700;font-size:13.5px;color:var(--ink)}
   .nut-toggle:hover{background:rgba(255,255,255,.03)}
@@ -510,13 +511,12 @@ const MS_DAY = 86400000;
 /* ---- The journey: every touchpoint hangs off a DAY NUMBER ---- */
 const JOURNEY = [
   {day:-1, id:'intro', ch:'inperson', title:'Intro / Welcome experience', owner:'coach', phase:'intro',
-   what:'Day One. Make them feel expected and looked-after from the moment they walk in — not sold to.',
+   what:'Straight after the intro session, get them set up on the systems while it’s fresh.',
    checklist:[
-     'Welcome book + logbook in an A5 envelope, name handwritten on the front (InBody sheet added later)',
-     'Add their name to the TV welcome screen so they see themselves welcomed on arrival',
-     'Offer a hot or cold drink — don’t wait for them to ask',
-     'Set them up on the apps (incl. Trainerize) — don’t rush it, confirm they know how before they leave',
-     'Book their first session before they leave — they don’t go without knowing when they’re next in',
+     'Add the 6 Week Challenge to their GoTeamUp account (create one if it’s not already on the system)',
+     'Add their Nutrition Goals to their Trainerize app (use their InBody stats)',
+     'Add the 6 Week Challenge Calendar to their Trainerize app',
+     'Move their Profile Card to “Intro Session Complete” on Ontraport',
      'Send the Welcome Message on Trainerize'
    ],
    welcomeMsg:true,
@@ -893,18 +893,26 @@ function goToIntro(mid){
 function buildChecklist(m,item){
   const state = (m.checks&&m.checks[item.id])||[];
   const done = state.filter(Boolean).length;
-  let rows = item.checklist.map((label,i)=>{
+  // tools that sit inline under a specific checklist step (intro only)
+  const nutriBlock = item.phase==='intro' ? buildNutrition(m) : '';
+  const msgBlock = item.welcomeMsg ? buildWelcomeMsg(m) : '';
+  const rows = item.checklist.map((label,i)=>{
     const checked = state[i];
+    let inlineTool = '';
+    if(item.phase==='intro'){
+      // step 2 = "Add their Nutrition Goals" -> calculator sits under it
+      if(/nutrition goals/i.test(label)) inlineTool = nutriBlock;
+      // step 5 = "Send the Welcome Message" -> message sits under it
+      else if(/welcome message/i.test(label)) inlineTool = msgBlock;
+    }
     return `<div class="ci ${checked?'checked':''}" onclick="event.stopPropagation();toggleCheck('${m.id}','${item.id}',${i})">
-      <span class="box">✓</span><span>${esc(label)}</span>
-    </div>`;
+        <span class="box">✓</span><span>${esc(label)}</span>
+      </div>${inlineTool?`<div class="ci-tool">${inlineTool}</div>`:''}`;
   }).join('');
-  const msg = item.welcomeMsg ? buildWelcomeMsg(m) : '';
   const start = item.phase==='intro' ? buildStartBlock(m) : '';
-  const nutri = item.phase==='intro' ? buildNutrition(m) : '';
   const walk = item.walkthrough ? `<a class="walk-link" href="${item.walkthrough}" target="_blank" rel="noopener" onclick="event.stopPropagation()">▶ New to this? Watch the walkthrough</a>` : '';
-  return `${walk}<div class="checklist">${rows}</div>
-    <div class="checklist-progress">${done} of ${item.checklist.length} done</div>${start}${nutri}${msg}`;
+  return `${walk}${start}<div class="checklist">${rows}</div>
+    <div class="checklist-progress">${done} of ${item.checklist.length} done</div>`;
 }
 
 /* booked-date + start-the-clock block, shown inside the intro card */

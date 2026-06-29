@@ -562,9 +562,27 @@ const WELCOME_MSG = {
     {h:'💬 Stay connected with us', body:'We’ll check in with you every week to see how you’re getting on. The people who get the best results are the ones who reply — even if it’s just a quick update. It helps us spot roadblocks early and give you the right support.'}
   ]
 };
-function welcomeMsgPlainText(){
+function welcomeCaloriesBody(m){
+  // Personalised calories & protein line. If targets have been calculated for
+  // this member, show the actual numbers; otherwise fall back to the generic line.
+  const r = m && m.nutrition ? nutCalc(m.nutrition) : null;
+  if(r){
+    return 'We’ve set your personal daily targets and uploaded them into your profile (Nutrition tab in the app) — but here they are too:\n'
+      + '• Calories: ' + r.calories + ' kcal per day\n'
+      + '• Protein: ' + r.protein + 'g per day\n'
+      + 'Any questions on these, just let us know. They’re designed to move you towards your goal — not to be perfect every single day.';
+  }
+  return 'We’ve uploaded your personal targets into your profile (check the Nutrition tab in the app).';
+}
+/* Build the message sections for a specific member (Calories section is dynamic) */
+function welcomeSectionsFor(m){
+  return WELCOME_MSG.sections.map(s=>
+    s.h==='Calories & Protein' ? {h:s.h, body:welcomeCaloriesBody(m)} : s
+  );
+}
+function welcomeMsgPlainText(m){
   let out = WELCOME_MSG.title + '\n\n';
-  WELCOME_MSG.sections.forEach(s=>{
+  welcomeSectionsFor(m).forEach(s=>{
     if(s.h) out += s.h + ':\n';
     out += s.body + '\n\n';
   });
@@ -1024,7 +1042,7 @@ function copyNutrition(id){
 /* the long Trainerize welcome message — collapsed by default, expandable, copyable */
 function buildWelcomeMsg(m){
   const open = m._wmOpen ? 'open' : '';
-  const inner = WELCOME_MSG.sections.map(s=>
+  const inner = welcomeSectionsFor(m).map(s=>
     `${s.h?`<div class="wm-h">${esc(s.h)}</div>`:''}<div class="wm-b">${esc(s.body).replace(/\n/g,'<br>')}</div>`
   ).join('');
   return `<div class="wm ${open}">
@@ -1035,7 +1053,7 @@ function buildWelcomeMsg(m){
     <div class="wm-body">
       <div class="wm-title">${esc(WELCOME_MSG.title)}</div>
       ${inner}
-      <button class="btn sm wm-copy" onclick="event.stopPropagation();copyWelcome(this)">Copy message</button>
+      <button class="btn sm wm-copy" onclick="event.stopPropagation();copyWelcome(this,'${m.id}')">Copy message</button>
     </div>
   </div>`;
 }
@@ -1046,8 +1064,9 @@ function toggleWelcome(mid){
   const el=document.getElementById('act-'+mid+'-intro');
   if(el) el.classList.add('open');
 }
-function copyWelcome(btn){
-  const txt = welcomeMsgPlainText();
+function copyWelcome(btn, mid){
+  const m = mid ? members.find(x=>x.id===mid) : null;
+  const txt = welcomeMsgPlainText(m);
   const done=()=>{ btn.textContent='Copied ✓'; setTimeout(()=>btn.textContent='Copy message',1800); };
   if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt,done)); }
   else fallbackCopy(txt,done);

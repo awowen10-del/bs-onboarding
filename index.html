@@ -171,6 +171,27 @@
   .startblock .sb-tick{color:var(--green);font-weight:800;font-size:15px}
   .startblock .sb-txt{font-size:13px;color:var(--ink);flex:1}
   .startblock .sb-txt b{color:var(--green)}
+
+  /* ---------- Nutrition calculator ---------- */
+  .nutblock{margin-top:12px;background:var(--navy-2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .nut-toggle{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;font-weight:700;font-size:13.5px;color:var(--ink)}
+  .nut-toggle:hover{background:rgba(255,255,255,.03)}
+  .nut-chev{color:var(--ink-faint)}
+  .nut-body{padding:4px 14px 14px}
+  .nut-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .nut-grid label{display:flex;flex-direction:column;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-dim);gap:4px}
+  .nut-grid .nut-opt{text-transform:none;letter-spacing:0;color:var(--ink-faint);font-weight:500}
+  .nut-grid input,.nut-grid select{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--navy);color:var(--ink);font-weight:500;text-transform:none;letter-spacing:0}
+  .nut-grid input:focus,.nut-grid select:focus{outline:none;border-color:var(--orange)}
+  .nut-result{margin-top:13px;background:rgba(63,191,127,.08);border:1px solid rgba(63,191,127,.3);border-radius:10px;padding:13px}
+  .nut-targets{display:flex;gap:12px}
+  .nut-big{flex:1;text-align:center;background:var(--navy);border:1px solid var(--line);border-radius:9px;padding:11px}
+  .nut-num{font-size:26px;font-weight:800;color:var(--green);line-height:1}
+  .nut-lbl{font-size:11px;color:var(--ink-dim);margin-top:4px;font-weight:600}
+  .nut-break{font-size:11px;color:var(--ink-faint);margin-top:10px;line-height:1.5}
+  .nut-result .btn{margin-top:11px;width:100%}
+  .nut-hint{margin-top:12px;font-size:12.5px;color:var(--ink-faint);text-align:center}
+  @media (max-width:480px){ .nut-grid{grid-template-columns:1fr} }
   .tag.member{background:rgba(232,115,42,.16);color:var(--orange-soft)}
   .mcard .sub{font-size:12.5px;color:var(--ink-dim);margin-top:3px;margin-bottom:0}
   .mcard .day-no{text-align:right;flex-shrink:0}
@@ -862,9 +883,10 @@ function buildChecklist(m,item){
   }).join('');
   const msg = item.welcomeMsg ? buildWelcomeMsg(m) : '';
   const start = item.phase==='intro' ? buildStartBlock(m) : '';
+  const nutri = item.phase==='intro' ? buildNutrition(m) : '';
   const walk = item.walkthrough ? `<a class="walk-link" href="${item.walkthrough}" target="_blank" rel="noopener" onclick="event.stopPropagation()">▶ New to this? Watch the walkthrough</a>` : '';
   return `${walk}<div class="checklist">${rows}</div>
-    <div class="checklist-progress">${done} of ${item.checklist.length} done</div>${start}${msg}`;
+    <div class="checklist-progress">${done} of ${item.checklist.length} done</div>${start}${nutri}${msg}`;
 }
 
 /* booked-date + start-the-clock block, shown inside the intro card */
@@ -888,6 +910,115 @@ function buildStartBlock(m){
     </div>
     <div class="sb-hint">The 6 weeks begin from the session date above. Set it, then start the clock once they’ve attended.</div>
   </div>`;
+}
+
+/* ---------------- Calories + protein calculator (intro card) ----------------
+   Inputs: age, sex, height(cm), weight(kg), optional body-fat %.
+   BMR via Mifflin-St Jeor + Harris-Benedict (always) and Katch-McArdle
+   (only when body-fat % is given). Average the available BMRs, apply the
+   chosen activity factor for maintenance, subtract the chosen deficit for the
+   target. Protein = chosen g per kg of current bodyweight. */
+const ACTIVITY = {
+  '1.2':'Sedentary (little/no exercise)',
+  '1.375':'Lightly active (1–3 days/wk)',
+  '1.55':'Moderately active (3–5 days/wk)',
+  '1.725':'Very active (6–7 days/wk)'
+};
+function nutCalc(n){
+  const age=+n.age, ht=+n.height, wt=+n.weight, bf=n.bodyfat===''||n.bodyfat==null?null:+n.bodyfat;
+  if(!age||!ht||!wt) return null;
+  const male = n.sex==='male';
+  const mifflin = 10*wt + 6.25*ht - 5*age + (male?5:-161);
+  const harris = male
+    ? 88.362 + 13.397*wt + 4.799*ht - 5.677*age
+    : 447.593 + 9.247*wt + 3.098*ht - 4.330*age;
+  const bmrs = [mifflin, harris];
+  let katch=null;
+  if(bf!=null && bf>0 && bf<70){
+    const lean = wt*(1-bf/100);
+    katch = 370 + 21.6*lean;
+    bmrs.push(katch);
+  }
+  const bmrAvg = bmrs.reduce((a,b)=>a+b,0)/bmrs.length;
+  const act = +n.activity || 1.375;
+  const maintenance = bmrAvg * act;
+  const deficit = +n.deficit || 0;
+  let target = maintenance - deficit;
+  if(target < bmrAvg) target = bmrAvg;
+  const proteinFactor = +n.protein || 2.0;
+  const protein = wt * proteinFactor;
+  return {
+    mifflin:Math.round(mifflin), harris:Math.round(harris),
+    katch: katch!=null?Math.round(katch):null,
+    bmr:Math.round(bmrAvg), maintenance:Math.round(maintenance),
+    calories:Math.round(target/10)*10,
+    protein:Math.round(protein)
+  };
+}
+
+function buildNutrition(m){
+  const n = m.nutrition || {sex:'female', activity:'1.375', deficit:'500', protein:'2.0'};
+  const open = m._nutOpen ? 'open' : '';
+  const r = nutCalc(n);
+  const actOpts = Object.entries(ACTIVITY).map(([v,l])=>`<option value="${v}" ${n.activity===v?'selected':''}>${l}</option>`).join('');
+  const result = r ? `
+    <div class="nut-result">
+      <div class="nut-targets">
+        <div class="nut-big"><div class="nut-num">${r.calories}</div><div class="nut-lbl">kcal / day</div></div>
+        <div class="nut-big"><div class="nut-num">${r.protein}g</div><div class="nut-lbl">protein / day</div></div>
+      </div>
+      <div class="nut-break">Maintenance ~${r.maintenance} kcal · avg BMR ${r.bmr} (Mifflin ${r.mifflin}, Harris ${r.harris}${r.katch?`, Katch ${r.katch}`:''})</div>
+      <button class="btn sm" onclick="event.stopPropagation();copyNutrition('${m.id}')">Copy for Trainerize</button>
+    </div>` : `<div class="nut-hint">Enter age, height and weight to see targets.</div>`;
+  return `<div class="nutblock ${open}">
+    <div class="nut-toggle" onclick="event.stopPropagation();toggleNut('${m.id}')">
+      <span>🍽️ Set calories &amp; protein</span>
+      <span class="nut-chev">${open?'▾':'▸'}</span>
+    </div>
+    ${open?`<div class="nut-body" onclick="event.stopPropagation()">
+      <div class="nut-grid">
+        <label>Sex
+          <select onchange="setNut('${m.id}','sex',this.value)">
+            <option value="female" ${n.sex==='female'?'selected':''}>Female</option>
+            <option value="male" ${n.sex==='male'?'selected':''}>Male</option>
+          </select>
+        </label>
+        <label>Age <input type="number" inputmode="numeric" value="${n.age||''}" onchange="setNut('${m.id}','age',this.value)"></label>
+        <label>Height (cm) <input type="number" inputmode="numeric" value="${n.height||''}" onchange="setNut('${m.id}','height',this.value)"></label>
+        <label>Weight (kg) <input type="number" inputmode="decimal" value="${n.weight||''}" onchange="setNut('${m.id}','weight',this.value)"></label>
+        <label>Body fat % <span class="nut-opt">(optional)</span> <input type="number" inputmode="decimal" value="${n.bodyfat||''}" placeholder="from InBody" onchange="setNut('${m.id}','bodyfat',this.value)"></label>
+        <label>Activity
+          <select onchange="setNut('${m.id}','activity',this.value)">${actOpts}</select>
+        </label>
+        <label>Daily deficit (kcal)
+          <select onchange="setNut('${m.id}','deficit',this.value)">
+            ${['0','300','500','750'].map(d=>`<option value="${d}" ${n.deficit===d?'selected':''}>${d==='0'?'None (maintenance)':'-'+d}</option>`).join('')}
+          </select>
+        </label>
+        <label>Protein (g/kg)
+          <select onchange="setNut('${m.id}','protein',this.value)">
+            ${['1.6','1.8','2.0','2.2'].map(p=>`<option value="${p}" ${n.protein===p?'selected':''}>${p} g/kg</option>`).join('')}
+          </select>
+        </label>
+      </div>
+      ${result}
+    </div>`:''}
+  </div>`;
+}
+function toggleNut(id){ const m=members.find(x=>x.id===id); if(!m) return; m._nutOpen=!m._nutOpen; renderToday(); const el=document.getElementById('act-'+id+'-intro'); if(el) el.classList.add('open'); }
+function setNut(id,key,val){
+  const m=members.find(x=>x.id===id); if(!m) return;
+  m.nutrition = m.nutrition || {sex:'female', activity:'1.375', deficit:'500', protein:'2.0'};
+  m.nutrition[key]=val;
+  save();
+  renderToday();
+  const el=document.getElementById('act-'+id+'-intro'); if(el) el.classList.add('open');
+}
+function copyNutrition(id){
+  const m=members.find(x=>x.id===id); if(!m||!m.nutrition) return;
+  const r=nutCalc(m.nutrition); if(!r) return;
+  const txt=`${m.name} — daily targets:\nCalories: ${r.calories} kcal\nProtein: ${r.protein} g`;
+  navigator.clipboard.writeText(txt).then(()=>showSync('ok','Targets copied ✓', true));
 }
 
 /* the long Trainerize welcome message — collapsed by default, expandable, copyable */

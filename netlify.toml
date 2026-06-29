@@ -1,0 +1,4 @@
+# Netlify config for The First 42 Days tracker
+[build]
+  publish = "."
+  functions = "netlify/functions"

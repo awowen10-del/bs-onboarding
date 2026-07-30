@@ -106,6 +106,9 @@
   .seed-line .seed-label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--orange-soft);margin-bottom:6px}
   .seed-line .seed-text{font-size:13.5px;color:var(--ink);font-style:italic;line-height:1.5}
   .action .mark{flex-shrink:0}
+  .action .mark-btns{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+  .action .missed-btn{color:var(--ink-dim);border-color:var(--line);font-size:12px;padding:5px 10px}
+  .action .missed-btn:hover{color:var(--red);border-color:rgba(224,74,74,.5)}
   .overdue{display:inline-block;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:800;color:#fff;background:var(--red);border-radius:5px;padding:2px 7px}
 
   /* checklist inside detail (fix #4) */
@@ -273,8 +276,9 @@
   table.journey td.day{font-weight:800;color:var(--orange-soft);font-size:14px}
   .cell{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800;transition:all .12s ease}
   .cell.done{background:var(--green);color:#fff}
+  .cell.missed{background:var(--red);color:#fff;font-weight:800}
   .cell.due{background:rgba(232,169,58,.18);color:var(--amber);border:1px solid rgba(232,169,58,.5)}
-  .cell.overdue{background:var(--red);color:#fff}
+  .cell.overdue{background:rgba(224,74,74,.16);color:var(--red);border:1px solid rgba(224,74,74,.5)}
   .cell.future{color:var(--ink-faint)}
   .cell.na{color:var(--line)}
   .cell:hover{transform:scale(1.12)}
@@ -282,6 +286,7 @@
   .tbl-legend span{display:inline-flex;align-items:center;gap:6px}
   .tbl-legend i{width:13px;height:13px;border-radius:4px;display:inline-block}
   .tbl-legend i.done{background:var(--green)} .tbl-legend i.due{background:rgba(232,169,58,.18);border:1px solid rgba(232,169,58,.5)}
+  .tbl-legend i.missed{background:var(--red)}
   .tbl-legend i.overdue{background:var(--red)} .tbl-legend i.future{background:var(--navy-2);border:1px solid var(--line)}
 
   /* ---------- Conversion bar ---------- */
@@ -607,6 +612,7 @@ function migrateList(arr){
     if(m.booked===undefined) m.booked = m.day0||null;
     if(m.firstSessionDone===undefined) m.firstSessionDone = !!m.day0;
     if(m.checks===undefined) m.checks = {};
+    if(m.missed===undefined) m.missed = [];
     if(m.outcome===undefined) m.outcome = null;
   });
   return arr;
@@ -746,6 +752,8 @@ function effectiveDay(item, m){
 }
 function dayKeyFor(m,item){ return item.id; }     // stable key, never collides
 function isDone(m,key){ return (m.completed||[]).includes(key); }
+function isMissed(m,key){ return (m.missed||[]).includes(key); }
+function isHandled(m,key){ return isDone(m,key) || isMissed(m,key); }
 
 function dueToday(m){
   if(status(m)==='paused') return [];
@@ -758,12 +766,12 @@ function dueToday(m){
 
     if(it.phase==='intro'){
       // intro is due until done, and only matters before/at the start
-      if(!isDone(m,it.id) && status(m)!=='done') out.push(it);
+      if(!isHandled(m,it.id) && status(m)!=='done') out.push(it);
       return;
     }
     if(it.id==='welcome_card'){
       // once signed up, the card is due until sent (regardless of day)
-      if(!isDone(m,it.id)) out.push(it);
+      if(!isHandled(m,it.id)) out.push(it);
       return;
     }
     if(it.phase==='member'){
@@ -771,7 +779,7 @@ function dueToday(m){
       // status is 'done'. Conditional on signedUp (handled above). Day-gated with grace.
       const edm = effectiveDay(it,m);
       const GRACE_M = 10;
-      if(cd >= edm && cd <= edm + GRACE_M && !isDone(m,it.id)) out.push(it);
+      if(cd >= edm && cd <= edm + GRACE_M && !isHandled(m,it.id)) out.push(it);
       return;
     }
     // standard touchpoints: due from their effective day, and stay due for a
@@ -779,7 +787,7 @@ function dueToday(m){
     // missed on the member card) so old postcards don't pile up on later days.
     const ed = effectiveDay(it,m);
     const GRACE = 7; // days a missed touchpoint keeps showing before it expires
-    if(cd >= ed && cd <= ed + GRACE && !isDone(m,it.id) && status(m)==='live') out.push(it);
+    if(cd >= ed && cd <= ed + GRACE && !isHandled(m,it.id) && status(m)==='live') out.push(it);
   });
   return out;
 }
@@ -860,7 +868,10 @@ function renderToday(){
           ${detail}
         </div>
         <span class="chev" onclick="toggleExpand('${m.id}','${item.id}')">▶</span>
-        <button class="btn sm primary mark" onclick="event.stopPropagation();toggleDone('${m.id}','${key}',true)">Done</button>
+        <div class="mark-btns">
+          <button class="btn sm primary mark" onclick="event.stopPropagation();toggleDone('${m.id}','${key}',true)">Done</button>
+          <button class="btn sm ghost missed-btn" onclick="event.stopPropagation();markMissed('${m.id}','${key}')">Missed</button>
+        </div>
       </div>`;
     });
   });
@@ -1102,13 +1113,27 @@ function toggleDone(id,key,val){
   const m = members.find(x=>x.id===id); if(!m) return;
   m.completed = m.completed||[];
   m.doneMeta = m.doneMeta||{};
+  m.missed = m.missed||[];
   if(val){
     if(!m.completed.includes(key)) m.completed.push(key);
     m.doneMeta[key] = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    m.missed = m.missed.filter(k=>k!==key);   // done overrides missed (did it late)
   }else{
     m.completed = m.completed.filter(k=>k!==key);
     delete m.doneMeta[key];
   }
+  save(); renderAll();
+}
+
+/* Mark a task as genuinely missed — clears it off Today, shows a red ✕ on the grid */
+function markMissed(id,key){
+  const m = members.find(x=>x.id===id); if(!m) return;
+  m.missed = m.missed||[];
+  m.completed = m.completed||[];
+  m.doneMeta = m.doneMeta||{};
+  if(!m.missed.includes(key)) m.missed.push(key);
+  m.completed = m.completed.filter(k=>k!==key);   // can't be both
+  delete m.doneMeta[key];
   save(); renderAll();
 }
 
@@ -1250,6 +1275,7 @@ function renderMembers(){
 function cellStatus(m,it){
   // not applicable: conditional item where the condition isn't met
   if(it.conditional && !m[it.conditional]) return 'na';
+  if(isMissed(m,it.id)) return 'missed';
   if(isDone(m,it.id)) return 'done';
   // before the clock starts: intro is due, everything else just waits
   if(!hasStarted(m)) return it.phase==='intro' ? 'due' : 'future';
@@ -1285,7 +1311,7 @@ function renderMemberTable(){
     const dayCell = s==='notstarted'?'–':(s==='paused'?'⏸':(s==='done'?'✓':currentDay(m)));
     const cells = cols.map(c=>{
       const st = cellStatus(m,c);
-      const glyph = st==='done'?'✓' : st==='overdue'?'!' : st==='due'?'•' : st==='na'?'·' : '–';
+      const glyph = st==='done'?'✓' : st==='missed'?'✕' : st==='overdue'?'!' : st==='due'?'•' : st==='na'?'·' : '–';
       const title = `${m.name} · ${c.title} · ${st}`;
       // clicking a cell toggles done (only meaningful if applicable)
       const click = st==='na' ? '' : `onclick="tableCellTap('${m.id}','${c.id}')"`;
@@ -1300,21 +1326,28 @@ function renderMemberTable(){
   }).join('');
   host.innerHTML = `<div class="tbl-scroll"><table class="journey">${head}<tbody>${body}</tbody></table></div>
     <div class="tbl-legend">
-      <span><i class="done"></i> Done</span>
+      <span><i class="done"></i> Done ✓</span>
+      <span><i class="missed"></i> Missed ✕</span>
       <span><i class="due"></i> Due now</span>
-      <span><i class="overdue"></i> Overdue / missed</span>
+      <span><i class="overdue"></i> Overdue (still time)</span>
       <span><i class="future"></i> Not yet due</span>
-      <span>· Tap any cell to mark done</span>
+      <span>· Tap a cell to cycle done → missed → clear</span>
     </div>`;
 }
 function tableCellTap(mid,iid){
   const m=members.find(x=>x.id===mid); if(!m) return;
-  m.completed=m.completed||[]; m.doneMeta=m.doneMeta||{};
-  if(m.completed.includes(iid)){
-    m.completed=m.completed.filter(k=>k!==iid); delete m.doneMeta[iid];
-  }else{
+  m.completed=m.completed||[]; m.doneMeta=m.doneMeta||{}; m.missed=m.missed||[];
+  const done = m.completed.includes(iid);
+  const missed = m.missed.includes(iid);
+  // cycle: (empty) -> done -> missed -> (empty)
+  if(!done && !missed){
     m.completed.push(iid);
     m.doneMeta[iid]=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  }else if(done){
+    m.completed=m.completed.filter(k=>k!==iid); delete m.doneMeta[iid];
+    m.missed.push(iid);
+  }else{ // missed -> clear
+    m.missed=m.missed.filter(k=>k!==iid);
   }
   save(); renderAll();
 }

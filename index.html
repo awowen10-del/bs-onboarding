@@ -412,6 +412,25 @@
   .tag.followup{background:rgba(var(--ink-dim-rgb),.14);color:var(--ink-dim)}
   .mcard.inactive .tag.followup{color:var(--ink-dim)}
 
+  /* ---------- CSV import (one-off admin tool, deliberately quiet) ---------- */
+  .admin-strip{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:26px;padding-top:16px;
+    border-top:1px solid var(--line)}
+  .admin-hint{font-size:11.5px;color:var(--ink-faint);font-weight:600;flex:1;min-width:200px}
+  .modal.import-modal{max-width:560px}
+  .import-opt{display:flex;align-items:center;gap:10px;margin:16px 0 14px;font-size:13px;
+    color:var(--ink);font-weight:600;cursor:pointer}
+  .import-opt input{width:18px;height:18px;flex-shrink:0;accent-color:var(--orange);cursor:pointer}
+  .import-modal input[type=file]{width:100%;font-family:inherit;font-size:13px;padding:10px 12px;
+    border:1px solid var(--line);border-radius:9px;background:var(--navy-2);color:var(--ink);cursor:pointer}
+  .imp-sum{margin-top:16px;border-radius:10px;padding:13px 15px;font-size:13px;line-height:1.55;
+    background:rgba(var(--green-rgb),.08);border:1px solid rgba(var(--green-rgb),.3);color:var(--ink)}
+  .imp-sum.err{background:rgba(var(--red-rgb),.1);border-color:rgba(var(--red-rgb),.35)}
+  .imp-sum .imp-head{font-weight:800;margin-bottom:6px}
+  .imp-sum ul{margin:8px 0 0 18px}
+  .imp-sum li{margin-bottom:2px;font-size:12.5px;color:var(--ink-dim)}
+  .imp-sum .imp-names{font-size:12.5px;color:var(--ink-dim);margin-top:8px}
+  .imp-sum .imp-names b{color:var(--ink)}
+
   /* ---------- Birthdays ---------- */
   .lbl-opt{font-weight:600;color:var(--ink-faint);text-transform:none;letter-spacing:0}
   .bday-month{margin-bottom:4px}
@@ -604,6 +623,10 @@
       </select>
     </div>
     <div id="memberList"></div>
+    <div class="admin-strip">
+      <button class="btn sm ghost" onclick="openImport()">⇪ Import DOBs from CSV</button>
+      <span class="admin-hint">One-off backfill from a GoTeamUp export. Fills in dates of birth for challengers already in here — it never adds anyone.</span>
+    </div>
   </section>
 
   <!-- ===== BIRTHDAYS ===== -->
@@ -695,6 +718,29 @@
     <div class="modal-acts">
       <button class="btn ghost" onclick="closeFollowUp()">Cancel</button>
       <button class="btn primary" onclick="confirmFollowUp()">Set follow-up</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CSV import modal (one-off DOB backfill) ===== -->
+<div class="modal-bg" id="importBg">
+  <div class="modal import-modal">
+    <h3>Import dates of birth</h3>
+    <p class="note">Point this at a GoTeamUp export — <b>Full Name, First Name, Last Name, Email, Date of Birth</b>.
+      Rows are matched to challengers already in the tracker by name (email breaks a tie) and their date of
+      birth is filled in. <b>Nobody is ever created</b>: a file of 300 members will only touch the handful who
+      are in here, and everyone else is skipped.</p>
+    <label class="import-opt">
+      <input type="checkbox" id="imp-overwrite">
+      <span>Overwrite dates of birth that are already filled in</span>
+    </label>
+    <div class="field">
+      <label>CSV file</label>
+      <input type="file" id="imp-file" accept=".csv,text/csv" onchange="runImport(this)">
+    </div>
+    <div id="imp-result"></div>
+    <div class="modal-acts">
+      <button class="btn primary" onclick="closeImport()">Done</button>
     </div>
   </div>
 </div>
@@ -1967,6 +2013,194 @@ function removeMember(id){
   members=members.filter(x=>x.id!==id); save(); renderAll();
 }
 
+/* ---------------- One-off CSV import: backfill dates of birth ----------------
+   A GoTeamUp export is the whole gym — hundreds of members, of whom a handful are on the
+   42-day journey. So this is strictly UPDATE-ONLY: rows that match nobody are skipped in
+   silence, because that is the normal case, not an error.
+   The matching is deliberately the same rule as netlify/functions/set-dob.js — trimmed,
+   case-insensitive, whitespace-collapsed name, with email as the fallback and tie-breaker —
+   so a birthday arriving by webhook and one arriving by CSV land on the same person.
+   tests/csv-import.test.cjs runs both implementations over one table of cases to keep them
+   honest, since they necessarily live in two files (browser and server). */
+
+/* A real CSV reader: names contain commas, exports contain quoted fields and "" escapes,
+   Windows exports end lines with \r\n, and Excel likes to lead with a BOM. */
+function parseCsv(text){
+  const s=String(text==null?'':text).replace(/^﻿/,'');
+  const out=[]; let row=[], field='', inQ=false;
+  for(let i=0;i<s.length;i++){
+    const c=s[i];
+    if(inQ){
+      if(c==='"'){
+        if(s[i+1]==='"'){ field+='"'; i++; }   // "" inside quotes is a literal "
+        else inQ=false;
+      }else field+=c;
+    }else{
+      if(c==='"') inQ=true;
+      else if(c===','){ row.push(field); field=''; }
+      else if(c==='\n'){ row.push(field); out.push(row); row=[]; field=''; }
+      else if(c!=='\r') field+=c;
+    }
+  }
+  if(field!=='' || row.length){ row.push(field); out.push(row); }
+  return out;
+}
+
+/* Header names we'll answer to. GoTeamUp sends the first of each, but exports get renamed. */
+const CSV_HEADERS = {
+  full:['full name','fullname','name','member name','client name'],
+  first:['first name','firstname','first','given name'],
+  last:['last name','lastname','last','surname','family name'],
+  email:['email','email address','e-mail','emailaddress'],
+  dob:['date of birth','dob','birthday','birth date','birthdate','date_of_birth']
+};
+function csvHeaderIndex(headerRow){
+  const idx={};
+  (headerRow||[]).forEach((h,i)=>{
+    const k=String(h==null?'':h).trim().toLowerCase().replace(/\s+/g,' ');
+    Object.keys(CSV_HEADERS).forEach(key=>{
+      if(idx[key]===undefined && CSV_HEADERS[key].indexOf(k)!==-1) idx[key]=i;
+    });
+  });
+  return idx;
+}
+/* The file's dates are already ISO; anything else is "unreadable" and gets skipped and
+   counted rather than guessed at. A time riding along on the date is tolerated. */
+function csvDob(v){
+  let s=String(v==null?'':v).trim();
+  if(!s) return null;
+  const t=/^(\d{4}-\d{1,2}-\d{1,2})[T\s]/.exec(s);
+  if(t) s=t[1];
+  return normalizeDob(s);
+}
+
+/* Names as people actually type them: "  Sarah   Doyle " and "sarah doyle" are one person.
+   Mirrors norm() in set-dob.js. */
+function normName(s){ return String(s==null?'':s).trim().toLowerCase().replace(/\s+/g,' '); }
+
+/* Mirrors findMatch() in set-dob.js — same preference order, same tie-breaks. */
+function findChallengerMatch(roster, name, email){
+  const list = Array.isArray(roster) ? roster : [];
+  const byName  = name  ? list.filter(m=> normName(m.name)===normName(name)) : [];
+  const byEmail = email ? list.filter(m=> m.email && normName(m.email)===normName(email)) : [];
+
+  let pool=byName, by='name';
+  if(pool.length>1 && byEmail.length){
+    const both=pool.filter(m=> byEmail.indexOf(m)!==-1);
+    if(both.length){ pool=both; by='name+email'; }
+  }
+  if(!pool.length && byEmail.length){ pool=byEmail; by='email'; }
+  if(!pool.length) return {member:null, matches:0, by:'none'};
+
+  let member=pool[0];
+  if(pool.length>1){
+    const noDob=pool.filter(m=>!m.dob);
+    member = noDob.length===1 ? noDob[0] : pool[pool.length-1];
+  }
+  return {member:member, matches:pool.length, by:by};
+}
+
+/* The import itself. Mutates the roster in memory, then saves ONCE — one write, one sync,
+   however many rows the file had. */
+function applyDobCsv(text, overwrite){
+  const table=parseCsv(text);
+  if(!table.length) return {ok:false, error:'That file looks empty.'};
+  const idx=csvHeaderIndex(table[0]);
+  const cols=(table[0]||[]).map(h=>String(h||'').trim()).filter(Boolean).join(', ');
+  if(idx.dob===undefined){
+    return {ok:false, error:'No “Date of Birth” column in that file. Columns found: '+(cols||'none')};
+  }
+  if(idx.full===undefined && idx.first===undefined && idx.last===undefined && idx.email===undefined){
+    return {ok:false, error:'No name or email column in that file. Columns found: '+(cols||'none')};
+  }
+
+  const r={ok:true, rows:0, matched:0, added:0, overwritten:0, alreadyHad:0, noDob:0, noMatch:0,
+           updated:[], already:[]};
+  const cell=(row,i)=> i===undefined ? '' : String(row[i]==null?'':row[i]).trim();
+
+  for(let i=1;i<table.length;i++){
+    const row=table[i];
+    if(!row.length || row.every(c=>String(c==null?'':c).trim()==='')) continue;   // blank line
+    r.rows++;
+
+    const dob=csvDob(cell(row,idx.dob));
+    if(!dob){ r.noDob++; continue; }
+
+    let name=cell(row,idx.full);
+    if(!name) name=(cell(row,idx.first)+' '+cell(row,idx.last)).trim();
+    const email=cell(row,idx.email);
+
+    const hit=findChallengerMatch(members, name, email);
+    if(!hit.member){ r.noMatch++; continue; }     // not one of ours — expected, and silent
+    r.matched++;
+
+    const m=hit.member;
+    if(!m.dob){ m.dob=dob; r.added++; r.updated.push(m.name); }
+    else if(m.dob===dob){ r.alreadyHad++; r.already.push(m.name); }
+    else if(overwrite){ m.dob=dob; r.overwritten++; r.updated.push(m.name); }
+    else { r.alreadyHad++; r.already.push(m.name); }
+  }
+
+  if(r.added || r.overwritten){ save(); renderAll(); }
+  return r;
+}
+
+/* "288 rows read · 16 matched · 14 DOBs added · 2 already had a DOB · 272 not in tracker
+   (skipped)." — the counts that aren't relevant to a given run stay out of the way. */
+function importSummaryLine(r){
+  const bits=[
+    r.rows+' row'+(r.rows===1?'':'s')+' read',
+    r.matched+' matched',
+    r.added+' DOB'+(r.added===1?'':'s')+' added'
+  ];
+  if(r.overwritten) bits.push(r.overwritten+' overwritten');
+  if(r.alreadyHad) bits.push(r.alreadyHad+' already had a DOB');
+  if(r.noDob) bits.push(r.noDob+' with no usable date (skipped)');
+  bits.push(r.noMatch+' not in tracker (skipped)');
+  return bits.join(' · ')+'.';
+}
+function importResultHtml(r, filename){
+  if(!r || !r.ok){
+    return `<div class="imp-sum err"><div class="imp-head">Nothing imported</div>`
+      + esc((r&&r.error)||'Something went wrong reading that file.')+`</div>`;
+  }
+  const names=arr=> arr.slice(0,25).map(esc).join(', ') + (arr.length>25?' and '+(arr.length-25)+' more':'');
+  return `<div class="imp-sum">
+    <div class="imp-head">${esc(filename||'Import')} — done</div>
+    ${esc(importSummaryLine(r))}
+    ${r.updated.length?`<div class="imp-names"><b>Updated:</b> ${names(r.updated)}</div>`:''}
+    ${r.already.length?`<div class="imp-names"><b>Already had a date of birth:</b> ${names(r.already)}</div>`:''}
+  </div>`;
+}
+
+function openImport(){
+  document.getElementById('imp-result').innerHTML='';
+  document.getElementById('imp-file').value='';
+  document.getElementById('imp-overwrite').checked=false;
+  document.getElementById('importBg').classList.add('show');
+}
+function closeImport(){ document.getElementById('importBg').classList.remove('show'); }
+function runImport(input){
+  const file = input && input.files && input.files[0];
+  if(!file) return;
+  const overwrite = !!document.getElementById('imp-overwrite').checked;
+  const out = document.getElementById('imp-result');
+  out.innerHTML = `<div class="imp-sum">Reading ${esc(file.name)}…</div>`;
+  const reader = new FileReader();
+  reader.onload = function(){
+    let r;
+    try{ r = applyDobCsv(String(reader.result||''), overwrite); }
+    catch(e){ r = {ok:false, error:'Could not read that file. ('+(e.message||e)+')'}; }
+    out.innerHTML = importResultHtml(r, file.name);
+    input.value='';          // so picking the same file again still fires a change
+  };
+  reader.onerror = function(){
+    out.innerHTML = importResultHtml({ok:false, error:'Could not read that file.'}, file.name);
+    input.value='';
+  };
+  reader.readAsText(file);
+}
+
 /* ---------------- BIRTHDAYS view ----------------
    Planning ahead, so it reads as a calendar rather than a to-do list: twelve month groups,
    people inside a month in day order. The current month LEADS and the rest of the year runs
@@ -2082,6 +2316,7 @@ document.querySelectorAll('nav.tabs button').forEach(b=>{
 document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
 document.getElementById('extBg').addEventListener('click',e=>{if(e.target.id==='extBg')closeExt();});
 document.getElementById('fuBg').addEventListener('click',e=>{if(e.target.id==='fuBg')closeFollowUp();});
+document.getElementById('importBg').addEventListener('click',e=>{if(e.target.id==='importBg')closeImport();});
 // backdrop-close still saves — nothing typed into notes is ever thrown away
 document.getElementById('notesBg').addEventListener('click',e=>{if(e.target.id==='notesBg')closeNotes();});
 

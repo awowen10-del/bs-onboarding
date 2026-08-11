@@ -401,6 +401,56 @@
   .tag.left{background:rgba(var(--red-rgb),.16);color:var(--red)}
   .mcard.inactive{opacity:.62}
   .mcard.inactive .name{color:var(--ink-dim)}
+  .btn.followupbtn{background:transparent;border-color:var(--line);color:var(--ink-dim)}
+  .btn.followupbtn:hover{border-color:var(--orange);color:var(--orange-soft)}
+
+  /* ---------- Follow-ups (parked leavers we've promised to reconnect with) ----------
+     Deliberately NOT one of the three journey channels — these people have left, so the
+     neutral ink accent keeps them visually apart from live touchpoints. */
+  .action.followup{border-left-color:var(--ink-faint)}
+  .ch.followup{background:rgba(var(--ink-dim-rgb),.16);color:var(--ink-dim)}
+  .tag.followup{background:rgba(var(--ink-dim-rgb),.14);color:var(--ink-dim)}
+  .mcard.inactive .tag.followup{color:var(--ink-dim)}
+
+  /* ---------- Shared notes (one document per client, whole team) ---------- */
+  .notes-btn{appearance:none;background:transparent;border:1px solid transparent;color:var(--ink-faint);
+    cursor:pointer;padding:3px;border-radius:8px;line-height:0;vertical-align:middle;margin-left:7px;
+    display:inline-flex;align-items:center;justify-content:center;min-width:30px;min-height:30px;
+    flex-shrink:0;transition:color .15s ease,background .15s ease,border-color .15s ease}
+  .notes-btn svg{width:15px;height:15px;display:block;pointer-events:none}
+  .notes-btn:hover{color:var(--ink);background:var(--navy-2);border-color:var(--line)}
+  .notes-btn:active{transform:translateY(1px)}
+  /* "has notes" — brand accent on a tinted pill. The pill (not just the stroke colour) is
+     what makes it readable at a glance on both themes and on a phone in the gym. */
+  .notes-btn.has{color:var(--orange-soft);background:rgba(var(--orange-rgb),.14);
+    border-color:rgba(var(--orange-rgb),.34)}
+  .notes-btn.has:hover{background:rgba(var(--orange-rgb),.22);color:var(--orange-soft)}
+  table.journey td.who .notes-btn{margin-left:4px;min-width:26px;min-height:26px}
+  table.journey td.who .nm{display:flex;align-items:center;gap:0}
+
+  /* notes editor modal */
+  .modal.notes-modal{max-width:560px}
+  .notes-tools{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 10px}
+  .notes-tools button{appearance:none;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:800;
+    min-width:40px;min-height:40px;padding:0 11px;border-radius:9px;border:1px solid var(--line);
+    background:var(--navy-2);color:var(--ink-dim);transition:color .15s ease,border-color .15s ease}
+  .notes-tools button:hover{color:var(--ink);border-color:var(--orange)}
+  .notes-tools button:active{transform:translateY(1px)}
+  .notes-tools .tb-b{font-weight:900}
+  .notes-tools .tb-i{font-style:italic}
+  .notes-tools .tb-s{text-decoration:line-through}
+  .notes-ed{min-height:190px;max-height:44vh;overflow-y:auto;background:var(--navy-2);
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px;line-height:1.55;
+    color:var(--ink);-webkit-user-select:text;user-select:text;word-break:break-word}
+  .notes-ed:focus{outline:none;border-color:var(--orange)}
+  .notes-ed:empty::before{content:attr(data-placeholder);color:var(--ink-faint)}
+  .notes-ed h3{font-size:15px;font-weight:800;margin:12px 0 4px;color:var(--ink)}
+  .notes-ed h3:first-child{margin-top:0}
+  .notes-ed ul,.notes-ed ol{margin:6px 0 6px 20px}
+  .notes-ed li{margin-bottom:3px}
+  .notes-ed div,.notes-ed p{margin-bottom:4px}
+  .notes-saved{font-size:11.5px;font-weight:700;color:var(--ink-faint);margin-top:10px;min-height:16px}
+  .notes-saved.on{color:var(--green)}
 
   .hide{display:none !important}
   @media (max-width:640px){
@@ -593,6 +643,52 @@
   </div>
 </div>
 
+<!-- ===== Follow-up modal (Left — follow up later) ===== -->
+<div class="modal-bg" id="fuBg">
+  <div class="modal">
+    <h3>Follow up later</h3>
+    <p class="note">They're leaving on good terms — finished well, or having a go on their own. They count as
+      <b>Left</b> for the conversion figure, exactly like the Left button. We'll just put
+      <b id="fuWho">them</b> back on Today's moves on the date below so we actually reconnect.</p>
+    <div class="field">
+      <label>Remind me to follow up on</label>
+      <input type="date" id="fu-date">
+    </div>
+    <div class="modal-acts">
+      <button class="btn ghost" onclick="closeFollowUp()">Cancel</button>
+      <button class="btn primary" onclick="confirmFollowUp()">Set follow-up</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Shared notes modal (one document per client, everyone edits the same one) ===== -->
+<div class="modal-bg" id="notesBg">
+  <div class="modal notes-modal">
+    <h3>Notes — <span id="notesWho">challenger</span></h3>
+    <p class="note">Shared with the whole team — Dan, every coach, everyone. Saves as you type and syncs
+      to everyone else's device.</p>
+    <div class="notes-tools">
+      <button type="button" class="tb-b" title="Bold" aria-label="Bold"
+        onmousedown="event.preventDefault()" onclick="notesFormat('bold')">B</button>
+      <button type="button" class="tb-i" title="Italic" aria-label="Italic"
+        onmousedown="event.preventDefault()" onclick="notesFormat('italic')">I</button>
+      <button type="button" class="tb-s" title="Strikethrough" aria-label="Strikethrough"
+        onmousedown="event.preventDefault()" onclick="notesFormat('strikeThrough')">S</button>
+      <button type="button" title="Bullet list" aria-label="Bullet list"
+        onmousedown="event.preventDefault()" onclick="notesFormat('insertUnorderedList')">• List</button>
+      <button type="button" title="Heading" aria-label="Heading"
+        onmousedown="event.preventDefault()" onclick="notesHeading()">H</button>
+    </div>
+    <div id="notesEd" class="notes-ed" contenteditable="true" role="textbox" aria-multiline="true"
+      aria-label="Shared notes" data-placeholder="What should the rest of the team know about this client?"
+      oninput="notesTouched()"></div>
+    <div class="notes-saved" id="notesSaved"></div>
+    <div class="modal-acts">
+      <button class="btn primary" onclick="closeNotes()">Save &amp; close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    THE FIRST 42 DAYS — day-based journey engine
@@ -730,6 +826,12 @@ function migrateList(arr){
     if(m.checks===undefined) m.checks = {};
     if(m.missed===undefined) m.missed = [];
     if(m.outcome===undefined) m.outcome = null;
+    // "Left — follow up": a parked leaver we've promised to reconnect with. Absent on every
+    // challenger created before this existed, so both default to null and nothing surfaces.
+    if(m.followUpOn===undefined) m.followUpOn = null;         // timestamp (local midnight)
+    if(m.followUpStatus===undefined) m.followUpStatus = null; // 'pending' | 'done' | null
+    // Shared per-client notes (HTML). One document, edited by the whole team.
+    if(m.notes===undefined) m.notes = '';
   });
   return arr;
 }
@@ -827,6 +929,15 @@ async function bootData(){
 function today0(){ const d=new Date(); d.setHours(0,0,0,0); return d.getTime(); }
 function parseDate(str){ const d=new Date(str+'T00:00:00'); d.setHours(0,0,0,0); return d.getTime(); }
 function fmt(ts){ return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }
+/* Calendar-day arithmetic, not "+n×86400000": the clocks change twice a year and a raw
+   millisecond add lands an hour either side of midnight, which slips a follow-up by a day. */
+function addDays(ts,n){ const d=new Date(ts); d.setDate(d.getDate()+n); d.setHours(0,0,0,0); return d.getTime(); }
+/* Value for an <input type="date">, built from LOCAL parts — toISOString() is UTC and would
+   show yesterday's date all through British Summer Time. */
+function toDateInput(ts){
+  const d=new Date(ts), p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
 
 /* The 6 weeks begin the day the FIRST SESSION is completed (m.day0), not the
    booked date (m.booked, planning only). Until firstSessionDone is ticked the
@@ -934,9 +1045,14 @@ function renderToday(){
   const order = {physical:0,inperson:1,digital:2};
   rows.sort((a,b)=> order[a.item.ch]-order[b.item.ch] || a.item.day-b.item.day);
 
-  document.getElementById('todayCount').textContent = rows.length;
+  // Follow-ups deliberately PIERCE the inactive filter. dueToday() drops anyone who has
+  // left — which is right for journey touchpoints — but the whole point of a follow-up is
+  // to reconnect with someone after they've gone, so they're gathered separately here.
+  const fuRows = members.filter(followUpDue).sort((a,b)=> (a.followUpOn||0)-(b.followUpOn||0));
 
-  if(rows.length===0){
+  document.getElementById('todayCount').textContent = rows.length + fuRows.length;
+
+  if(rows.length===0 && fuRows.length===0){
     list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
       No touchpoints due right now. Consistency is the magic — check the Challengers tab to see where everyone sits.</div>`;
     return;
@@ -950,6 +1066,37 @@ function renderToday(){
     ['digital','Texts & Trainerize check-ins', r=>r.item.phase!=='intro' && r.item.ch==='digital'],
   ];
   let html='';
+
+  // Follow-ups sit at the top: they're the easiest thing to let slide, and there are
+  // rarely more than one or two.
+  if(fuRows.length){
+    html += `<div class="group-label">Follow-ups to make<span class="gcount">${fuRows.length}</span></div>`;
+    fuRows.forEach(m=>{
+      const overdue = today0() > m.followUpOn;
+      const personal = m.personal ? `<div style="margin-top:8px">Remember: <b>${esc(m.personal)}</b></div>` : '';
+      html += `<div class="action followup" id="act-${m.id}-followup">
+        <span class="ch followup">Follow-up</span>
+        <div class="body" onclick="toggleExpand('${m.id}','followup')">
+          <div class="who">
+            <span class="nm">${esc(m.name)}</span>${notesBtn(m)}
+            <span class="ttl">Follow up — see how they're getting on</span>
+            <span class="day">${fmt(m.followUpOn)}</span>
+            ${overdue?'<span class="overdue">Overdue</span>':''}
+          </div>
+          <div class="detail">
+            They left after the challenge and we said we'd check back in. No pitch — ask how it's
+            going, mean it, and leave the door open.${personal}
+          </div>
+        </div>
+        <span class="chev" onclick="toggleExpand('${m.id}','followup')">▶</span>
+        <div class="mark-btns">
+          <button class="btn sm primary mark" onclick="event.stopPropagation();followUpDone('${m.id}')">Done</button>
+          <button class="btn sm ghost missed-btn" onclick="event.stopPropagation();followUpSnooze('${m.id}')">Snooze 30 days</button>
+        </div>
+      </div>`;
+    });
+  }
+
   groups.forEach(([gid,label,test])=>{
     const g = rows.filter(test);
     if(!g.length) return;
@@ -976,7 +1123,7 @@ function renderToday(){
         <span class="ch ${chClass}">${CH_LABEL[item.ch]}</span>
         <div class="body" onclick="toggleExpand('${m.id}','${item.id}')">
           <div class="who">
-            <span class="nm">${esc(m.name)}</span>
+            <span class="nm">${esc(m.name)}</span>${notesBtn(m)}
             <span class="ttl">${esc(item.title)}</span>
             <span class="day">${dayLabel}</span>
             ${overdue?'<span class="overdue">Overdue</span>':''}
@@ -1332,7 +1479,7 @@ function renderMembers(){
       return `<div class="mcard notstarted">
         <div class="top">
           <div>
-            <div class="name">${esc(m.name)}${tag}</div>
+            <div class="name">${esc(m.name)}${notesBtn(m)}${tag}</div>
             <div class="sub">Coach ${esc(m.coach)} · 1st session ${bookedTxt}${m.personal?' · '+esc(m.personal):''}</div>
           </div>
           <div class="day-no"><div class="n">—</div><div class="l">not started</div></div>
@@ -1356,12 +1503,18 @@ function renderMembers(){
            ${decisionDue?'<span class="dlabel">Membership conversation — what did they decide?</span>':''}
            <button class="btn sm stayed" onclick="setOutcome('${m.id}','stayed')">✓ Stayed on</button>
            <button class="btn sm leftbtn" onclick="setOutcome('${m.id}','left')">Left</button>
+           <button class="btn sm followupbtn" onclick="openFollowUp('${m.id}')">Left — follow up</button>
          </div>`
-      : `<div class="decision"><button class="btn sm ghost" onclick="setOutcome('${m.id}',null)">Undo decision (${m.outcome==='stayed'?'stayed':'left'})</button></div>`;
+      : `<div class="decision">
+           <button class="btn sm ghost" onclick="setOutcome('${m.id}',null)">Undo decision (${m.outcome==='stayed'?'stayed':'left'})</button>
+           ${followUpPending(m)?`<button class="btn sm ghost" onclick="openFollowUp('${m.id}')">Change follow-up date</button>`:''}
+         </div>`;
+    // A scheduled reconnection, shown wherever they show up
+    const fuTag = followUpPending(m) ? `<span class="tag followup">Follow-up ${fmt(m.followUpOn)}</span>` : '';
     return `<div class="mcard ${s==='paused'?'paused':''} ${m.outcome==='left'?'inactive':''}">
       <div class="top">
         <div>
-          <div class="name">${esc(m.name)}${tag}${outcomeTag}</div>
+          <div class="name">${esc(m.name)}${notesBtn(m)}${tag}${outcomeTag}${fuTag}</div>
           <div class="sub">Coach ${esc(m.coach)} · started ${fmt(m.day0)}${m.personal?' · '+esc(m.personal):''}</div>
         </div>
         <div class="day-no"><div class="n">${s==='done'?'✓':cd}</div><div class="l">${s==='done'?'done':'of '+tot}</div></div>
@@ -1433,9 +1586,10 @@ function renderMemberTable(){
       const click = st==='na' ? '' : `onclick="tableCellTap('${m.id}','${c.id}')"`;
       return `<td><span class="cell ${st}" title="${esc(title)}" ${click}>${glyph}</span></td>`;
     }).join('');
-    const meta = `Coach ${esc(m.coach)}${m.signedUp?' · Member':''}${m.extraDays?` · +${m.extraDays}d`:''}`;
+    const meta = `Coach ${esc(m.coach)}${m.signedUp?' · Member':''}${m.extraDays?` · +${m.extraDays}d`:''}`
+      + (followUpPending(m)?` · follow-up ${fmt(m.followUpOn)}`:'');
     return `<tr>
-      <td class="who"><div class="nm">${esc(m.name)}</div><div class="meta">${meta}</div></td>
+      <td class="who"><div class="nm">${esc(m.name)}${notesBtn(m)}</div><div class="meta">${meta}</div></td>
       <td class="day">${dayCell}</td>
       ${cells}
     </tr>`;
@@ -1481,9 +1635,147 @@ function setOutcome(id,outcome){
     m.completed=(m.completed||[]).filter(k=>k!=='welcome_card');
     if(m.doneMeta) delete m.doneMeta['welcome_card'];
   }
+  // A scheduled follow-up only makes sense for someone who has left. Changing the decision
+  // to "stayed", or undoing it entirely, takes the reminder off Today with it.
+  if(outcome!=='left'){ m.followUpOn=null; m.followUpStatus=null; }
   save(); renderAll();
 }
 function isInactive(m){ return m.outcome==='left'; }
+
+/* ---------------- "Left — follow up later" ----------------
+   For people who finished well, or said they'd have a go on their own: park them, but come
+   back to them. They are a PLAIN 'left' outcome — the conversion maths never sees this
+   feature — plus a date and a status, so Today's moves can resurface them. */
+const FOLLOW_UP_DAYS = 30;
+function followUpPending(m){ return !!m && m.followUpStatus==='pending' && !!m.followUpOn; }
+function followUpDue(m){ return followUpPending(m) && today0() >= m.followUpOn; }
+
+let fuTarget=null;
+function openFollowUp(id){
+  const m=members.find(x=>x.id===id); if(!m) return;
+  fuTarget=id;
+  document.getElementById('fuWho').textContent=m.name;
+  // default 30 days out, but it's only a default — pick any date
+  document.getElementById('fu-date').value = toDateInput(m.followUpOn || addDays(today0(),FOLLOW_UP_DAYS));
+  document.getElementById('fuBg').classList.add('show');
+}
+function closeFollowUp(){ document.getElementById('fuBg').classList.remove('show'); fuTarget=null; }
+function confirmFollowUp(){
+  const m=members.find(x=>x.id===fuTarget);
+  if(!m){ closeFollowUp(); return; }
+  const v=document.getElementById('fu-date').value;
+  const when = v ? parseDate(v) : addDays(today0(),FOLLOW_UP_DAYS);
+  // Exactly what the Left button does — same outcome, same signedUp handling — so they
+  // count identically in the conversion bar. No new outcome type.
+  m.outcome='left';
+  m.signedUp=false;
+  m.followUpOn=when;
+  m.followUpStatus='pending';
+  closeFollowUp(); save(); renderAll();
+}
+function followUpDone(id){
+  const m=members.find(x=>x.id===id); if(!m) return;
+  m.followUpStatus='done';           // off Today for good; the date stays as a record
+  save(); renderAll();
+}
+function followUpSnooze(id){
+  const m=members.find(x=>x.id===id); if(!m) return;
+  m.followUpOn=addDays(today0(),FOLLOW_UP_DAYS);  // 30 days from TODAY, not from the old date
+  m.followUpStatus='pending';
+  save(); renderAll();
+}
+
+/* ---------------- Shared notes (one document per client) ----------------
+   Stored as HTML on the challenger and written through the normal save() path, so a note
+   Dan types on the gym iPad is on everyone else's phone seconds later. There is no
+   per-coach copy and no history: one client, one set of notes, everyone editing it. */
+const NOTE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '+
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+
+  '<path d="M5 3.8h9.4L20 9.2v11A1.8 1.8 0 0 1 18.2 22H5A1.8 1.8 0 0 1 3.2 20.2V5.6A1.8 1.8 0 0 1 5 3.8Z"/>'+
+  '<path d="M14.2 3.8v5.6H20"/><path d="M7.4 13h9"/><path d="M7.4 17h5.6"/></svg>';
+
+/* The note's visible text — tags stripped — so an empty <br> from the editor doesn't
+   count as "has notes". */
+function notesText(m){
+  return stripTags(String((m&&m.notes)||'')).replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+}
+function hasNotes(m){ return notesText(m).length>0; }
+
+/* The icon that sits beside a client's name everywhere they appear. Coloured when there's
+   something to read, muted when there isn't. */
+function notesBtn(m){
+  const has=hasNotes(m);
+  const label=(has?'Notes — ':'Add notes — ')+m.name;
+  return `<button type="button" class="notes-btn${has?' has':''}" title="${esc(label)}" aria-label="${esc(label)}"
+    onclick="event.stopPropagation();openNotes('${m.id}')">${NOTE_ICON}</button>`;
+}
+
+/* Notes are our own HTML, but a paste brings the whole web with it — strip anything
+   executable before it reaches storage, the sync, or the editor. */
+function sanitizeNotes(html){
+  let s=String(html==null?'':html);
+  s=s.replace(/<\s*(script|style|iframe|object|embed|link|meta)\b[\s\S]*?<\s*\/\s*\1\s*>/gi,'');
+  s=s.replace(/<\s*(script|style|iframe|object|embed|link|meta)\b[^>]*>/gi,'');
+  s=s.replace(/\son\w+\s*=\s*"[^"]*"/gi,'')
+     .replace(/\son\w+\s*=\s*'[^']*'/gi,'')
+     .replace(/\son\w+\s*=\s*[^\s>]+/gi,'');
+  s=s.replace(/(href|src)\s*=\s*"\s*javascript:[^"]*"/gi,'$1="#"')
+     .replace(/(href|src)\s*=\s*'\s*javascript:[^']*'/gi,'$1="#"')
+     .replace(/(href|src)\s*=\s*javascript:[^\s>]*/gi,'$1="#"');
+  return s;
+}
+
+let notesTarget=null, notesTimer=null;
+function openNotes(id){
+  const m=members.find(x=>x.id===id); if(!m) return;
+  notesTarget=id;
+  document.getElementById('notesWho').textContent=m.name;
+  const ed=document.getElementById('notesEd');
+  ed.innerHTML=sanitizeNotes(m.notes||'');
+  const s=document.getElementById('notesSaved');
+  s.textContent=''; s.className='notes-saved';
+  document.getElementById('notesBg').classList.add('show');
+  // let the modal paint before focusing, or iOS won't raise the keyboard
+  setTimeout(()=>{ try{ ed.focus(); }catch(e){} },30);
+}
+function notesFormat(cmd,arg){
+  const ed=document.getElementById('notesEd'); if(!ed) return;
+  try{ ed.focus(); document.execCommand(cmd,false,arg===undefined?null:arg); }catch(e){}
+  notesTouched();
+}
+/* H toggles: a second press on a heading puts the line back to normal text. */
+function notesHeading(){
+  let cur='';
+  try{ cur=String(document.queryCommandValue('formatBlock')||'').toLowerCase(); }catch(e){}
+  notesFormat('formatBlock', cur==='h3'?'p':'h3');
+}
+/* Typing schedules a save; it never re-renders, or the editor would be torn out from
+   under the cursor mid-sentence. */
+function notesTouched(){
+  clearTimeout(notesTimer);
+  notesTimer=setTimeout(notesFlush,600);
+}
+function notesFlush(){
+  clearTimeout(notesTimer); notesTimer=null;
+  if(!notesTarget) return false;
+  const m=members.find(x=>x.id===notesTarget); if(!m) return false;
+  const ed=document.getElementById('notesEd'); if(!ed) return false;
+  let next=sanitizeNotes(ed.innerHTML||'');
+  // an "emptied" contenteditable leaves <br> behind — store nothing, so the icon goes muted
+  if(!stripTags(next).replace(/&nbsp;/g,' ').trim()) next='';
+  if(next===(m.notes||'')) return false;
+  m.notes=next;
+  save();                            // cache instantly + debounced cloud push, like everything else
+  const s=document.getElementById('notesSaved');
+  if(s){ s.textContent='Saved ✓'; s.className='notes-saved on'; }
+  return true;
+}
+function closeNotes(){
+  notesFlush();
+  document.getElementById('notesBg').classList.remove('show');
+  notesTarget=null;
+  renderAll();                       // icon colours catch up here, never mid-keystroke
+}
 
 /* Set the first-session date (captured at the intro). Planning only until started. */
 function setBookedDate(id, dateStr){
@@ -1591,7 +1883,8 @@ function saveMember(){
   }else{
     members.push({id:'m'+Date.now()+Math.random().toString(36).slice(2,6),
       name,booked:null,day0:null,firstSessionDone:false,coach,personal,
-      extraDays:0,pausedDays:0,pausedAt:null,signedUp:false,outcome:null,completed:[],doneMeta:{},checks:{}});
+      extraDays:0,pausedDays:0,pausedAt:null,signedUp:false,outcome:null,completed:[],doneMeta:{},checks:{},
+      followUpOn:null,followUpStatus:null,notes:''});
   }
   closeModal(); save(); renderAll();
 }
@@ -1652,6 +1945,9 @@ document.querySelectorAll('nav.tabs button').forEach(b=>{
 /* close modals on backdrop */
 document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
 document.getElementById('extBg').addEventListener('click',e=>{if(e.target.id==='extBg')closeExt();});
+document.getElementById('fuBg').addEventListener('click',e=>{if(e.target.id==='fuBg')closeFollowUp();});
+// backdrop-close still saves — nothing typed into notes is ever thrown away
+document.getElementById('notesBg').addEventListener('click',e=>{if(e.target.id==='notesBg')closeNotes();});
 
 /* seed friendly examples — only when the roster is genuinely empty */
 function seedIfEmpty(pushAfter){

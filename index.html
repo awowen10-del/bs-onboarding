@@ -1,19 +1,98 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
+<script>
+/* Theme boot — runs before the stylesheet is parsed, so the page never flashes the wrong
+   theme. Light is the default; the choice is remembered in localStorage under the same key
+   the dashboard/monthly/quarterly pages use, so a theme picked on any of them carries here.
+   Deleting this script (and the light token block) reverts to dark. */
+(function(){
+  var t = "light";
+  try{ var s = localStorage.getItem("bodysculpt:theme"); if(s === "dark" || s === "light") t = s; }catch(e){}
+  try{ document.documentElement.setAttribute("data-theme", t); }catch(e){}
+})();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bodysculpt — The First 42 Days</title>
 <link rel="icon" type="image/png" href="data:image/png;base64,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">
 <style>
+  /* ===================== THEME TOKENS =====================
+     Every colour in this stylesheet resolves to one of these — there are no literal colours
+     below this block. Two themes, one set of names: ":root,:root[data-theme=\"dark\"]" is the
+     original dark navy, ":root[data-theme=\"light\"]" is the neutral light theme (the default
+     — see the boot script at the top of <head>). Same tokens, same names, and the same
+     palette as the KPI dashboard, so the two sites read as one product.
+     The *-rgb tokens are bare "r,g,b" triples so the rgba(<accent>,<alpha>) tints below stay
+     tied to a single source of truth.
+     The accents CARRY MEANING and stay distinct in both themes:
+       orange = brand / physical touchpoints    amber = digital + watch
+       green  = in-person + done                red   = missed / problem
+     "orange" is a TOKEN NAME, not a promise of hue: in light it points at the dashboard's
+     muted slate-blue. The name was kept so the ~40 var(--orange*) references stay one switch.
+     In light the accents are re-mapped, not merely reused — the dark theme's tones are tuned
+     for a navy background and would wash out on a near-white card. */
   :root{
-    --navy:#0f1b2d; --navy-2:#16273f; --card:#1b2c45; --card-2:#203552;
-    --line:#2c405e; --ink:#eaf0f8; --ink-dim:#9fb1c7; --ink-faint:#6b7f99;
-    --orange:#e8732a; --orange-soft:#f0935a;
-    --green:#3fbf7f; --amber:#e8a93a; --red:#e25555;
-    --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.35);
+    /* metrics + type — not themed */
+    --radius:16px;
+    /* a darkening sat ON a solid accent fill (the count pill on the selected tab). It rides
+       whatever the accent is, so it is deliberately the same value in both themes. */
+    --accent-inset:rgba(0,0,0,.25);
     --display:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     --body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root,:root[data-theme="dark"]{
+    color-scheme:dark;
+    /* surfaces */
+    --navy:#0f1b2d; --navy-2:#16273f; --card:#1b2c45; --card-2:#203552;
+    --line:#2c405e;
+    /* ink */
+    --ink:#eaf0f8; --ink-dim:#9fb1c7; --ink-faint:#6b7f99;
+    --ink-dim-rgb:159,177,199;
+    --on-accent:#fff;              /* text sitting ON a solid accent fill */
+    --on-amber:#1a1408;            /* text on the solid amber sync banner */
+    --on-green:#06210f;            /* text on the solid green sync banner */
+    /* accents */
+    --orange:#e8732a; --orange-soft:#f0935a; --orange-rgb:232,115,42;
+    --green:#3fbf7f; --green-rgb:63,191,127;
+    --amber:#e8a93a; --amber-rgb:232,169,58;
+    --red:#e25555; --red-rgb:226,85,85;
+    --mark-bg:#000;                /* the letterbox behind the logo */
+    --backdrop-rgb:8,14,24;        /* modal scrim */
+    --shadow-rgb:0,0,0;            /* every box-shadow */
+    --lift-rgb:255,255,255;        /* hover lift over a surface */
+    --lift-a:.03;                  /* ...and how strong it is */
+    --shadow:0 10px 30px rgba(var(--shadow-rgb),.35);
+  }
+  :root[data-theme="light"]{
+    color-scheme:light;
+    /* THREE TIERS OF DEPTH, and they must stay three: the page (--navy) is a soft, slightly
+       cool grey; the card (--card) is near-white and therefore visibly LIFTS off it; --line
+       is a fine neutral hairline that draws the card's edge. Tone step + hairline do the
+       work — the shadows are deliberately soft. --navy-2 is the recessed inset inside a card
+       (toolbars, inputs, sub-panels), so it sits BELOW the card, not above. */
+    --navy:#f2f4f8; --navy-2:#e8ecf3; --card:#ffffff; --card-2:#f7f9fc;
+    --line:#dde2ea;
+    /* dark-but-soft ink — a cool near-black, never #000; --ink-dim/-faint are muted greys */
+    --ink:#1d2330; --ink-dim:#5a6474; --ink-faint:#6e7889;
+    --ink-dim-rgb:90,100,116;
+    --on-accent:#fff; --on-amber:#fff; --on-green:#fff;
+    /* the brand accent — a muted, low-strain SLATE-BLUE (see the note above about the name).
+       Each *-soft/deep pair INVERTS on light: -soft is now the DARKER tone, because it is
+       used for text on pale tinted chips where a pale hue would vanish. */
+    --orange:#4a5f8a; --orange-soft:#3a4d73; --orange-rgb:74,95,138;
+    --green:#17804d; --green-rgb:23,128,77;
+    --amber:#9a6a05; --amber-rgb:154,106,5;
+    --red:#b81e28; --red-rgb:184,30,40;
+    --mark-bg:#eef1f7;
+    /* the alphas above were tuned for a dark theme, so these carry the light theme's half: a
+       cool near-black scrim genuinely dims the page behind a modal, while the shadow and the
+       hover "lift" are mid-greys. --lift-rgb inverts (dark, so a hover DARKENS the surface). */
+    --backdrop-rgb:26,33,48;
+    --shadow-rgb:116,127,148;
+    --lift-rgb:24,35,56;
+    --lift-a:.05;
+    --shadow:0 10px 30px rgba(var(--shadow-rgb),.35);
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{background:var(--navy);color:var(--ink)}
@@ -24,12 +103,18 @@
   header.mast{padding-top:env(safe-area-inset-top)}
   .mast-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:26px 0 18px;flex-wrap:wrap}
   .brand{display:flex;align-items:center;gap:12px;min-width:0}
-  .brand .mark{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:#000;
+  .brand .mark{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--mark-bg);
     display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
   .brand .mark img{width:100%;height:100%;object-fit:cover;display:block}
   .brand .btxt{display:flex;flex-direction:column;gap:1px}
   .brand h1{font-size:15px;font-weight:800;letter-spacing:-.2px}
   .brand .sub{font-size:12px;color:var(--ink-faint);font-weight:600}
+  .mast-right{display:flex;align-items:center;gap:14px;flex-shrink:0}
+  /* theme toggle — a quiet chip in the masthead, same family as the dashboard's */
+  .themebtn{flex:0 0 auto;background:transparent;border:1px solid var(--line);color:var(--ink-dim);
+    border-radius:10px;padding:9px 13px;font-family:inherit;font-size:12.5px;font-weight:800;
+    letter-spacing:.2px;cursor:pointer;display:flex;align-items:center;gap:6px}
+  .themebtn:hover{color:var(--ink);background:var(--card);border-color:var(--orange)}
   .mast-meta{text-align:right;font-size:12px;color:var(--ink-faint);font-weight:600;flex-shrink:0}
   .mast-meta strong{display:block;font-size:24px;font-family:var(--display);color:var(--orange-soft);font-weight:800}
 
@@ -39,10 +124,10 @@
   nav.tabs button{appearance:none;background:transparent;border:none;color:var(--ink-dim);
     font-family:inherit;font-size:13px;font-weight:700;padding:9px 16px;border-radius:8px;cursor:pointer;
     transition:background .15s ease,color .15s ease}
-  nav.tabs button .count{font-size:11px;color:#fff;background:var(--red);border-radius:20px;padding:1px 7px;margin-left:6px;font-weight:700;vertical-align:middle}
+  nav.tabs button .count{font-size:11px;color:var(--on-accent);background:var(--red);border-radius:20px;padding:1px 7px;margin-left:6px;font-weight:700;vertical-align:middle}
   nav.tabs button[aria-selected="false"]:hover{color:var(--ink)}
-  nav.tabs button[aria-selected="true"]{background:var(--orange);color:#fff}
-  nav.tabs button[aria-selected="true"] .count{background:rgba(0,0,0,.25)}
+  nav.tabs button[aria-selected="true"]{background:var(--orange);color:var(--on-accent)}
+  nav.tabs button[aria-selected="true"] .count{background:var(--accent-inset)}
   main{padding-top:22px}
   .view{display:none;animation:fade .25s ease}
   .view.active{display:block}
@@ -54,7 +139,7 @@
     transition:transform .08s ease,border-color .15s ease,background .15s ease}
   .btn:hover{border-color:var(--ink-faint)}
   .btn:active{transform:translateY(1px)}
-  .btn.primary{background:var(--orange);border-color:var(--orange);color:#fff}
+  .btn.primary{background:var(--orange);border-color:var(--orange);color:var(--on-accent)}
   .btn.primary:hover{background:var(--orange-soft);border-color:var(--orange-soft)}
   .btn.ghost{background:transparent;color:var(--ink-dim)}
   .btn.sm{padding:6px 11px;font-size:12px;border-radius:8px}
@@ -70,7 +155,7 @@
   /* ---------- Today banner ---------- */
   .day-banner{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--card),var(--card-2));
     border:1px solid var(--line);border-radius:var(--radius);padding:15px 18px;margin-bottom:8px;box-shadow:var(--shadow)}
-  .day-banner .dot{width:9px;height:9px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 4px rgba(232,115,42,.18);flex-shrink:0}
+  .day-banner .dot{width:9px;height:9px;border-radius:50%;background:var(--orange);box-shadow:0 0 0 4px rgba(var(--orange-rgb),.18);flex-shrink:0}
   .day-banner .txt{font-size:13.5px;color:var(--ink-dim)}
   .day-banner .txt strong{color:var(--ink)}
 
@@ -88,9 +173,9 @@
   .action.digital{border-left-color:var(--amber)}
   .action.inperson{border-left-color:var(--green)}
   .action .ch{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;padding:3px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0}
-  .ch.physical{background:rgba(232,115,42,.16);color:var(--orange-soft)}
-  .ch.digital{background:rgba(232,169,58,.16);color:var(--amber)}
-  .ch.inperson{background:rgba(63,191,127,.14);color:var(--green)}
+  .ch.physical{background:rgba(var(--orange-rgb),.16);color:var(--orange-soft)}
+  .ch.digital{background:rgba(var(--amber-rgb),.16);color:var(--amber)}
+  .ch.inperson{background:rgba(var(--green-rgb),.14);color:var(--green)}
   .action .body{flex:1;min-width:0;cursor:pointer}
   .action .who{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .action .who .nm{color:var(--ink)}
@@ -102,14 +187,14 @@
   .action.open{flex-wrap:wrap}
   .action.open .detail{display:block}
   .action .detail b{color:var(--ink)}
-  .seed-line{margin-top:11px;background:rgba(232,115,42,.1);border:1px solid rgba(232,115,42,.32);border-radius:10px;padding:11px 13px}
+  .seed-line{margin-top:11px;background:rgba(var(--orange-rgb),.1);border:1px solid rgba(var(--orange-rgb),.32);border-radius:10px;padding:11px 13px}
   .seed-line .seed-label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--orange-soft);margin-bottom:6px}
   .seed-line .seed-text{font-size:13.5px;color:var(--ink);font-style:italic;line-height:1.5}
   .action .mark{flex-shrink:0}
   .action .mark-btns{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
   .action .missed-btn{color:var(--ink-dim);border-color:var(--line);font-size:12px;padding:5px 10px}
-  .action .missed-btn:hover{color:var(--red);border-color:rgba(224,74,74,.5)}
-  .overdue{display:inline-block;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:800;color:#fff;background:var(--red);border-radius:5px;padding:2px 7px}
+  .action .missed-btn:hover{color:var(--red);border-color:rgba(var(--red-rgb),.5)}
+  .overdue{display:inline-block;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:800;color:var(--on-accent);background:var(--red);border-radius:5px;padding:2px 7px}
 
   /* checklist inside detail (fix #4) */
   .walk-link{display:flex;align-items:center;gap:6px;width:100%;margin-top:11px;font-size:12px;font-weight:700;
@@ -120,7 +205,7 @@
   .checklist .ci{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink);cursor:pointer}
   .checklist .ci .box{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--ink-faint);
     display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:transparent;transition:all .15s ease}
-  .checklist .ci.checked .box{background:var(--green);border-color:var(--green);color:#fff}
+  .checklist .ci.checked .box{background:var(--green);border-color:var(--green);color:var(--on-accent)}
   .checklist .ci.checked span{color:var(--ink-faint);text-decoration:line-through}
   .checklist-progress{margin-top:8px;font-size:11px;font-weight:700;color:var(--ink-faint);letter-spacing:.04em}
 
@@ -155,17 +240,17 @@
   .mcard .top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
   .mcard .name{font-size:17px;font-weight:800;letter-spacing:-.2px}
   .mcard .name .tag{font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;padding:2px 8px;border-radius:6px;margin-left:9px;vertical-align:middle}
-  .tag.live{background:rgba(63,191,127,.14);color:var(--green)}
-  .tag.paused{background:rgba(232,169,58,.16);color:var(--amber)}
+  .tag.live{background:rgba(var(--green-rgb),.14);color:var(--green)}
+  .tag.paused{background:rgba(var(--amber-rgb),.16);color:var(--amber)}
   .tag.done{background:var(--navy-2);color:var(--ink-dim)}
-  .tag.notstarted{background:rgba(159,177,199,.14);color:var(--ink-dim)}
+  .tag.notstarted{background:rgba(var(--ink-dim-rgb),.14);color:var(--ink-dim)}
   .mcard.notstarted{border-style:dashed}
-  .start-box{margin-top:14px;background:rgba(63,191,127,.08);border:1px solid rgba(63,191,127,.3);border-radius:12px;padding:13px 15px}
+  .start-box{margin-top:14px;background:rgba(var(--green-rgb),.08);border:1px solid rgba(var(--green-rgb),.3);border-radius:12px;padding:13px 15px}
   .start-txt{font-size:12.5px;color:var(--ink-dim);margin-bottom:10px}
-  .btn.start-btn{background:var(--green);border-color:var(--green);color:#fff;font-weight:700}
+  .btn.start-btn{background:var(--green);border-color:var(--green);color:var(--on-accent);font-weight:700}
   .btn.start-btn:hover{filter:brightness(1.08)}
-  .startblock{margin-top:12px;background:rgba(63,191,127,.08);border:1px solid rgba(63,191,127,.3);border-radius:10px;padding:12px 14px}
-  .startblock.started{background:rgba(63,191,127,.12)}
+  .startblock{margin-top:12px;background:rgba(var(--green-rgb),.08);border:1px solid rgba(var(--green-rgb),.3);border-radius:10px;padding:12px 14px}
+  .startblock.started{background:rgba(var(--green-rgb),.12)}
   .startblock .sb-label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--ink-dim);margin-bottom:8px}
   .startblock .sb-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .startblock .sb-date{font-family:inherit;font-size:13px;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--navy-2);color:var(--ink)}
@@ -179,7 +264,7 @@
   .ci-tool{margin:6px 0 10px 26px}
   .nutblock{margin-top:12px;background:var(--navy-2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
   .nut-toggle{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;font-weight:700;font-size:13.5px;color:var(--ink)}
-  .nut-toggle:hover{background:rgba(255,255,255,.03)}
+  .nut-toggle:hover{background:rgba(var(--lift-rgb),var(--lift-a))}
   .nut-chev{color:var(--ink-faint)}
   .nut-body{padding:4px 14px 14px}
   .nut-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -187,7 +272,7 @@
   .nut-grid .nut-opt{text-transform:none;letter-spacing:0;color:var(--ink-faint);font-weight:500}
   .nut-grid input,.nut-grid select{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--navy);color:var(--ink);font-weight:500;text-transform:none;letter-spacing:0}
   .nut-grid input:focus,.nut-grid select:focus{outline:none;border-color:var(--orange)}
-  .nut-result{margin-top:13px;background:rgba(63,191,127,.08);border:1px solid rgba(63,191,127,.3);border-radius:10px;padding:13px}
+  .nut-result{margin-top:13px;background:rgba(var(--green-rgb),.08);border:1px solid rgba(var(--green-rgb),.3);border-radius:10px;padding:13px}
   .nut-targets{display:flex;gap:12px}
   .nut-big{flex:1;text-align:center;background:var(--navy);border:1px solid var(--line);border-radius:9px;padding:11px}
   .nut-num{font-size:26px;font-weight:800;color:var(--green);line-height:1}
@@ -196,7 +281,7 @@
   .nut-result .btn{margin-top:11px;width:100%}
   .nut-hint{margin-top:12px;font-size:12.5px;color:var(--ink-faint);text-align:center}
   @media (max-width:480px){ .nut-grid{grid-template-columns:1fr} }
-  .tag.member{background:rgba(232,115,42,.16);color:var(--orange-soft)}
+  .tag.member{background:rgba(var(--orange-rgb),.16);color:var(--orange-soft)}
   .mcard .sub{font-size:12.5px;color:var(--ink-dim);margin-top:3px;margin-bottom:0}
   .mcard .day-no{text-align:right;flex-shrink:0}
   .mcard .day-no .n{font-size:30px;font-weight:800;line-height:1;color:var(--orange-soft)}
@@ -212,7 +297,7 @@
   .mcard .ext-note{font-size:11.5px;color:var(--amber);font-weight:700;margin-top:8px}
 
   /* ---------- Modal ---------- */
-  .modal-bg{position:fixed;inset:0;background:rgba(8,14,24,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal-bg{position:fixed;inset:0;background:rgba(var(--backdrop-rgb),.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
   .modal-bg.show{display:flex;animation:fade .2s ease}
   .modal{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);max-width:460px;width:100%;padding:24px;box-shadow:var(--shadow);max-height:90vh;overflow:auto}
   .modal h3{font-size:19px;font-weight:800;margin-bottom:4px}
@@ -249,7 +334,7 @@
   .pb .pb-script b{color:var(--ink)}
   .pb .pb-list{margin:8px 0 0;padding-left:18px;color:var(--ink-dim);font-size:12.5px;line-height:1.6}
   .pb .pb-list li{margin-bottom:2px}
-  .pb .pb-seed{margin-top:9px;background:rgba(232,115,42,.1);border:1px solid rgba(232,115,42,.3);border-radius:9px;padding:9px 11px;font-size:12.5px;color:var(--ink);font-style:italic;line-height:1.5}
+  .pb .pb-seed{margin-top:9px;background:rgba(var(--orange-rgb),.1);border:1px solid rgba(var(--orange-rgb),.3);border-radius:9px;padding:9px 11px;font-size:12.5px;color:var(--ink);font-style:italic;line-height:1.5}
   .pb .pb-seed-label{display:block;font-style:normal;font-weight:700;text-transform:uppercase;font-size:10.5px;letter-spacing:.05em;color:var(--orange-soft);margin-bottom:4px}
 
   footer{text-align:center;font-size:12px;color:var(--ink-faint);padding:34px 0 0}
@@ -257,7 +342,7 @@
   /* ---------- Cards/Table toggle (matches dashboard .viewtoggle) ---------- */
   .viewtoggle{display:inline-flex;gap:4px;background:var(--navy-2);border:1px solid var(--line);border-radius:10px;padding:4px}
   .viewtoggle .vt{background:transparent;border:none;color:var(--ink-dim);font-family:inherit;font-size:13px;font-weight:700;padding:8px 16px;border-radius:7px;cursor:pointer}
-  .viewtoggle .vt.active{background:var(--orange);color:#fff}
+  .viewtoggle .vt.active{background:var(--orange);color:var(--on-accent)}
 
   /* ---------- Member table (mirrors the sheet) ---------- */
   .tbl-scroll{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -271,21 +356,21 @@
   table.journey thead th.who{background:var(--card-2);z-index:2}
   table.journey td.who .nm{font-weight:700;color:var(--ink);font-size:13px}
   table.journey td.who .meta{font-size:11px;color:var(--ink-faint);margin-top:1px}
-  table.journey tr:hover td{background:rgba(255,255,255,.025)}
+  table.journey tr:hover td{background:rgba(var(--lift-rgb),var(--lift-a))}
   table.journey tr:hover td.who{background:var(--card-2)}
   table.journey td.day{font-weight:800;color:var(--orange-soft);font-size:14px}
   .cell{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800;transition:all .12s ease}
-  .cell.done{background:var(--green);color:#fff}
-  .cell.missed{background:var(--red);color:#fff;font-weight:800}
-  .cell.due{background:rgba(232,169,58,.18);color:var(--amber);border:1px solid rgba(232,169,58,.5)}
-  .cell.overdue{background:rgba(224,74,74,.16);color:var(--red);border:1px solid rgba(224,74,74,.5)}
+  .cell.done{background:var(--green);color:var(--on-accent)}
+  .cell.missed{background:var(--red);color:var(--on-accent);font-weight:800}
+  .cell.due{background:rgba(var(--amber-rgb),.18);color:var(--amber);border:1px solid rgba(var(--amber-rgb),.5)}
+  .cell.overdue{background:rgba(var(--red-rgb),.16);color:var(--red);border:1px solid rgba(var(--red-rgb),.5)}
   .cell.future{color:var(--ink-faint)}
   .cell.na{color:var(--line)}
   .cell:hover{transform:scale(1.12)}
   .tbl-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;color:var(--ink-dim)}
   .tbl-legend span{display:inline-flex;align-items:center;gap:6px}
   .tbl-legend i{width:13px;height:13px;border-radius:4px;display:inline-block}
-  .tbl-legend i.done{background:var(--green)} .tbl-legend i.due{background:rgba(232,169,58,.18);border:1px solid rgba(232,169,58,.5)}
+  .tbl-legend i.done{background:var(--green)} .tbl-legend i.due{background:rgba(var(--amber-rgb),.18);border:1px solid rgba(var(--amber-rgb),.5)}
   .tbl-legend i.missed{background:var(--red)}
   .tbl-legend i.overdue{background:var(--red)} .tbl-legend i.future{background:var(--navy-2);border:1px solid var(--line)}
 
@@ -307,13 +392,13 @@
 
   /* ---------- Membership decision on card ---------- */
   .decision{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
-  .decision.prompt{background:rgba(232,115,42,.1);border:1px solid rgba(232,115,42,.32);border-radius:10px;padding:11px 13px}
+  .decision.prompt{background:rgba(var(--orange-rgb),.1);border:1px solid rgba(var(--orange-rgb),.32);border-radius:10px;padding:11px 13px}
   .decision .dlabel{flex-basis:100%;font-size:12px;font-weight:700;color:var(--orange-soft);margin-bottom:2px}
-  .btn.stayed{background:var(--green);border-color:var(--green);color:#fff}
+  .btn.stayed{background:var(--green);border-color:var(--green);color:var(--on-accent)}
   .btn.stayed:hover{filter:brightness(1.08)}
   .btn.leftbtn{background:transparent;border-color:var(--line);color:var(--ink-dim)}
   .btn.leftbtn:hover{border-color:var(--red);color:var(--red)}
-  .tag.left{background:rgba(226,85,85,.16);color:var(--red)}
+  .tag.left{background:rgba(var(--red-rgb),.16);color:var(--red)}
   .mcard.inactive{opacity:.62}
   .mcard.inactive .name{color:var(--ink-dim)}
 
@@ -328,7 +413,7 @@
   .gate{position:fixed;inset:0;z-index:200;background:var(--navy);display:flex;align-items:center;justify-content:center;padding:24px}
   .gate.hide{display:none}
   .gate-box{background:linear-gradient(135deg,var(--card),var(--card-2));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:32px 28px;width:100%;max-width:360px;text-align:center}
-  .gate-mark{width:56px;height:56px;border-radius:12px;border:1px solid var(--line);background:#000;margin:0 auto 16px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+  .gate-mark{width:56px;height:56px;border-radius:12px;border:1px solid var(--line);background:var(--mark-bg);margin:0 auto 16px;overflow:hidden;display:flex;align-items:center;justify-content:center}
   .gate-mark img{width:100%;height:100%;object-fit:cover}
   .gate-box h2{font-size:20px;font-weight:800;margin-bottom:4px}
   .gate-sub{font-size:13px;color:var(--ink-dim);margin-bottom:20px}
@@ -340,9 +425,9 @@
   /* ---------- Sync status banner ---------- */
   .sync-banner{position:fixed;top:0;left:0;right:0;z-index:150;text-align:center;font-size:12.5px;font-weight:600;padding:7px 14px}
   .sync-banner.hide{display:none}
-  .sync-banner.err{background:var(--red);color:#fff}
-  .sync-banner.warn{background:var(--amber);color:#1a1408}
-  .sync-banner.ok{background:var(--green);color:#06210f}
+  .sync-banner.err{background:var(--red);color:var(--on-accent)}
+  .sync-banner.warn{background:var(--amber);color:var(--on-amber)}
+  .sync-banner.ok{background:var(--green);color:var(--on-green)}
 </style>
 
 <!-- ============================================================ -->
@@ -385,9 +470,12 @@
         <span class="sub">Warrington · membership journey</span>
       </div>
     </div>
-    <div class="mast-meta">
-      <strong id="liveCount">0</strong>
-      live
+    <div class="mast-right">
+      <button type="button" class="themebtn" id="themeToggle" onclick="bsToggleTheme()" aria-pressed="false" title="Switch theme">☾ Dark</button>
+      <div class="mast-meta">
+        <strong id="liveCount">0</strong>
+        live
+      </div>
     </div>
   </div>
   <div class="wrap">
@@ -509,6 +597,34 @@
 /* ============================================================
    THE FIRST 42 DAYS — day-based journey engine
    ============================================================ */
+
+/* ===================== LIGHT / DARK THEME =====================
+   Purely visual. The palette lives in the token blocks at the top of the stylesheet; this
+   only flips the data-theme attribute on <html>, remembers the choice, and keeps the
+   toggle's label in step. No render path, no data, no behaviour depends on it. The storage
+   key is shared with the KPI dashboard, so the theme follows you between the two sites. */
+function bsTheme(){
+  try{ return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"; }
+  catch(e){ return "light"; }
+}
+function bsSetTheme(t){
+  const next = t === "dark" ? "dark" : "light";
+  try{ document.documentElement.setAttribute("data-theme", next); }catch(e){}
+  try{ localStorage.setItem("bodysculpt:theme", next); }catch(e){}
+  bsSyncThemeBtn();
+  return next;
+}
+function bsToggleTheme(){ return bsSetTheme(bsTheme() === "dark" ? "light" : "dark"); }
+// The button offers the theme you'd switch TO, so its label always names the next state.
+function bsSyncThemeBtn(){
+  const b = document.getElementById("themeToggle");
+  if(!b) return;
+  const dark = bsTheme() === "dark";
+  b.textContent = dark ? "☀ Light" : "☾ Dark";
+  b.title = dark ? "Switch to the light theme" : "Switch to the dark theme";
+  b.setAttribute("aria-pressed", dark ? "true" : "false");
+}
+bsSyncThemeBtn();
 
 const STORE = 'bsj_v1';
 const MS_DAY = 86400000;

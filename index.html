@@ -412,6 +412,30 @@
   .tag.followup{background:rgba(var(--ink-dim-rgb),.14);color:var(--ink-dim)}
   .mcard.inactive .tag.followup{color:var(--ink-dim)}
 
+  /* ---------- Birthdays ---------- */
+  .lbl-opt{font-weight:600;color:var(--ink-faint);text-transform:none;letter-spacing:0}
+  .bday-month{margin-bottom:4px}
+  /* the current month leads the list and is the only one wearing the brand accent */
+  .bday-month.now .group-label{color:var(--orange-soft)}
+  .bday-month.now .group-label::after{background:rgba(var(--orange-rgb),.35)}
+  .bday-now{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;
+    color:var(--on-accent);background:var(--orange);border-radius:5px;padding:2px 7px;letter-spacing:.4px}
+  .bday-row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
+    border-left:4px solid var(--line);border-radius:12px;padding:11px 15px;margin-bottom:8px}
+  .bday-month.now .bday-row{border-left-color:var(--orange)}
+  .bday-day{flex:0 0 auto;min-width:52px;text-align:center;font-size:14px;font-weight:800;
+    color:var(--ink);background:var(--navy-2);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+  .bday-month.now .bday-day{color:var(--orange-soft);border-color:rgba(var(--orange-rgb),.34);
+    background:rgba(var(--orange-rgb),.12)}
+  .bday-who{flex:1;min-width:0}
+  .bday-name{font-size:14px;font-weight:700;color:var(--ink);display:flex;align-items:center;flex-wrap:wrap}
+  .bday-meta{font-size:11.5px;color:var(--ink-faint);font-weight:600;margin-top:2px}
+  .bday-today{flex:0 0 auto;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--on-accent);background:var(--green);border-radius:6px;padding:3px 9px}
+  .bday-none{font-size:13px;color:var(--ink-faint);background:var(--navy-2);border:1px dashed var(--line);
+    border-radius:10px;padding:12px 15px;margin-bottom:8px}
+  .bday-missing{font-size:12px;color:var(--ink-faint);font-weight:600;margin-top:18px;text-align:center}
+
   /* ---------- Shared notes (one document per client, whole team) ---------- */
   .notes-btn{appearance:none;background:transparent;border:1px solid transparent;color:var(--ink-faint);
     cursor:pointer;padding:3px;border-radius:8px;line-height:0;vertical-align:middle;margin-left:7px;
@@ -532,6 +556,7 @@
     <nav class="tabs" role="tablist">
       <button role="tab" aria-selected="true" data-view="today">Today's moves <span class="count" id="todayCount">0</span></button>
       <button role="tab" aria-selected="false" data-view="members">Challengers</button>
+      <button role="tab" aria-selected="false" data-view="birthdays">Birthdays</button>
       <button role="tab" aria-selected="false" data-view="playbook">The Playbook</button>
     </nav>
   </div>
@@ -581,6 +606,15 @@
     <div id="memberList"></div>
   </section>
 
+  <!-- ===== BIRTHDAYS ===== -->
+  <section class="view" id="view-birthdays">
+    <div class="sec-head">
+      <h2>Birthdays</h2>
+    </div>
+    <p class="sub" style="margin-top:-2px;margin-bottom:14px">Everyone with a date of birth on file, by month — <b>this month first</b>, then the rest of the year. For planning ahead: a card in the post, a shout-out in the group, a message on the day.</p>
+    <div id="birthdayList"></div>
+  </section>
+
   <!-- ===== PLAYBOOK ===== -->
   <section class="view" id="view-playbook">
     <div class="sec-head">
@@ -611,6 +645,10 @@
       <select id="f-coach">
         <option>Dan</option><option>Grace</option><option>Gaz</option><option>Ash</option>
       </select>
+    </div>
+    <div class="field">
+      <label>Date of birth <span class="lbl-opt">optional — shows on the Birthdays tab</span></label>
+      <input type="date" id="f-dob">
     </div>
     <div class="field">
       <label>One personal thing (learn this at the intro — what to remember)</label>
@@ -832,6 +870,9 @@ function migrateList(arr){
     if(m.followUpStatus===undefined) m.followUpStatus = null; // 'pending' | 'done' | null
     // Shared per-client notes (HTML). One document, edited by the whole team.
     if(m.notes===undefined) m.notes = '';
+    // Date of birth, "YYYY-MM-DD" or null. Typed in by a coach or pushed in from Ontraport
+    // via the set-dob function. Absent on everyone created before this existed.
+    if(m.dob===undefined) m.dob = null;
   });
   return arr;
 }
@@ -937,6 +978,35 @@ function addDays(ts,n){ const d=new Date(ts); d.setDate(d.getDate()+n); d.setHou
 function toDateInput(ts){
   const d=new Date(ts), p=n=>String(n).padStart(2,'0');
   return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+
+/* ---------------- Date of birth ----------------
+   A dob is a plain "YYYY-MM-DD" string, never a timestamp: a birthday is a calendar date,
+   not a moment, and turning it into a Date would drag it across a timezone and land on the
+   22nd for half the year. So it is read by pulling the three numbers straight out of the
+   string, and validated by checking they survive a round-trip (which rejects 30 February). */
+function dobParts(iso){
+  const m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(iso==null?'':iso).trim());
+  if(!m) return null;
+  const y=+m[1], mo=+m[2], d=+m[3];
+  if(mo<1||mo>12||d<1||d>31) return null;
+  const probe=new Date(Date.UTC(y,mo-1,d));
+  if(probe.getUTCFullYear()!==y||probe.getUTCMonth()!==mo-1||probe.getUTCDate()!==d) return null;
+  return {y:y,m:mo,d:d};
+}
+/* What goes into storage: a valid ISO date, or null. Anything else — an empty input, a
+   half-typed year, an impossible date — is null, so a bad value can never reach the tab. */
+function normalizeDob(v){
+  const p=dobParts(v);
+  if(!p) return null;
+  const pad=n=>String(n).padStart(2,'0');
+  return p.y+'-'+pad(p.m)+'-'+pad(p.d);
+}
+const MONTH_NAMES=['January','February','March','April','May','June',
+                   'July','August','September','October','November','December'];
+function ordinal(n){
+  const s=['th','st','nd','rd'], v=n%100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
 }
 
 /* The 6 weeks begin the day the FIRST SESSION is completed (m.day0), not the
@@ -1858,6 +1928,7 @@ function openAdd(){
   document.getElementById('modalNote').innerHTML='Add them when they book in. You’ll set their first session date and start the clock at the intro.';
   document.getElementById('f-name').value='';
   document.getElementById('f-coach').value='Dan';
+  document.getElementById('f-dob').value='';
   document.getElementById('f-personal').value='';
   document.getElementById('modalBg').classList.add('show');
 }
@@ -1868,6 +1939,7 @@ function openEdit(id){
   document.getElementById('modalNote').textContent='Update their details.';
   document.getElementById('f-name').value=m.name;
   document.getElementById('f-coach').value=m.coach;
+  document.getElementById('f-dob').value=m.dob||'';
   document.getElementById('f-personal').value=m.personal||'';
   document.getElementById('modalBg').classList.add('show');
 }
@@ -1877,12 +1949,13 @@ function saveMember(){
   if(!name){ alert('Add a name.'); return; }
   const coach=document.getElementById('f-coach').value;
   const personal=document.getElementById('f-personal').value.trim();
+  const dob=normalizeDob(document.getElementById('f-dob').value);   // '' or nonsense -> null
   if(editTarget){
     const m=members.find(x=>x.id===editTarget);
-    m.name=name; m.coach=coach; m.personal=personal;
+    m.name=name; m.coach=coach; m.personal=personal; m.dob=dob;
   }else{
     members.push({id:'m'+Date.now()+Math.random().toString(36).slice(2,6),
-      name,booked:null,day0:null,firstSessionDone:false,coach,personal,
+      name,booked:null,day0:null,firstSessionDone:false,coach,personal,dob,
       extraDays:0,pausedDays:0,pausedAt:null,signedUp:false,outcome:null,completed:[],doneMeta:{},checks:{},
       followUpOn:null,followUpStatus:null,notes:''});
   }
@@ -1892,6 +1965,69 @@ function removeMember(id){
   const m=members.find(x=>x.id===id);
   if(!confirm(`Remove ${m?m.name:'this challenger'}? This can’t be undone.`)) return;
   members=members.filter(x=>x.id!==id); save(); renderAll();
+}
+
+/* ---------------- BIRTHDAYS view ----------------
+   Planning ahead, so it reads as a calendar rather than a to-do list: twelve month groups,
+   people inside a month in day order. The current month LEADS and the rest of the year runs
+   on from it and wraps — in December you want to see December, then January, not scroll past
+   eleven months you have already had. Quiet months are dropped entirely; the current month
+   is the one exception, because "nobody this month" is itself the answer to the question. */
+function renderBirthdays(){
+  const host=document.getElementById('birthdayList'); if(!host) return;
+
+  const all = members.map(m=>({m:m, p:dobParts(m.dob)})).filter(x=>x.p);
+  if(!all.length){
+    host.innerHTML = `<div class="empty"><div class="big">No birthdays on file yet.</div>
+      Add a date of birth from <b>Edit</b> on a challenger's card — or let the Ontraport zap fill them in.</div>`;
+    return;
+  }
+
+  const now=new Date(), curM=now.getMonth()+1, curD=now.getDate();
+  const byMonth={};
+  all.forEach(x=>{ (byMonth[x.p.m]=byMonth[x.p.m]||[]).push(x); });
+  Object.keys(byMonth).forEach(k=>
+    byMonth[k].sort((a,b)=> a.p.d-b.p.d || a.m.name.localeCompare(b.m.name)));
+
+  let html='';
+  for(let i=0;i<12;i++){
+    const mo=((curM-1+i)%12)+1;         // this month, then round the year
+    const list=byMonth[mo]||[];
+    const isNow = mo===curM;
+    if(!list.length && !isNow) continue;
+    html += `<div class="bday-month${isNow?' now':''}">
+      <div class="group-label">${MONTH_NAMES[mo-1]}${isNow?'<span class="bday-now">This month</span>':''}<span class="gcount">${list.length}</span></div>`;
+    if(!list.length){
+      html += `<div class="bday-none">No birthdays in ${MONTH_NAMES[mo-1]}.</div>`;
+    }else{
+      html += list.map(x=>{
+        const m=x.m, p=x.p;
+        const s=status(m);
+        const state = isInactive(m) ? 'left'
+                    : s==='notstarted' ? 'not started yet'
+                    : s==='done' ? 'finished the 6 weeks'
+                    : s==='paused' ? 'paused'
+                    : 'on the journey';
+        return `<div class="bday-row">
+          <span class="bday-day">${ordinal(p.d)}</span>
+          <div class="bday-who">
+            <div class="bday-name">${esc(m.name)}${notesBtn(m)}</div>
+            <div class="bday-meta">Coach ${esc(m.coach)} · ${state}</div>
+          </div>
+          ${(isNow && p.d===curD)?'<span class="bday-today">Today 🎂</span>':''}
+        </div>`;
+      }).join('');
+    }
+    html += `</div>`;
+  }
+
+  // who we still can't plan for
+  const missing = members.length - all.length;
+  if(missing>0){
+    html += `<div class="bday-missing">${missing} challenger${missing===1?'':'s'} `
+      + `${missing===1?'has':'have'} no date of birth yet — add one from Edit on their card.</div>`;
+  }
+  host.innerHTML = html;
 }
 
 /* ---------------- PLAYBOOK view ---------------- */
@@ -1927,7 +2063,7 @@ function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp
 function stripTags(s){ return (s==null?'':String(s)).replace(/<[^>]*>/g,''); }
 
 function renderAll(){
-  renderConvBar(); renderToday(); renderMembers(); renderPlaybook();
+  renderConvBar(); renderToday(); renderMembers(); renderBirthdays(); renderPlaybook();
   if(todayView==='table') renderMemberTable();
   const live = members.filter(m=>(status(m)==='live'||status(m)==='paused'||status(m)==='notstarted') && !isInactive(m)).length;
   document.getElementById('liveCount').textContent = live;

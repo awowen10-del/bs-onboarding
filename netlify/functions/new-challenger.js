@@ -71,6 +71,10 @@ exports.handler = async (event) => {
     return resp(400, { error: 'No name in payload', keysReceived: Object.keys(data) });
   }
 
+  // Email, if Ontraport sent one. Not used by the app, but set-dob.js falls back to it when
+  // a later webhook can't match on name alone, so it is worth keeping from the start.
+  const email = String(data.email || data.contact_email || data.Email || '').trim().toLowerCase();
+
   // Coach: use what's sent, else default to a placeholder the team can change
   const validCoaches = ['Dan', 'Grace', 'Gaz', 'Ash'];
   let coach = (data.coach || '').trim();
@@ -105,6 +109,8 @@ exports.handler = async (event) => {
       firstSessionDone: false,
       coach,
       personal: '',
+      email: email || null,
+      dob: null,               // filled in later by hand, or by the set-dob webhook
       extraDays: 0,
       pausedDays: 0,
       pausedAt: null,

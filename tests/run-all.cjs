@@ -19,14 +19,16 @@ if (chk.status !== 0) {
 }
 console.log("syntax check index.html: OK");
 
-const fn = path.join(__dirname, "..", "netlify", "functions", "new-challenger.js");
-if (fs.existsSync(fn)) {
-  const fnChk = spawnSync(process.execPath, ["--check", fn], { stdio: "inherit" });
-  if (fnChk.status !== 0) {
-    console.error("SYNTAX CHECK FAILED (new-challenger.js) — aborting test run");
-    process.exit(1);
+const fnDir = path.join(__dirname, "..", "netlify", "functions");
+if (fs.existsSync(fnDir)) {
+  for (const f of fs.readdirSync(fnDir).filter((f) => f.endsWith(".js")).sort()) {
+    const fnChk = spawnSync(process.execPath, ["--check", path.join(fnDir, f)], { stdio: "inherit" });
+    if (fnChk.status !== 0) {
+      console.error("SYNTAX CHECK FAILED (" + f + ") — aborting test run");
+      process.exit(1);
+    }
+    console.log("syntax check " + f + ": OK");
   }
-  console.log("syntax check new-challenger.js: OK");
 }
 
 // 2) run every test file

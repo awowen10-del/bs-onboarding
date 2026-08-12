@@ -118,6 +118,19 @@
   .mast-meta{text-align:right;font-size:12px;color:var(--ink-faint);font-weight:600;flex-shrink:0}
   .mast-meta strong{display:block;font-size:24px;font-family:var(--display);color:var(--orange-soft);font-weight:800}
 
+  /* ---------- Tracker switch (Onboarding | Retention) ----------
+     The top-level choice: WHICH tracker you are looking at. It sits above the tab bar and is
+     deliberately a size up from it — same segmented-control family as nav.tabs and
+     .viewtoggle, but taller type and a heavier selected state, so the reading order down the
+     page is tracker → tab → view rather than two identical-looking rows of buttons. */
+  .trackerswitch{display:inline-flex;gap:5px;background:var(--navy-2);border:1px solid var(--line);
+    border-radius:13px;padding:5px;margin-bottom:12px;flex-wrap:wrap}
+  .trackerswitch button{appearance:none;background:transparent;border:none;color:var(--ink-dim);
+    font-family:inherit;font-size:14px;font-weight:800;letter-spacing:-.1px;padding:10px 20px;
+    border-radius:9px;cursor:pointer;transition:background .15s ease,color .15s ease}
+  .trackerswitch button[aria-pressed="false"]:hover{color:var(--ink)}
+  .trackerswitch button[aria-pressed="true"]{background:var(--orange);color:var(--on-accent)}
+
   /* ---------- Tabs (matches .viewtoggle) ---------- */
   nav.tabs{display:inline-flex;gap:4px;background:var(--navy-2);border:1px solid var(--line);
     border-radius:12px;padding:4px;margin-bottom:8px;flex-wrap:wrap}
@@ -125,6 +138,9 @@
     font-family:inherit;font-size:13px;font-weight:700;padding:9px 16px;border-radius:8px;cursor:pointer;
     transition:background .15s ease,color .15s ease}
   nav.tabs button .count{font-size:11px;color:var(--on-accent);background:var(--red);border-radius:20px;padding:1px 7px;margin-left:6px;font-weight:700;vertical-align:middle}
+  /* a plain headcount, not a to-do count — red would read as "something is wrong" */
+  nav.tabs button .count.tally{color:var(--ink-dim);background:var(--card);border:1px solid var(--line)}
+  nav.tabs button[aria-selected="true"] .count.tally{color:var(--on-accent);background:var(--accent-inset);border-color:transparent}
   nav.tabs button[aria-selected="false"]:hover{color:var(--ink)}
   nav.tabs button[aria-selected="true"]{background:var(--orange);color:var(--on-accent)}
   nav.tabs button[aria-selected="true"] .count{background:var(--accent-inset)}
@@ -560,23 +576,37 @@
       <div class="mark"><img src="data:image/png;base64,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" alt="Bodysculpt"></div>
       <div class="btxt">
         <h1>The First 42 Days</h1>
-        <span class="sub">Warrington · membership journey</span>
+        <span class="sub" id="brandSub">Warrington · membership journey</span>
       </div>
     </div>
     <div class="mast-right">
       <button type="button" class="themebtn" id="themeToggle" onclick="bsToggleTheme()" aria-pressed="false" title="Switch theme">☾ Dark</button>
-      <div class="mast-meta">
+      <div class="mast-meta" id="mastMeta">
         <strong id="liveCount">0</strong>
         live
       </div>
     </div>
   </div>
+  <!-- ===== Which tracker are we in? (top-level, above the tabs) ===== -->
   <div class="wrap">
-    <nav class="tabs" role="tablist">
-      <button role="tab" aria-selected="true" data-view="today">Today's moves <span class="count" id="todayCount">0</span></button>
-      <button role="tab" aria-selected="false" data-view="members">Challengers</button>
-      <button role="tab" aria-selected="false" data-view="birthdays">Birthdays</button>
-      <button role="tab" aria-selected="false" data-view="playbook">The Playbook</button>
+    <div class="trackerswitch" id="trackerSwitch" role="group" aria-label="Choose a tracker">
+      <button type="button" data-tracker="onboarding" aria-pressed="true" onclick="setTracker('onboarding')">Onboarding</button>
+      <button type="button" data-tracker="retention" aria-pressed="false" onclick="setTracker('retention')">Retention</button>
+    </div>
+  </div>
+  <div class="wrap" id="nav-onboarding">
+    <nav class="tabs" id="tabs-onboarding" data-tracker="onboarding" role="tablist">
+      <button role="tab" aria-selected="true" data-tracker="onboarding" data-view="today">Today's moves <span class="count" id="todayCount">0</span></button>
+      <button role="tab" aria-selected="false" data-tracker="onboarding" data-view="members">Challengers</button>
+      <button role="tab" aria-selected="false" data-tracker="onboarding" data-view="birthdays">Birthdays</button>
+      <button role="tab" aria-selected="false" data-tracker="onboarding" data-view="playbook">The Playbook</button>
+    </nav>
+  </div>
+  <div class="wrap hide" id="nav-retention">
+    <!-- More tabs land here as the retention tracker grows (attendance, check-ins, …) -->
+    <nav class="tabs" id="tabs-retention" data-tracker="retention" role="tablist">
+      <button role="tab" aria-selected="true" data-tracker="retention" data-view="ret-members">Members <span class="count tally" id="retCount">0</span></button>
+      <button role="tab" aria-selected="false" data-tracker="retention" data-view="ret-birthdays">Birthdays</button>
     </nav>
   </div>
 </header>
@@ -584,7 +614,7 @@
 <main class="wrap">
 
   <!-- ===== TODAY ===== -->
-  <section class="view active" id="view-today">
+  <section class="view active" id="view-today" data-tracker="onboarding">
     <div class="sec-head">
       <h2>Today's moves</h2>
     </div>
@@ -604,7 +634,7 @@
   </section>
 
   <!-- ===== MEMBERS ===== -->
-  <section class="view" id="view-members">
+  <section class="view" id="view-members" data-tracker="onboarding">
     <div class="sec-head">
       <h2>Challengers</h2>
       <button class="btn primary" onclick="openAdd()">+ Add challenger</button>
@@ -630,7 +660,7 @@
   </section>
 
   <!-- ===== BIRTHDAYS ===== -->
-  <section class="view" id="view-birthdays">
+  <section class="view" id="view-birthdays" data-tracker="onboarding">
     <div class="sec-head">
       <h2>Birthdays</h2>
     </div>
@@ -639,7 +669,7 @@
   </section>
 
   <!-- ===== PLAYBOOK ===== -->
-  <section class="view" id="view-playbook">
+  <section class="view" id="view-playbook" data-tracker="onboarding">
     <div class="sec-head">
       <h2>The Playbook</h2>
     </div>
@@ -648,6 +678,38 @@
       <p style="margin-top:10px;font-size:13px">For the posted touchpoints, UK services that print &amp; mail for you: <b>ClickSend</b> (no minimums, pay-as-you-go), <b>Thanks.io</b> (handwriting + one all-in price), or <b>Scribeless</b> (UK facility, handwriting styles). Any of them can eventually be triggered straight from this tracker once it's on a shared backend.</p>
     </div>
     <div class="timeline" id="playbookList"></div>
+  </section>
+
+  <!-- ============================================================
+       RETENTION TRACKER — full members, once the 42 days are behind them.
+       Stage one is the shell: the roster and the birthdays that read off it.
+       Attendance, check-ins and the onboarding→retention handoff come later.
+       ============================================================ -->
+
+  <!-- ===== RETENTION · MEMBERS ===== -->
+  <section class="view" id="view-ret-members" data-tracker="retention">
+    <div class="sec-head">
+      <h2>Members</h2>
+      <button class="btn primary" onclick="openRetAdd()">+ Add member</button>
+    </div>
+    <p class="sub" style="margin-top:-2px;margin-bottom:14px">Full members — the people who stayed on. Everyone here carries the same details as a challenger, and the same shared notes, so a challenger can be handed over without losing anything.</p>
+    <div class="toolbar" style="margin-top:14px">
+      <input type="search" id="retSearch" placeholder="Search by name…" oninput="renderRetentionMembers()">
+    </div>
+    <div id="retMemberList"></div>
+    <div class="admin-strip">
+      <button class="btn sm ghost" onclick="openImport('retention')">⇪ Import DOBs from CSV</button>
+      <span class="admin-hint">Same backfill as the onboarding tracker, pointed at the member list. Fills in dates of birth for members already in here — it never adds anyone.</span>
+    </div>
+  </section>
+
+  <!-- ===== RETENTION · BIRTHDAYS ===== -->
+  <section class="view" id="view-ret-birthdays" data-tracker="retention">
+    <div class="sec-head">
+      <h2>Birthdays</h2>
+    </div>
+    <p class="sub" style="margin-top:-2px;margin-bottom:14px">Every member with a date of birth on file, by month — <b>this month first</b>, then the rest of the year. Same tab as the onboarding one, reading off the member list instead.</p>
+    <div id="retBirthdayList"></div>
   </section>
 
 </main>
@@ -726,7 +788,7 @@
 <div class="modal-bg" id="importBg">
   <div class="modal import-modal">
     <h3>Import dates of birth</h3>
-    <p class="note">Point this at a GoTeamUp export — <b>Full Name, First Name, Last Name, Email, Date of Birth</b>.
+    <p class="note" id="imp-note">Point this at a GoTeamUp export — <b>Full Name, First Name, Last Name, Email, Date of Birth</b>.
       Rows are matched to challengers already in the tracker by name (email breaks a tie) and their date of
       birth is filled in. <b>Nobody is ever created</b>: a file of 300 members will only touch the handful who
       are in here, and everyone else is skipped.</p>
@@ -741,6 +803,36 @@
     <div id="imp-result"></div>
     <div class="modal-acts">
       <button class="btn primary" onclick="closeImport()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Retention: add / edit a member ===== -->
+<div class="modal-bg" id="retModalBg">
+  <div class="modal">
+    <h3 id="retModalTitle">Add member</h3>
+    <p class="note" id="retModalNote">A full member. The same core details as a challenger, so someone handed over from onboarding lands here with everything intact.</p>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="rf-name" placeholder="e.g. Sarah Doyle">
+    </div>
+    <div class="field">
+      <label>Email <span class="lbl-opt">optional — used to match CSV imports</span></label>
+      <input type="email" id="rf-email" placeholder="sarah@example.com">
+    </div>
+    <div class="field">
+      <label>Coach</label>
+      <select id="rf-coach">
+        <option>Dan</option><option>Grace</option><option>Gaz</option><option>Ash</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Date of birth <span class="lbl-opt">optional — shows on the Birthdays tab</span></label>
+      <input type="date" id="rf-dob">
+    </div>
+    <div class="modal-acts">
+      <button class="btn ghost" onclick="closeRetModal()">Cancel</button>
+      <button class="btn primary" onclick="saveRetMember()">Save</button>
     </div>
   </div>
 </div>
@@ -900,6 +992,15 @@ let sb = null;             // supabase client
 const ROW_KEY = 'roster';  // single JSON blob row holding the whole challenger list
 const CACHE = 'bsj_cache'; // local offline cache (NOT the source of truth)
 
+/* ---- Retention tracker: full members, kept apart from the challengers ----
+   A SEPARATE list in the SAME Supabase table, under its own key, exactly the way the roster
+   is stored — one row, one JSON blob. Separate so the two trackers can never tread on each
+   other (a challenger is mid-journey; a member is not), same table so a later stage can move
+   somebody from one to the other inside a single backend. */
+let retention = [];                        // full members
+const RET_ROW_KEY = 'retention';           // its row in the same `bodysculpt` table
+const RET_CACHE = 'bsj_retention_cache';   // its own offline cache
+
 /* normalise/upgrade any record shape so older or imported data never breaks */
 function migrateList(arr){
   if(!Array.isArray(arr)) return [];
@@ -921,6 +1022,43 @@ function migrateList(arr){
     if(m.dob===undefined) m.dob = null;
   });
   return arr;
+}
+
+/* The retention roster's own migration. Deliberately its own function rather than a branch
+   inside migrateList: a member has no journey, no clock and no outcome, so running the
+   challenger migration over it would bolt a dozen meaningless fields onto every record.
+   The fields it DOES share with a challenger are named identically (name, email, coach,
+   notes, dob, personal) so the later onboarding→retention handoff is a copy, not a mapping.
+   Anything already set is left exactly as it is, so this is safe to re-run. */
+function migrateRetentionList(arr){
+  if(!Array.isArray(arr)) return [];
+  arr.forEach(m=>{
+    if(!m.id) m.id = newClientId('r');
+    if(m.name===undefined) m.name = '';
+    if(m.email===undefined) m.email = '';
+    if(m.coach===undefined) m.coach = '';
+    if(m.personal===undefined) m.personal = '';
+    if(m.notes===undefined) m.notes = '';       // the same shared-notes document, same editor
+    if(m.dob===undefined) m.dob = null;         // "YYYY-MM-DD" or null, same as a challenger
+    // Where they came from, for the handoff that isn't built yet: the day they became a full
+    // member, and the challenger record they were promoted from.
+    if(m.joined===undefined) m.joined = null;   // timestamp (local midnight) or null
+    if(m.fromChallenger===undefined) m.fromChallenger = null;
+  });
+  return arr;
+}
+function newClientId(prefix){
+  return (prefix||'m')+Date.now()+Math.random().toString(36).slice(2,6);
+}
+
+/* One client, wherever they live. The shared notes are opened by id from Today, from a card
+   and from either Birthdays tab, so the lookup has to span both trackers — and the save has
+   to land in the list that actually holds them. */
+function clientById(id){
+  return members.find(x=>x.id===id) || retention.find(x=>x.id===id) || null;
+}
+function saveClient(id){
+  if(retention.some(x=>x.id===id)) saveRetention(); else save();
 }
 
 function showSync(kind, msg, autohide){
@@ -962,6 +1100,37 @@ async function pushToCloud(){
   }
 }
 
+/* The retention list's half of the same mechanism — its own cache, its own debounce, its own
+   row. Written out longhand rather than folded into save() so the onboarding path that every
+   existing feature calls is byte-for-byte what it was. */
+function readRetentionCache(){
+  try{ const r=JSON.parse(localStorage.getItem(RET_CACHE)); return migrateRetentionList(Array.isArray(r)?r:[]); }
+  catch(e){ return []; }
+}
+function writeRetentionCache(){ try{ localStorage.setItem(RET_CACHE, JSON.stringify(retention)); }catch(e){} }
+
+let retSaveTimer=null;
+let lastOwnRetWrite=0;
+function saveRetention(){
+  writeRetentionCache();
+  if(!sb) return;
+  clearTimeout(retSaveTimer);
+  retSaveTimer = setTimeout(pushRetentionToCloud, 400);
+}
+async function pushRetentionToCloud(){
+  if(!sb) return;
+  const stamp = new Date().toISOString();
+  lastOwnRetWrite = Date.parse(stamp);
+  try{
+    const { error } = await sb.from('bodysculpt')
+      .upsert({ key: RET_ROW_KEY, value: retention, updated_at: stamp }, { onConflict: 'key' });
+    if(error) throw error;
+    showSync('ok','Saved ✓', true);
+  }catch(e){
+    showSync('err','Couldn’t save to the cloud — your changes are stored on this device and will retry. ('+(e.message||e)+')');
+  }
+}
+
 /* boot: connect, pull the roster, render */
 async function bootData(){
   const cfg = window.BSJ_CONFIG||{};
@@ -970,6 +1139,7 @@ async function bootData(){
   if(!configured || typeof supabase==='undefined'){
     // Not set up yet — run from local cache so the app still works for testing.
     members = readCache();
+    retention = readRetentionCache();
     seedIfEmpty();
     showSync('warn','Running in local-only mode — set your Supabase keys to sync across devices.');
     renderAll();
@@ -977,12 +1147,21 @@ async function bootData(){
   }
   sb = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
   try{
-    // pull both the roster and a one-time "seeded" marker in one go
-    const { data, error } = await sb.from('bodysculpt').select('key,value,updated_at').in('key', [ROW_KEY, 'seeded']);
+    // pull the roster, the member list, the shared tracker choice and a one-time "seeded"
+    // marker in one go
+    const { data, error } = await sb.from('bodysculpt').select('key,value,updated_at')
+      .in('key', [ROW_KEY, RET_ROW_KEY, TRACKER_ROW_KEY, 'seeded']);
     if(error) throw error;
     const rosterRow = (data||[]).find(r=>r.key===ROW_KEY);
+    const retRow = (data||[]).find(r=>r.key===RET_ROW_KEY);
+    const trackerRow = (data||[]).find(r=>r.key===TRACKER_ROW_KEY);
     const seededRow = (data||[]).find(r=>r.key==='seeded');
     members = migrateList(rosterRow && Array.isArray(rosterRow.value) ? rosterRow.value : []);
+    // No retention row yet is the normal case on every device until the first member exists.
+    retention = migrateRetentionList(retRow && Array.isArray(retRow.value) ? retRow.value : []);
+    // Open on whichever tracker the team was last using. No row yet — a gym that has never
+    // tapped the switch — leaves us on Onboarding without writing one.
+    if(trackerRow) applySharedTracker(trackerRow.value);
     // Seed the examples ONLY on the very first run ever (no seeded marker yet).
     // After that, an empty list stays empty — removing everyone is respected.
     if(!seededRow){
@@ -990,6 +1169,7 @@ async function bootData(){
       await sb.from('bodysculpt').upsert({ key:'seeded', value:true, updated_at:new Date().toISOString() }, { onConflict:'key' });
     }
     writeCache();
+    writeRetentionCache();
     showSync('ok','Connected ✓', true);
     renderAll();
     // live updates: if Dan changes something, Ash sees it (and vice versa).
@@ -1004,10 +1184,27 @@ async function bootData(){
           if(incomingTime && Math.abs(incomingTime - lastOwnWrite) < 1500) return;
           if(Array.isArray(incoming)){ members = migrateList(incoming); writeCache(); renderAll(); }
         })
+      // the member list rides the same channel, with the same echo guard
+      .on('postgres_changes', { event:'*', schema:'public', table:'bodysculpt', filter:'key=eq.'+RET_ROW_KEY },
+        payload=>{
+          const incoming = payload.new && payload.new.value;
+          const incomingTime = payload.new && Date.parse(payload.new.updated_at||0);
+          if(incomingTime && Math.abs(incomingTime - lastOwnRetWrite) < 1500) return;
+          if(Array.isArray(incoming)){ retention = migrateRetentionList(incoming); writeRetentionCache(); renderAll(); }
+        })
+      // and so does the tracker choice: tapping the switch on one device moves the others.
+      // Only the classes on the nav and the views change, so there is nothing to re-render.
+      .on('postgres_changes', { event:'*', schema:'public', table:'bodysculpt', filter:'key=eq.'+TRACKER_ROW_KEY },
+        payload=>{
+          const incomingTime = payload.new && Date.parse(payload.new.updated_at||0);
+          if(incomingTime && Math.abs(incomingTime - lastOwnTrackerWrite) < 1500) return;
+          applySharedTracker(payload.new && payload.new.value);
+        })
       .subscribe();
   }catch(e){
     // connection failed — fall back to cache so the team can still work offline
     members = readCache();
+    retention = readRetentionCache();
     showSync('err','Offline — showing this device’s last copy. Changes will sync when the connection returns. ('+(e.message||e)+')');
     renderAll();
   }
@@ -1843,7 +2040,7 @@ function sanitizeNotes(html){
 
 let notesTarget=null, notesTimer=null;
 function openNotes(id){
-  const m=members.find(x=>x.id===id); if(!m) return;
+  const m=clientById(id); if(!m) return;      // a challenger or a full member — one editor for both
   notesTarget=id;
   document.getElementById('notesWho').textContent=m.name;
   const ed=document.getElementById('notesEd');
@@ -1874,14 +2071,14 @@ function notesTouched(){
 function notesFlush(){
   clearTimeout(notesTimer); notesTimer=null;
   if(!notesTarget) return false;
-  const m=members.find(x=>x.id===notesTarget); if(!m) return false;
+  const m=clientById(notesTarget); if(!m) return false;
   const ed=document.getElementById('notesEd'); if(!ed) return false;
   let next=sanitizeNotes(ed.innerHTML||'');
   // an "emptied" contenteditable leaves <br> behind — store nothing, so the icon goes muted
   if(!stripTags(next).replace(/&nbsp;/g,' ').trim()) next='';
   if(next===(m.notes||'')) return false;
   m.notes=next;
-  save();                            // cache instantly + debounced cloud push, like everything else
+  saveClient(notesTarget);           // cache instantly + debounced cloud push, into their own list
   const s=document.getElementById('notesSaved');
   if(s){ s.textContent='Saved ✓'; s.className='notes-saved on'; }
   return true;
@@ -2100,9 +2297,11 @@ function findChallengerMatch(roster, name, email){
   return {member:member, matches:pool.length, by:by};
 }
 
-/* The import itself. Mutates the roster in memory, then saves ONCE — one write, one sync,
-   however many rows the file had. */
-function applyDobCsv(text, overwrite){
+/* The import itself. Mutates the given roster in memory and reports what it did; the two
+   thin wrappers below decide which list it runs over and which save path banks the result.
+   The retention tracker gets this for free precisely because the reader, the matcher and the
+   counting know nothing about journeys — they only ever touch name, email and dob. */
+function applyDobCsvTo(roster, text, overwrite){
   const table=parseCsv(text);
   if(!table.length) return {ok:false, error:'That file looks empty.'};
   const idx=csvHeaderIndex(table[0]);
@@ -2130,7 +2329,7 @@ function applyDobCsv(text, overwrite){
     if(!name) name=(cell(row,idx.first)+' '+cell(row,idx.last)).trim();
     const email=cell(row,idx.email);
 
-    const hit=findChallengerMatch(members, name, email);
+    const hit=findChallengerMatch(roster, name, email);
     if(!hit.member){ r.noMatch++; continue; }     // not one of ours — expected, and silent
     r.matched++;
 
@@ -2141,7 +2340,18 @@ function applyDobCsv(text, overwrite){
     else { r.alreadyHad++; r.already.push(m.name); }
   }
 
+  return r;
+}
+/* Onboarding: over the challenger roster, banked through save(). */
+function applyDobCsv(text, overwrite){
+  const r = applyDobCsvTo(members, text, overwrite);
   if(r.added || r.overwritten){ save(); renderAll(); }
+  return r;
+}
+/* Retention: the same run over the member list, banked through saveRetention(). */
+function applyRetentionDobCsv(text, overwrite){
+  const r = applyDobCsvTo(retention, text, overwrite);
+  if(r.added || r.overwritten){ saveRetention(); renderAll(); }
   return r;
 }
 
@@ -2173,7 +2383,22 @@ function importResultHtml(r, filename){
   </div>`;
 }
 
-function openImport(){
+/* One import modal, pointed at whichever list you opened it from. openImport() with no
+   argument is the onboarding tracker, exactly as it always was. */
+let importScope='onboarding';
+const IMPORT_COPY = {
+  onboarding:{ who:'challengers', tail:'a file of 300 members will only touch the handful who are in here, and everyone else is skipped.' },
+  retention:{ who:'members', tail:'a file of 300 members will only touch the people already on the member list, and everyone else is skipped.' }
+};
+function openImport(scope){
+  importScope = scope==='retention' ? 'retention' : 'onboarding';
+  const copy = IMPORT_COPY[importScope];
+  const note=document.getElementById('imp-note');
+  if(note){
+    note.innerHTML = 'Point this at a GoTeamUp export — <b>Full Name, First Name, Last Name, Email, Date of Birth</b>. '
+      + 'Rows are matched to '+copy.who+' already in the tracker by name (email breaks a tie) and their date of '
+      + 'birth is filled in. <b>Nobody is ever created</b>: '+copy.tail;
+  }
   document.getElementById('imp-result').innerHTML='';
   document.getElementById('imp-file').value='';
   document.getElementById('imp-overwrite').checked=false;
@@ -2189,7 +2414,11 @@ function runImport(input){
   const reader = new FileReader();
   reader.onload = function(){
     let r;
-    try{ r = applyDobCsv(String(reader.result||''), overwrite); }
+    try{
+      r = importScope==='retention'
+        ? applyRetentionDobCsv(String(reader.result||''), overwrite)
+        : applyDobCsv(String(reader.result||''), overwrite);
+    }
     catch(e){ r = {ok:false, error:'Could not read that file. ('+(e.message||e)+')'}; }
     out.innerHTML = importResultHtml(r, file.name);
     input.value='';          // so picking the same file again still fires a change
@@ -2209,13 +2438,45 @@ function runImport(input){
    is the one exception, because "nobody this month" is itself the answer to the question. */
 function renderBirthdays(){
   const host=document.getElementById('birthdayList'); if(!host) return;
+  host.innerHTML = birthdaysHtml(members, {
+    noun:'challenger',
+    empty:`<div class="empty"><div class="big">No birthdays on file yet.</div>
+      Add a date of birth from <b>Edit</b> on a challenger's card — or let the Ontraport zap fill them in.</div>`,
+    // where a challenger is up to in their 42 days
+    meta:m=>{
+      const s=status(m);
+      const state = isInactive(m) ? 'left'
+                  : s==='notstarted' ? 'not started yet'
+                  : s==='done' ? 'finished the 6 weeks'
+                  : s==='paused' ? 'paused'
+                  : 'on the journey';
+      return `Coach ${esc(m.coach)} · ${state}`;
+    }
+  });
+}
 
-  const all = members.map(m=>({m:m, p:dobParts(m.dob)})).filter(x=>x.p);
-  if(!all.length){
-    host.innerHTML = `<div class="empty"><div class="big">No birthdays on file yet.</div>
-      Add a date of birth from <b>Edit</b> on a challenger's card — or let the Ontraport zap fill them in.</div>`;
-    return;
-  }
+/* The Retention tracker's Birthdays tab: the same tab, the same rules, reading the member
+   list instead of the roster. Only the wording and the meta line under a name differ —
+   a member has no 42-day clock to report on. */
+function renderRetentionBirthdays(){
+  const host=document.getElementById('retBirthdayList'); if(!host) return;
+  host.innerHTML = birthdaysHtml(retention, {
+    noun:'member',
+    empty:`<div class="empty"><div class="big">No birthdays on file yet.</div>
+      ${retention.length ? 'Add a date of birth from <b>Edit</b> on a member\'s card, or import them from a CSV.'
+                         : 'No members yet — birthdays will appear here as the member list fills up.'}</div>`,
+    meta:m=>'Coach '+esc(m.coach||'—')+' · member'
+  });
+}
+
+/* The tab itself, for any list of people who have a dob. */
+function birthdaysHtml(roster, opts){
+  const o = opts||{};
+  const noun = o.noun || 'challenger';
+  const people = Array.isArray(roster) ? roster : [];
+
+  const all = people.map(m=>({m:m, p:dobParts(m.dob)})).filter(x=>x.p);
+  if(!all.length) return o.empty || '';
 
   const now=new Date(), curM=now.getMonth()+1, curD=now.getDate();
   const byMonth={};
@@ -2236,17 +2497,11 @@ function renderBirthdays(){
     }else{
       html += list.map(x=>{
         const m=x.m, p=x.p;
-        const s=status(m);
-        const state = isInactive(m) ? 'left'
-                    : s==='notstarted' ? 'not started yet'
-                    : s==='done' ? 'finished the 6 weeks'
-                    : s==='paused' ? 'paused'
-                    : 'on the journey';
         return `<div class="bday-row">
           <span class="bday-day">${ordinal(p.d)}</span>
           <div class="bday-who">
             <div class="bday-name">${esc(m.name)}${notesBtn(m)}</div>
-            <div class="bday-meta">Coach ${esc(m.coach)} · ${state}</div>
+            <div class="bday-meta">${o.meta ? o.meta(m) : 'Coach '+esc(m.coach)}</div>
           </div>
           ${(isNow && p.d===curD)?'<span class="bday-today">Today 🎂</span>':''}
         </div>`;
@@ -2256,12 +2511,103 @@ function renderBirthdays(){
   }
 
   // who we still can't plan for
-  const missing = members.length - all.length;
+  const missing = people.length - all.length;
   if(missing>0){
-    html += `<div class="bday-missing">${missing} challenger${missing===1?'':'s'} `
+    html += `<div class="bday-missing">${missing} ${noun}${missing===1?'':'s'} `
       + `${missing===1?'has':'have'} no date of birth yet — add one from Edit on their card.</div>`;
   }
-  host.innerHTML = html;
+  return html;
+}
+
+/* ---------------- RETENTION · MEMBERS view ----------------
+   The Challengers tab's opposite number, minus everything that belongs to the 42 days: no
+   clock, no touchpoints, no conversion. Same card, same notes icon, same styling — a member
+   is a person we already know, so the surface should feel like the one next door. */
+function renderRetentionMembers(){
+  const host=document.getElementById('retMemberList'); if(!host) return;
+  const tally=document.getElementById('retCount');
+  if(tally) tally.textContent = retention.length;
+
+  const box=document.getElementById('retSearch');
+  const q=String((box&&box.value)||'').toLowerCase();
+  const arr = retention
+    .filter(m=>String(m.name||'').toLowerCase().includes(q))
+    .sort((a,b)=> String(a.name||'').localeCompare(String(b.name||'')));
+
+  if(!arr.length){
+    host.innerHTML = retention.length
+      ? `<div class="empty"><div class="big">Nobody matches that.</div>Try a different search.</div>`
+      : `<div class="empty"><div class="big">No members yet.</div>
+         Full members will arrive here from the onboarding tracker once the handoff is built — until then you can add someone by hand.</div>`;
+    return;
+  }
+
+  host.innerHTML = arr.map(m=>{
+    const bits=[];
+    if(m.coach) bits.push('Coach '+esc(m.coach));
+    if(m.email) bits.push(esc(m.email));
+    const p = dobParts(m.dob);
+    if(p) bits.push('Born '+ordinal(p.d)+' '+MONTH_NAMES[p.m-1]);
+    if(m.personal) bits.push(esc(m.personal));
+    return `<div class="mcard">
+      <div class="top">
+        <div>
+          <div class="name">${esc(m.name)}${notesBtn(m)}<span class="tag member">Member</span></div>
+          <div class="sub">${bits.join(' · ') || 'No details on file yet'}</div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="btn sm ghost" onclick="openRetEdit('${m.id}')">Edit</button>
+        <button class="btn sm ghost danger" onclick="removeRetMember('${m.id}')">Remove</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* add/edit a member — its own modal so the challenger one, and everything that leans on it,
+   is left exactly as it was */
+let retEditTarget=null;
+function openRetAdd(){
+  retEditTarget=null;
+  document.getElementById('retModalTitle').textContent='Add member';
+  document.getElementById('retModalNote').textContent='A full member. The same core details as a challenger, so someone handed over from onboarding lands here with everything intact.';
+  document.getElementById('rf-name').value='';
+  document.getElementById('rf-email').value='';
+  document.getElementById('rf-coach').value='Dan';
+  document.getElementById('rf-dob').value='';
+  document.getElementById('retModalBg').classList.add('show');
+}
+function openRetEdit(id){
+  const m=retention.find(x=>x.id===id); if(!m) return;
+  retEditTarget=id;
+  document.getElementById('retModalTitle').textContent='Edit member';
+  document.getElementById('retModalNote').textContent='Update their details.';
+  document.getElementById('rf-name').value=m.name||'';
+  document.getElementById('rf-email').value=m.email||'';
+  document.getElementById('rf-coach').value=m.coach||'Dan';
+  document.getElementById('rf-dob').value=m.dob||'';
+  document.getElementById('retModalBg').classList.add('show');
+}
+function closeRetModal(){ document.getElementById('retModalBg').classList.remove('show'); }
+function saveRetMember(){
+  const name=document.getElementById('rf-name').value.trim();
+  if(!name){ alert('Add a name.'); return; }
+  const email=document.getElementById('rf-email').value.trim();
+  const coach=document.getElementById('rf-coach').value;
+  const dob=normalizeDob(document.getElementById('rf-dob').value);   // '' or nonsense -> null
+  if(retEditTarget){
+    const m=retention.find(x=>x.id===retEditTarget);
+    if(m){ m.name=name; m.email=email; m.coach=coach; m.dob=dob; }
+  }else{
+    retention.push({id:newClientId('r'), name, email, coach, dob,
+      personal:'', notes:'', joined:today0(), fromChallenger:null});
+  }
+  closeRetModal(); saveRetention(); renderAll();
+}
+function removeRetMember(id){
+  const m=retention.find(x=>x.id===id);
+  if(!confirm(`Remove ${m?m.name:'this member'}? This can’t be undone.`)) return;
+  retention=retention.filter(x=>x.id!==id); saveRetention(); renderAll();
 }
 
 /* ---------------- PLAYBOOK view ---------------- */
@@ -2298,25 +2644,133 @@ function stripTags(s){ return (s==null?'':String(s)).replace(/<[^>]*>/g,''); }
 
 function renderAll(){
   renderConvBar(); renderToday(); renderMembers(); renderBirthdays(); renderPlaybook();
+  renderRetentionMembers(); renderRetentionBirthdays();
   if(todayView==='table') renderMemberTable();
   const live = members.filter(m=>(status(m)==='live'||status(m)==='paused'||status(m)==='notstarted') && !isInactive(m)).length;
   document.getElementById('liveCount').textContent = live;
 }
 
+/* ---------------- Which tracker, and which tab within it ----------------
+   Two trackers over one app: Onboarding is the 42 days (everything that was here before),
+   Retention is full members. The choice is the outermost piece of state on the page — it
+   decides which tab bar and which set of views you see — so it is kept here rather than
+   inside either tracker.
+
+   It is SHARED, not per-device: its own row in the same Supabase table as the roster and the
+   member list, saved and picked up over the same realtime channel. So the app reopens on
+   whichever tracker the team was last using, on any device, and a tap on one phone moves
+   everyone. With a team this size that is the point — if Dan switches the gym over to
+   Retention, Ash's iPad is looking at the same thing. There is deliberately no local copy:
+   one row is the single source of truth. */
+const TRACKER_ROW_KEY = 'tracker';
+const TRACKER_TABS = {
+  onboarding:['today','members','birthdays','playbook'],
+  retention:['ret-members','ret-birthdays']      // attendance and the rest land here later
+};
+let tracker = 'onboarding';
+const activeTab = { onboarding:'today', retention:'ret-members' };
+
+/* What the row means. Stored as {tracker:"…"} so later shared UI state can join it there,
+   but a bare string is read too — and anything unrecognised is the onboarding tracker, so a
+   junk value can never leave somebody staring at a blank page. */
+function readTrackerValue(value){
+  const raw = value && typeof value === 'object' ? value.tracker : value;
+  return raw === 'retention' ? 'retention' : 'onboarding';
+}
+
+/* Push the choice, debounced and echo-guarded exactly like the two rosters. Unlike them it
+   fails QUIETLY: which tracker is on screen is not gym data, so a dropped write costs
+   nothing and does not deserve a red banner across everyone's app. */
+let trackerSaveTimer=null;
+let lastOwnTrackerWrite=0;
+function saveTracker(){
+  if(!sb) return;                       // local-only mode: the switch still works, it just doesn't travel
+  clearTimeout(trackerSaveTimer);
+  trackerSaveTimer = setTimeout(pushTrackerToCloud, 400);
+}
+async function pushTrackerToCloud(){
+  if(!sb) return;
+  const stamp = new Date().toISOString();
+  lastOwnTrackerWrite = Date.parse(stamp);
+  try{
+    const { error } = await sb.from('bodysculpt')
+      .upsert({ key: TRACKER_ROW_KEY, value: { tracker: tracker }, updated_at: stamp }, { onConflict: 'key' });
+    if(error) throw error;
+  }catch(e){
+    console.warn('Could not sync the tracker choice:', (e && e.message) || e);
+  }
+}
+
+/* Somebody else tapped the switch. Applied WITHOUT writing it back — that is what stops two
+   devices bouncing the row off each other — and without touching activeTab, so whichever tab
+   you were on inside each tracker is still the one you land on. An update that names the
+   tracker we are already on does nothing at all: no DOM work, no flicker, no loop. */
+function applySharedTracker(value){
+  const next = readTrackerValue(value);
+  if(next === tracker) return false;
+  setTracker(next, false);
+  return true;
+}
+
+/* Switch tracker. `remember` is false when we are FOLLOWING a change rather than making one
+   — restoring the shared choice at boot, or applying somebody else's tap. */
+function setTracker(which, remember){
+  tracker = which==='retention' ? 'retention' : 'onboarding';
+  Object.keys(TRACKER_TABS).forEach(k=>{
+    const nav=document.getElementById('nav-'+k);
+    if(nav) nav.classList.toggle('hide', k!==tracker);
+  });
+  const sw=document.getElementById('trackerSwitch');
+  if(sw && sw.querySelectorAll){
+    sw.querySelectorAll('button').forEach(b=>
+      b.setAttribute('aria-pressed', b.dataset.tracker===tracker ? 'true' : 'false'));
+  }
+  // the masthead's live count is a 42-days figure; it means nothing on the Retention side
+  const meta=document.getElementById('mastMeta');
+  if(meta) meta.classList.toggle('hide', tracker!=='onboarding');
+  const sub=document.getElementById('brandSub');
+  if(sub) sub.textContent = tracker==='retention' ? 'Warrington · member retention' : 'Warrington · membership journey';
+  setTab(tracker, activeTab[tracker]);
+  if(remember!==false) saveTracker();
+  return tracker;
+}
+
+/* Show one view within a tracker. Each tracker remembers its own tab, so switching across
+   and back puts you where you were. Views belonging to the other tracker are always cleared,
+   which is what keeps exactly one section on screen. */
+function setTab(which, view){
+  const tk = TRACKER_TABS[which] ? which : 'onboarding';
+  const tabs = TRACKER_TABS[tk];
+  if(tabs.indexOf(view)===-1) view = tabs[0];
+  activeTab[tk] = view;
+  Object.keys(TRACKER_TABS).forEach(k=>{
+    TRACKER_TABS[k].forEach(v=>{
+      const sec=document.getElementById('view-'+v);
+      if(sec) sec.classList.toggle('active', k===tracker && k===tk && v===view);
+    });
+  });
+  const nav=document.getElementById('tabs-'+tk);
+  if(nav && nav.querySelectorAll){
+    nav.querySelectorAll('button').forEach(b=>
+      b.setAttribute('aria-selected', b.dataset.view===view ? 'true' : 'false'));
+  }
+  return view;
+}
+
 /* tabs */
 document.querySelectorAll('nav.tabs button').forEach(b=>{
-  b.addEventListener('click',()=>{
-    document.querySelectorAll('nav.tabs button').forEach(x=>x.setAttribute('aria-selected','false'));
-    b.setAttribute('aria-selected','true');
-    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-    document.getElementById('view-'+b.dataset.view).classList.add('active');
-  });
+  b.addEventListener('click',()=> setTab(b.dataset.tracker||'onboarding', b.dataset.view));
 });
+/* Start on Onboarding with the DOM and the state in step; the shared choice arrives with the
+   rest of the data in bootData() and moves us if the team was last on Retention. */
+setTracker('onboarding', false);
+
 /* close modals on backdrop */
 document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
 document.getElementById('extBg').addEventListener('click',e=>{if(e.target.id==='extBg')closeExt();});
 document.getElementById('fuBg').addEventListener('click',e=>{if(e.target.id==='fuBg')closeFollowUp();});
 document.getElementById('importBg').addEventListener('click',e=>{if(e.target.id==='importBg')closeImport();});
+document.getElementById('retModalBg').addEventListener('click',e=>{if(e.target.id==='retModalBg')closeRetModal();});
 // backdrop-close still saves — nothing typed into notes is ever thrown away
 document.getElementById('notesBg').addEventListener('click',e=>{if(e.target.id==='notesBg')closeNotes();});
 

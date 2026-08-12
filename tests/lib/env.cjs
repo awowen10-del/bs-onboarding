@@ -29,6 +29,62 @@ function classListFor(el) {
   };
 }
 
+// A stand-in for the Supabase browser client — only the calls the app actually makes: one
+// select-in over the key/value table, upserts, and a realtime channel. Tests that ask for it
+// (with `cloud:`) drive the app's REAL cloud path: bootData pulls rows out of `table`, every
+// write lands in `upserts`, and `emit()` delivers a change the way the server would, so
+// "another coach tapped it on their phone" is something a test can actually do.
+function fakeCloud(seedRows) {
+  const table = new Map(Object.entries(seedRows || {}));   // key -> value (the JSON column)
+  const upserts = [];
+  const handlers = [];
+  const stamp = (k) => (table.has(k + "@t") ? table.get(k + "@t") : new Date(0).toISOString());
+
+  const client = {
+    from() {
+      return {
+        select() {
+          return {
+            in(col, keys) {
+              const data = keys.filter((k) => table.has(k))
+                .map((k) => ({ key: k, value: table.get(k), updated_at: stamp(k) }));
+              return Promise.resolve({ data, error: null });
+            },
+          };
+        },
+        upsert(row) {
+          upserts.push(JSON.parse(JSON.stringify(row)));
+          table.set(row.key, row.value);
+          if (row.updated_at) table.set(row.key + "@t", row.updated_at);
+          return Promise.resolve({ error: null });
+        },
+      };
+    },
+    channel() {
+      const ch = {
+        on(evt, opts, fn) { handlers.push({ filter: opts && opts.filter, fn }); return ch; },
+        subscribe() { return ch; },
+      };
+      return ch;
+    },
+  };
+
+  return {
+    client,
+    upserts,
+    table,
+    // what the app pushed for a given key, most recent last
+    writesTo: (key) => upserts.filter((u) => u.key === key),
+    lastWriteTo(key) { const w = this.writesTo(key); return w.length ? w[w.length - 1] : null; },
+    // deliver a realtime change for `key`, as another device's write would arrive
+    emit(key, value, updatedAt) {
+      const payload = { new: { key, value, updated_at: updatedAt || new Date().toISOString() } };
+      handlers.filter((h) => h.filter === "key=eq." + key).forEach((h) => h.fn(payload));
+    },
+    subscribedTo: () => handlers.map((h) => h.filter),
+  };
+}
+
 function fakeElement(id) {
   const attrs = {};
   const el = {
@@ -85,6 +141,10 @@ function fakeElement(id) {
 //   members  — roster the app boots with (written straight into the cache, i.e. what a
 //              returning device would have). Passed through the app's own migrateList.
 //   raw      — true: put `members` into the cache untouched, so migration itself is testable.
+//   cloud    — {rows} : install a stub Supabase client seeded with those key/value rows, so
+//              `await app.ctx.bootData()` runs the app's real connected path instead of the
+//              local-only one. Seed data through `rows`, not `members`, in a cloud test —
+//              bootData replaces the in-memory lists with what it pulls.
 function boot(opts = {}) {
   const store = new Map();
   const els = new Map();
@@ -129,6 +189,13 @@ function boot(opts = {}) {
     confirm: () => true,
     // no supabase global and no BSJ_CONFIG => the app's local-only path
   };
+  // …unless a test asked for the connected path, in which case both are in place before the
+  // app script runs, exactly as the two <script> tags in the page put them there.
+  const cloud = opts.cloud ? fakeCloud(opts.cloud.rows) : null;
+  if (cloud) {
+    ctx.BSJ_CONFIG = { SUPABASE_URL: "https://test.supabase.co", SUPABASE_ANON_KEY: "test-anon-key", GYM_PASSWORD: "x" };
+    ctx.supabase = { createClient: () => cloud.client };
+  }
   ctx.window = ctx;
   ctx.globalThis = ctx;
   vm.createContext(ctx);
@@ -138,10 +205,19 @@ function boot(opts = {}) {
   const src = extract() + `
 ;globalThis.__t = {
   get members(){ return members; }, set members(v){ members = v; },
+  get retention(){ return retention; }, set retention(v){ retention = v; },
+  get tracker(){ return tracker; },
+  get activeTab(){ return activeTab; },
   get notesTarget(){ return notesTarget; },
   get fuTarget(){ return fuTarget; },
-  get CACHE(){ return CACHE; }
+  get CACHE(){ return CACHE; },
+  get RET_CACHE(){ return RET_CACHE; }
 };`;
+  // localStorage as it is BEFORE the app script runs — a returning device. The app reads
+  // some keys (the theme, which tracker you were last on) at load, so they have to be in
+  // place first, not written afterwards.
+  for (const [k, v] of Object.entries(opts.stored || {})) store.set(k, String(v));
+
   vm.runInContext(src, ctx, { filename: "index.html<script>" });
 
   // The Challengers list is filtered by two live controls; give them the values a freshly
@@ -151,12 +227,17 @@ function boot(opts = {}) {
 
   const seed = opts.members || [];
   ctx.__t.members = opts.raw ? seed : ctx.migrateList(JSON.parse(JSON.stringify(seed)));
+  // The retention tracker's own roster — the second list in the same backend. Seeded the
+  // same way, through the app's own migration, so a test boots the state a real device has.
+  const retSeed = opts.retention || [];
+  ctx.__t.retention = opts.raw ? retSeed : ctx.migrateRetentionList(JSON.parse(JSON.stringify(retSeed)));
   if (opts.render !== false) ctx.renderAll();
 
   return {
     ctx,
     els,
     alerts,
+    cloud,
     execCommands,
     setFormatBlock(v) { formatBlockValue = v; },
     el: (id) => doc.getElementById(id),
@@ -166,6 +247,13 @@ function boot(opts = {}) {
     cached: () => JSON.parse(store.get(ctx.__t.CACHE) || "[]"),
     members: () => ctx.__t.members,
     find: (id) => ctx.__t.members.find((m) => m.id === id),
+    // the retention tracker's equivalents — its own list, its own cache blob
+    retentionCached: () => JSON.parse(store.get(ctx.__t.RET_CACHE) || "[]"),
+    retention: () => ctx.__t.retention,
+    findMember: (id) => ctx.__t.retention.find((m) => m.id === id),
+    // what localStorage holds, for the keys the app persists outside the rosters
+    stored: (k) => (store.has(k) ? store.get(k) : null),
+    setStored: (k, v) => store.set(k, String(v)),
   };
 }
 
@@ -181,4 +269,7 @@ function dateInput(ts) {
   return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
 }
 
-module.exports = { boot, daysFromToday, dateInput };
+// let a debounced write (save(), saveRetention(), saveTracker() — all 400ms) actually land
+const settle = (ms) => new Promise((r) => setTimeout(r, ms === undefined ? 500 : ms));
+
+module.exports = { boot, daysFromToday, dateInput, settle };

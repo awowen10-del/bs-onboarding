@@ -130,22 +130,59 @@
   .home{padding:6px 0 4px}
   .home-lead{font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-dim);
     font-weight:800;margin-bottom:16px}
-  .home-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .home-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+
+  /* Each card carries its OWN accent as three local variables, so every accented part below
+     — rule, icon, hover border, "Enter" — is written once and follows whichever card it is
+     on. The values are the theme's existing tokens: the brand accent for Onboarding, green
+     for Retention. Green has no -soft partner in the palette, so it doubles as its own. */
+  .home-card{--accent:var(--orange); --accent-soft:var(--orange-soft); --accent-rgb:var(--orange-rgb)}
+  .home-card.hc-retention{--accent:var(--green); --accent-soft:var(--green); --accent-rgb:var(--green-rgb)}
+
   .home-card{appearance:none;cursor:pointer;font-family:inherit;text-align:left;
-    display:flex;flex-direction:column;justify-content:flex-end;gap:5px;min-height:168px;
-    background:linear-gradient(135deg,var(--card),var(--card-2));border:1px solid var(--line);
-    border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 26px 24px;
-    position:relative;overflow:hidden;
-    transition:transform .12s ease,border-color .15s ease}
+    display:flex;flex-direction:column;align-items:flex-start;min-height:212px;
+    /* the card's own tone, with a breath of its accent pooling in the top-left corner */
+    background:radial-gradient(115% 95% at 0% 0%, rgba(var(--accent-rgb),.10), transparent 62%),
+               linear-gradient(135deg,var(--card),var(--card-2));
+    border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:24px 26px;position:relative;overflow:hidden;
+    transition:transform .14s ease,border-color .16s ease,box-shadow .16s ease}
   .home-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;
-    background:linear-gradient(var(--orange),var(--orange-soft))}
-  .home-card:hover{border-color:var(--orange);transform:translateY(-2px)}
-  .home-card:active{transform:translateY(0)}
-  .home-card .ht{font-size:26px;font-weight:800;letter-spacing:-.5px;color:var(--ink);font-family:var(--display);line-height:1.1}
+    background:linear-gradient(rgba(var(--accent-rgb),1),rgba(var(--accent-rgb),.5))}
+
+  /* the icon sits in a tinted badge at the top; margin-bottom:auto drops the words to the
+     foot of the card, so both cards' titles line up however tall they end up */
+  .home-card .hicon{width:50px;height:50px;border-radius:15px;margin-bottom:auto;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;color:var(--accent);
+    background:rgba(var(--accent-rgb),.13);border:1px solid rgba(var(--accent-rgb),.30);
+    transition:background .16s ease,color .16s ease,border-color .16s ease}
+  .home-card .hicon svg{width:28px;height:28px;display:block;pointer-events:none}
+  .home-card .htxt{display:flex;flex-direction:column;gap:3px;margin-top:22px}
+  .home-card .ht{font-size:27px;font-weight:800;letter-spacing:-.5px;color:var(--ink);font-family:var(--display);line-height:1.1}
   .home-card .hs{font-size:14px;color:var(--ink-dim);font-weight:600}
-  .home-card .hgo{margin-top:11px;font-size:11px;font-weight:800;letter-spacing:.06em;
-    text-transform:uppercase;color:var(--orange-soft)}
-  @media (max-width:640px){ .home-grid{grid-template-columns:1fr} .home-card{min-height:120px;padding:22px} }
+  .home-card .hgo{margin-top:13px;font-size:11px;font-weight:800;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--accent-soft);display:flex;align-items:center;gap:6px}
+  .home-card .harrow{transition:transform .16s ease}
+
+  /* hover lifts the card and lights the badge; press settles it back down */
+  .home-card:hover{transform:translateY(-3px);border-color:rgba(var(--accent-rgb),.55);
+    box-shadow:0 16px 34px rgba(var(--shadow-rgb),.42)}
+  .home-card:hover .hicon{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+  .home-card:hover .harrow{transform:translateX(3px)}
+  .home-card:active{transform:translateY(-1px);box-shadow:var(--shadow)}
+  .home-card:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+  @media (max-width:640px){
+    .home-grid{grid-template-columns:1fr;gap:14px}
+    /* on a phone the card lies down: badge on the left, words beside it, no wasted height */
+    .home-card{display:grid;grid-template-columns:auto 1fr;align-items:center;
+      column-gap:15px;min-height:0;padding:20px 22px}
+    .home-card .hicon{width:46px;height:46px;border-radius:14px;margin-bottom:0}
+    .home-card .hicon svg{width:24px;height:24px}
+    .home-card .htxt{margin-top:0}
+    .home-card .ht{font-size:23px}
+    .home-card .hgo{grid-column:2;margin-top:9px}
+  }
 
   /* ---------- Tabs (matches .viewtoggle) ---------- */
   nav.tabs{display:inline-flex;gap:4px;background:var(--navy-2);border:1px solid var(--line);
@@ -630,15 +667,36 @@
   <section class="home" id="homeScreen">
     <div class="home-lead">Which tracker?</div>
     <div class="home-grid">
-      <button type="button" class="home-card" onclick="enterTracker('onboarding')">
-        <span class="ht">Onboarding</span>
-        <span class="hs">The First 42 Days</span>
-        <span class="hgo">Enter →</span>
+      <!-- The whole card is the button. The icons are inline line-art in the same family as
+           the notes icon — 24-unit box, 2px round stroke, currentColor — so they inherit
+           each card's accent. A sprout for the beginning; a heart for what comes after. -->
+      <button type="button" class="home-card hc-onboarding" onclick="enterTracker('onboarding')">
+        <span class="hicon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" focusable="false">
+            <path d="M12 21v-8.2"/>
+            <path d="M12 12.8C12 9.3 9.1 6.4 5.6 6.4c0 3.5 2.9 6.4 6.4 6.4Z"/>
+            <path d="M12 12.8c0-4.1 3.3-7.4 7.4-7.4 0 4.1-3.3 7.4-7.4 7.4Z"/>
+          </svg>
+        </span>
+        <span class="htxt">
+          <span class="ht">Onboarding</span>
+          <span class="hs">The First 42 Days</span>
+        </span>
+        <span class="hgo">Enter <span class="harrow">→</span></span>
       </button>
-      <button type="button" class="home-card" onclick="enterTracker('retention')">
-        <span class="ht">Retention</span>
-        <span class="hs">Every day after</span>
-        <span class="hgo">Enter →</span>
+      <button type="button" class="home-card hc-retention" onclick="enterTracker('retention')">
+        <span class="hicon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" focusable="false">
+            <path d="M20.4 5.6a5.2 5.2 0 0 0-7.4 0L12 6.6l-1-1a5.2 5.2 0 1 0-7.4 7.4l1 1L12 21.4l7.4-7.4 1-1a5.2 5.2 0 0 0 0-7.4Z"/>
+          </svg>
+        </span>
+        <span class="htxt">
+          <span class="ht">Retention</span>
+          <span class="hs">Every day after</span>
+        </span>
+        <span class="hgo">Enter <span class="harrow">→</span></span>
       </button>
     </div>
   </section>

@@ -61,6 +61,26 @@ function member(id, name, extra) {
   assert.ok(/Onboarding<[\s\S]*?The First 42 Days/.test(home), "Onboarding — The First 42 Days");
   assert.ok(/Retention<[\s\S]*?Every day after/.test(home), "Retention — Every day after");
   assert.ok(!/class="view[^"]*active/.test(HTML), "and no view is marked active in the markup either");
+
+  // the whole card is the target, not just the "Enter" line
+  const buttons = home.match(/<button[^>]*class="home-card[^"]*"[^>]*>/g) || [];
+  assert.strictEqual(buttons.length, 2, "each card is one button");
+  buttons.forEach((b) => assert.ok(/onclick="enterTracker\('(onboarding|retention)'\)"/.test(b),
+    "…that enters its tracker: " + b));
+  assert.ok(/class="home-card hc-onboarding"/.test(home) && /class="home-card hc-retention"/.test(home),
+    "…and carries its own accent class");
+
+  // an icon drawn in the page — no library, no network
+  assert.strictEqual((home.match(/<svg /g) || []).length, 2, "an inline icon on each card");
+  assert.ok(!/<img|src=/.test(home), "…nothing fetched from anywhere");
+  assert.strictEqual((home.match(/stroke="currentColor"/g) || []).length, 2,
+    "…drawn in currentColor, so each icon takes its card's accent");
+
+  // the two accents are existing theme tokens, not new colours
+  const css = HTML.slice(HTML.indexOf("/* ---------- Home screen"), HTML.indexOf("/* ---------- Tabs"));
+  assert.ok(/--accent:var\(--orange\)/.test(css), "Onboarding rides the brand accent");
+  assert.ok(/--accent:var\(--green\)/.test(css), "Retention rides the green one");
+  assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(css), "the home screen introduces no hard-coded colour");
 }
 
 /* ---------- 2: entering a tracker, and getting back out ---------- */

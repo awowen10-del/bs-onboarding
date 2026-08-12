@@ -211,7 +211,12 @@ function boot(opts = {}) {
   get notesTarget(){ return notesTarget; },
   get fuTarget(){ return fuTarget; },
   get CACHE(){ return CACHE; },
-  get RET_CACHE(){ return RET_CACHE; }
+  get RET_CACHE(){ return RET_CACHE; },
+  // the journey definitions — top-level consts, so not properties of the vm global either
+  get JOURNEY(){ return JOURNEY; },
+  get TABLE_COLS(){ return TABLE_COLS; },
+  get MEMBER_JOURNEY(){ return MEMBER_JOURNEY; },
+  get MEMBER_COLS(){ return MEMBER_COLS; }
 };`;
   // localStorage as it is BEFORE the app script runs — a returning device. The app reads a
   // key or two at load (the theme), so they have to be in place first, not written after.

@@ -44,7 +44,7 @@ function member(id, name, extra) {
   assert.strictEqual(app.el("homeScreen").classList.contains("hide"), false, "the home screen is what you see");
   assert.strictEqual(app.el("nav-onboarding").classList.contains("hide"), true, "…with neither tab bar");
   assert.strictEqual(app.el("nav-retention").classList.contains("hide"), true);
-  ["today", "members", "birthdays", "playbook", "ret-members", "ret-birthdays"].forEach((v) =>
+  ["today", "members", "birthdays", "playbook", "ret-today", "ret-members", "ret-birthdays"].forEach((v) =>
     assert.strictEqual(app.el("view-" + v).classList.contains("active"), false,
       "no view is showing behind the home screen: " + v));
   assert.strictEqual(app.el("homeBtn").classList.contains("hide"), true, "nothing to go back to yet");
@@ -111,7 +111,9 @@ function member(id, name, extra) {
 
   app.ctx.enterTracker("retention");
   assert.strictEqual(app.ctx.__t.tracker, "retention", "…so the other one can be picked");
-  assert.strictEqual(app.el("view-ret-members").classList.contains("active"), true, "Members leads Retention");
+  assert.strictEqual(app.el("view-ret-today").classList.contains("active"), true,
+    "Today's moves leads Retention, the same way it leads Onboarding");
+  assert.strictEqual(app.el("view-ret-members").classList.contains("active"), false);
   assert.strictEqual(app.el("view-today").classList.contains("active"), false);
   assert.strictEqual(app.el("nav-retention").classList.contains("hide"), false);
   assert.strictEqual(app.el("nav-onboarding").classList.contains("hide"), true);
@@ -185,7 +187,7 @@ function member(id, name, extra) {
     "…and the retention side remembers its own tab too");
 
   // a tab that doesn't belong to a tracker can't strand you on a blank page
-  assert.strictEqual(app.ctx.setTab("retention", "playbook"), "ret-members");
+  assert.strictEqual(app.ctx.setTab("retention", "playbook"), "ret-today");
   assert.strictEqual(app.ctx.setTab("onboarding", "ret-members"), "today");
   // …and going home leaves both remembered tabs alone
   app.ctx.setTab("onboarding", "birthdays");
@@ -251,7 +253,11 @@ function member(id, name, extra) {
   assert.strictEqual(m.dob, null);
   assert.strictEqual(m.joined, null);
   assert.strictEqual(m.fromChallenger, null);
-  for (const k of ["name", "email", "coach", "notes", "dob"]) {
+  // member-journey progress, tracked the same way a challenger's is
+  assert.deepStrictEqual([...m.completed], [], "no touchpoints done yet");
+  assert.deepStrictEqual([...m.missed], []);
+  assert.deepStrictEqual({ ...m.doneMeta }, {});
+  for (const k of ["name", "email", "coach", "notes", "dob", "completed", "missed", "doneMeta"]) {
     assert.ok(k in m, "core field " + k + " is present");
     assert.notStrictEqual(m[k], undefined, "core field " + k + " is never undefined");
   }
@@ -259,7 +265,8 @@ function member(id, name, extra) {
   // re-running it changes nothing
   const full = { id: "keep", name: "Keep Me", email: "k@example.com", coach: "Gaz",
     personal: "half marathon in May", notes: "<b>knee</b>", dob: "1988-02-29",
-    joined: daysFromToday(-100), fromChallenger: "c9" };
+    joined: daysFromToday(-100), fromChallenger: "c9",
+    completed: ["welcome_card"], missed: ["day30"], doneMeta: { welcome_card: "3 Jun" } };
   const once = migrateRetentionList([{ ...full }]);
   const twice = migrateRetentionList(JSON.parse(JSON.stringify(once)));
   assert.deepStrictEqual(twice[0], full, "migration is idempotent and clobbers nothing");
@@ -600,7 +607,7 @@ async function cloudTests() {
     app.cloud.emit("retention", [member("r9", "Also From Elsewhere")], later());
     assert.ok(app.html("retMemberList").includes("Also From Elsewhere"), "…and incoming member changes");
     assert.strictEqual(app.ctx.__t.tracker, "retention", "…without moving you anywhere");
-    assert.strictEqual(app.el("view-ret-members").classList.contains("active"), true,
+    assert.strictEqual(app.el("view-ret-today").classList.contains("active"), true,
       "…or knocking you off the tab you were on");
   }
 }

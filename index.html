@@ -467,6 +467,8 @@
   /* ---------- Member table (mirrors the sheet) ---------- */
   .tbl-scroll{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);overflow-x:auto;-webkit-overflow-scrolling:touch}
   table.journey{border-collapse:collapse;width:100%;font-size:12.5px;min-width:760px}
+  /* the member journey is four columns, not ten — it needs nowhere near the same floor */
+  table.journey.member-journey{min-width:460px}
   table.journey th,table.journey td{padding:9px 7px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
   table.journey thead th{position:sticky;top:0;background:var(--card-2);color:var(--ink-dim);font-weight:700;
     font-size:11px;letter-spacing:.04em;text-transform:uppercase;z-index:1}
@@ -710,7 +712,8 @@
   <div class="wrap hide" id="nav-retention">
     <!-- More tabs land here as the retention tracker grows (attendance, check-ins, …) -->
     <nav class="tabs" id="tabs-retention" data-tracker="retention" role="tablist">
-      <button role="tab" aria-selected="true" data-tracker="retention" data-view="ret-members">Members <span class="count tally" id="retCount">0</span></button>
+      <button role="tab" aria-selected="true" data-tracker="retention" data-view="ret-today">Today's moves <span class="count" id="retTodayCount">0</span></button>
+      <button role="tab" aria-selected="false" data-tracker="retention" data-view="ret-members">Members <span class="count tally" id="retCount">0</span></button>
       <button role="tab" aria-selected="false" data-tracker="retention" data-view="ret-birthdays">Birthdays</button>
     </nav>
   </div>
@@ -833,6 +836,26 @@
        Stage one is the shell: the roster and the birthdays that read off it.
        Attendance, check-ins and the onboarding→retention handoff come later.
        ============================================================ -->
+
+  <!-- ===== RETENTION · TODAY'S MOVES ===== -->
+  <section class="view" id="view-ret-today" data-tracker="retention">
+    <div class="sec-head">
+      <h2>Today's moves</h2>
+    </div>
+    <p class="sub" style="margin-top:-2px;margin-bottom:14px">Every member, sorted by what they need from us right now. The journey runs from the day they joined — a welcome card straight away, Gaz checking in at 30 and 60 days, and a gift when they hit a year.</p>
+    <div class="viewtoggle" id="retTodayViewToggle">
+      <button class="vt active" data-tview="moves" onclick="setRetTodayView('moves')">Today's moves</button>
+      <button class="vt" data-tview="table" onclick="setRetTodayView('table')">Whole journey</button>
+    </div>
+    <div id="retTodayMoves" style="margin-top:14px">
+      <div class="day-banner">
+        <span class="dot"></span>
+        <span class="txt" id="retTodayBanner">Loading…</span>
+      </div>
+      <div id="retTodayList"></div>
+    </div>
+    <div id="retTodayTable" class="hide" style="margin-top:14px"></div>
+  </section>
 
   <!-- ===== RETENTION · MEMBERS ===== -->
   <section class="view" id="view-ret-members" data-tracker="retention">
@@ -1077,8 +1100,10 @@ const JOURNEY = [
    what:'Voice note check-in. Warm, reference their effort, give a <b>named win</b>, set a focus for the week.'},
   {day:35, id:'wk6', ch:'digital', title:'Start of Week 6 check-in', owner:'coach', phase:'journey', win:true,
    what:'Final week check-in. Celebrate how far they’ve come, give a <b>named win</b>, and set up the where-next chat from a place of genuine care.'},
-  {day:43, id:'welcome_card', ch:'physical', title:'Welcome card — IF they stay 🎉', owner:'team', phase:'signup', conditional:'signedUp',
-   what:'Only once they’ve <b>stayed on as a member</b>. Send a welcome card to mark them properly joining the Bodysculpt family.'},
+  /* The welcome card used to sit here, at day 43, conditional on signing up. It is now the
+     FIRST touchpoint of the member journey instead (MEMBER_JOURNEY, below) — it belongs to
+     the day somebody becomes a member, which is the retention tracker's business, not the
+     42 days'. Nothing else in the onboarding journey moved. */
   {day:72, id:'month1', ch:'digital', title:'Month 1 follow-up', owner:'coach', phase:'member', conditional:'signedUp',
    what:'~30 days after they join. Check how month one as a full member has gone — anything they want to tweak?'},
   {day:103, id:'month2', ch:'digital', title:'Month 2 follow-up', owner:'coach', phase:'member', conditional:'signedUp',
@@ -1131,8 +1156,8 @@ function welcomeMsgPlainText(m){
 }
 
 /* Table column order — mirrors the Google sheet left-to-right */
-const TABLE_COLS = ['intro','d1_text','d3_postcard','wk2','wk3','wk4','wk5','wk6','welcome_card','month1','month2'];
-const COL_LABEL = {intro:'Intro',d1_text:'Text',d3_postcard:'Postcard',wk2:'Wk2',wk3:'Wk3',wk4:'Wk4',wk5:'Wk5',wk6:'Wk6',welcome_card:'Card',month1:'Mth1',month2:'Mth2'};
+const TABLE_COLS = ['intro','d1_text','d3_postcard','wk2','wk3','wk4','wk5','wk6','month1','month2'];
+const COL_LABEL = {intro:'Intro',d1_text:'Text',d3_postcard:'Postcard',wk2:'Wk2',wk3:'Wk3',wk4:'Wk4',wk5:'Wk5',wk6:'Wk6',month1:'Mth1',month2:'Mth2'};
 
 /* ---------------- state + persistence (Supabase-backed) ---------------- */
 let members = [];          // in-memory working copy; all journey logic uses this
@@ -1192,6 +1217,12 @@ function migrateRetentionList(arr){
     // member, and the challenger record they were promoted from.
     if(m.joined===undefined) m.joined = null;   // timestamp (local midnight) or null
     if(m.fromChallenger===undefined) m.fromChallenger = null;
+    // Member-journey progress, tracked exactly as a challenger's is: keyed by touchpoint id.
+    // Absent on every member created before the member journey existed, so all three default
+    // to empty and nobody arrives with a journey half-done.
+    if(m.completed===undefined) m.completed = [];
+    if(m.missed===undefined) m.missed = [];
+    if(m.doneMeta===undefined) m.doneMeta = {};
   });
   return arr;
 }
@@ -1444,11 +1475,6 @@ function dueToday(m){
       if(!isHandled(m,it.id) && status(m)!=='done') out.push(it);
       return;
     }
-    if(it.id==='welcome_card'){
-      // once signed up, the card is due until sent (regardless of day)
-      if(!isHandled(m,it.id)) out.push(it);
-      return;
-    }
     if(it.phase==='member'){
       // Month 1/2 follow-ups happen AFTER the 6 weeks, so they fire even though
       // status is 'done'. Conditional on signedUp (handled above). Day-gated with grace.
@@ -1553,9 +1579,7 @@ function renderToday(){
       const {m,item,key,overdue}=r;
       const chClass = item.ch==='inperson'?'inperson':item.ch;
       const cd = currentDay(m);
-      const dayLabel = item.phase==='intro' ? 'Pre-start'
-                     : item.id==='welcome_card' ? 'Signed up'
-                     : 'Day '+cd;
+      const dayLabel = item.phase==='intro' ? 'Pre-start' : 'Day '+cd;
       // build the expandable detail (the action, plus a checklist where there is one)
       const cl = item.checklist ? buildChecklist(m,item) : '';
       const seedBlock = item.seed ? `<div class="seed-line">
@@ -1820,8 +1844,12 @@ function toggleCheck(mid,iid,i){
   if(el) el.classList.add('open');
 }
 
-function toggleDone(id,key,val){
-  const m = members.find(x=>x.id===id); if(!m) return;
+/* ---- Marking a touchpoint, on a challenger or on a member ----
+   Completion is tracked identically on both: a `completed` list, a `missed` list and a
+   `doneMeta` map of when it was done, all keyed by touchpoint id. So the mutation itself
+   knows nothing about which tracker it is on — only the lookup and the save path differ,
+   which is what the wrappers underneath supply. */
+function markTouchpointDone(m,key,val){
   m.completed = m.completed||[];
   m.doneMeta = m.doneMeta||{};
   m.missed = m.missed||[];
@@ -1833,18 +1861,32 @@ function toggleDone(id,key,val){
     m.completed = m.completed.filter(k=>k!==key);
     delete m.doneMeta[key];
   }
-  save(); renderAll();
 }
-
-/* Mark a task as genuinely missed — clears it off Today, shows a red ✕ on the grid */
-function markMissed(id,key){
-  const m = members.find(x=>x.id===id); if(!m) return;
+/* Genuinely missed — clears it off Today, shows a red ✕ on the grid */
+function markTouchpointMissed(m,key){
   m.missed = m.missed||[];
   m.completed = m.completed||[];
   m.doneMeta = m.doneMeta||{};
   if(!m.missed.includes(key)) m.missed.push(key);
   m.completed = m.completed.filter(k=>k!==key);   // can't be both
   delete m.doneMeta[key];
+}
+/* Tapping a grid cell cycles it: (empty) → done → missed → (empty) */
+function cycleTouchpoint(m,key){
+  m.completed = m.completed||[]; m.missed = m.missed||[]; m.doneMeta = m.doneMeta||{};
+  if(m.completed.includes(key)){ markTouchpointDone(m,key,false); markTouchpointMissed(m,key); }
+  else if(m.missed.includes(key)) m.missed = m.missed.filter(k=>k!==key);
+  else markTouchpointDone(m,key,true);
+}
+
+function toggleDone(id,key,val){
+  const m = members.find(x=>x.id===id); if(!m) return;
+  markTouchpointDone(m,key,val);
+  save(); renderAll();
+}
+function markMissed(id,key){
+  const m = members.find(x=>x.id===id); if(!m) return;
+  markTouchpointMissed(m,key);
   save(); renderAll();
 }
 
@@ -2001,7 +2043,6 @@ function cellStatus(m,it){
   if(status(m)==='paused') return 'future';
   const cd = currentDay(m);
   if(it.phase==='intro') return cd>3 ? 'overdue' : 'due';
-  if(it.id==='welcome_card') return 'due';
   const ed = effectiveDay(it,m);
   if(cd < ed) return 'future';
   if(cd <= ed + 7) return 'due';     // within grace window
@@ -2056,19 +2097,7 @@ function renderMemberTable(){
 }
 function tableCellTap(mid,iid){
   const m=members.find(x=>x.id===mid); if(!m) return;
-  m.completed=m.completed||[]; m.doneMeta=m.doneMeta||{}; m.missed=m.missed||[];
-  const done = m.completed.includes(iid);
-  const missed = m.missed.includes(iid);
-  // cycle: (empty) -> done -> missed -> (empty)
-  if(!done && !missed){
-    m.completed.push(iid);
-    m.doneMeta[iid]=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-  }else if(done){
-    m.completed=m.completed.filter(k=>k!==iid); delete m.doneMeta[iid];
-    m.missed.push(iid);
-  }else{ // missed -> clear
-    m.missed=m.missed.filter(k=>k!==iid);
-  }
+  cycleTouchpoint(m,iid);
   save(); renderAll();
 }
 
@@ -2083,8 +2112,6 @@ function setOutcome(id,outcome){
     m.signedUp = false;           // inactive: no member touchpoints
   }else{ // undecided / undo
     m.signedUp = false;
-    m.completed=(m.completed||[]).filter(k=>k!=='welcome_card');
-    if(m.doneMeta) delete m.doneMeta['welcome_card'];
   }
   // A scheduled follow-up only makes sense for someone who has left. Changing the decision
   // to "stayed", or undoing it entirely, takes the reminder off Today with it.
@@ -2125,7 +2152,8 @@ function handOffToRetention(m){
     notes: m.notes || '',                     // the shared document travels with them
     dob: m.dob || null,
     joined: today0(),                         // the anchor for day-30, day-60, anniversaries
-    fromChallenger: m.id
+    fromChallenger: m.id,
+    completed: [], missed: [], doneMeta: {}   // their member journey starts here, at day 0
   };
   retention.push(member);
   saveRetention();                            // its own list, its own row, its own sync
@@ -2696,6 +2724,192 @@ function birthdaysHtml(roster, opts){
   return html;
 }
 
+/* ---------------- THE MEMBER JOURNEY ----------------
+   The retention tracker's answer to JOURNEY. Same shape, same ids-as-keys, same completed /
+   missed / doneMeta tracking — so isDone, isMissed, isHandled, markTouchpointDone,
+   markTouchpointMissed, cycleTouchpoint and toggleExpand all work on a member exactly as
+   they work on a challenger, and only the anchor and the renderers are new.
+
+   The anchor is `joined`: the day they became a member, which for anyone who came through
+   the handoff is the day they were marked "Stayed on". A member with no joined date has no
+   journey — nothing is due, rather than everything being due since 1970.
+
+   `grace` is how long a touchpoint keeps asking after its day, and it is per-touchpoint here
+   rather than the one-size window the onboarding journey uses: a voice note that is three
+   weeks late has been missed, but a welcome card that has not been sent is still a welcome
+   card that needs sending. grace:null means it never expires — it stays on Today until
+   somebody marks it done or missed. */
+const MEMBER_JOURNEY = [
+  {day:0, id:'welcome_card', ch:'physical', title:'Welcome card', owner:'team', grace:null,
+   what:'They have just joined. Send a welcome card to their house to mark them properly joining the Bodysculpt family — the first thing that happens to them as a member.'},
+  {day:30, id:'day30', ch:'digital', title:'Day 30 check-in — voice note from Gaz', owner:'Gaz', grace:14,
+   what:'A personal voice note from <b>Gaz</b>. A month in as a full member: how are they finding it, what has changed, anything they want to tweak? Warm and specific, not a survey.'},
+  {day:60, id:'day60', ch:'digital', title:'Day 60 check-in — voice note from Gaz', owner:'Gaz', grace:14,
+   what:'A personal voice note from <b>Gaz</b>. Two months in — embed the habit, head off any wobble before it becomes a cancellation, and look at what is next for them.'},
+  {day:365, id:'anniversary', ch:'physical', title:'1-year anniversary gift', owner:'team', grace:30,
+   what:'A year with us. Send an anniversary gift to mark it — a full year is a genuine achievement and most gyms let it pass in silence.'},
+];
+const MEMBER_COLS = MEMBER_JOURNEY.map(it=>it.id);
+const MEMBER_COL_LABEL = {welcome_card:'Card', day30:'Day 30', day60:'Day 60', anniversary:'1 year'};
+
+/* Their journey has begun the moment they have a joined date. */
+function memberStarted(m){ return !!(m && m.joined); }
+/* Days since they joined. Rounded, not floored: the two clock changes a year make a
+   midnight-to-midnight span 23 or 25 hours long, and over a 365-day anchor a floor would
+   quietly slide the anniversary a day early. */
+function memberDay(m){
+  if(!memberStarted(m)) return 0;
+  return Math.max(0, Math.round((today0() - m.joined)/MS_DAY));
+}
+function memberEffectiveGraceEnd(it){ return it.grace==null ? Infinity : it.day + it.grace; }
+
+/* What this member needs from us today — the member journey's dueToday(). */
+function memberDueToday(m){
+  if(!memberStarted(m)) return [];
+  const cd = memberDay(m);
+  return MEMBER_JOURNEY.filter(it=>
+    !isHandled(m,it.id) && cd >= it.day && cd <= memberEffectiveGraceEnd(it));
+}
+/* …and the member journey's cellStatus(), for the whole-journey grid. */
+function memberCellStatus(m,it){
+  if(isMissed(m,it.id)) return 'missed';
+  if(isDone(m,it.id)) return 'done';
+  if(!memberStarted(m)) return 'future';
+  const cd = memberDay(m);
+  if(cd < it.day) return 'future';
+  return cd <= memberEffectiveGraceEnd(it) ? 'due' : 'overdue';
+}
+
+/* Done / Missed, the same two buttons as Today's moves on the onboarding side — the record
+   mutation is shared, only the list and the save path are the member list's own. */
+function retToggleDone(id,key,val){
+  const m = retention.find(x=>x.id===id); if(!m) return;
+  markTouchpointDone(m,key,val);
+  saveRetention(); renderAll();
+}
+function retMarkMissed(id,key){
+  const m = retention.find(x=>x.id===id); if(!m) return;
+  markTouchpointMissed(m,key);
+  saveRetention(); renderAll();
+}
+function retTableCellTap(mid,iid){
+  const m=retention.find(x=>x.id===mid); if(!m) return;
+  cycleTouchpoint(m,iid);
+  saveRetention(); renderAll();
+}
+
+/* ---------------- RETENTION · TODAY'S MOVES ----------------
+   The same surface as the onboarding tracker's: a banner, then the due touchpoints grouped
+   by channel, each an .action row with Done and Missed. Deliberately the same components and
+   the same words, because it is the same job on a different set of people. */
+let retTodayView = 'moves';
+function setRetTodayView(v){
+  retTodayView = v;
+  document.querySelectorAll('#retTodayViewToggle .vt').forEach(b=>b.classList.toggle('active', b.dataset.tview===v));
+  document.getElementById('retTodayMoves').classList.toggle('hide', v!=='moves');
+  document.getElementById('retTodayTable').classList.toggle('hide', v!=='table');
+  if(v==='table') renderRetentionTable();
+}
+
+function renderRetentionToday(){
+  const banner = document.getElementById('retTodayBanner');
+  const list = document.getElementById('retTodayList');
+  if(!banner || !list) return;
+
+  const live = retention.filter(memberStarted).length;
+  banner.innerHTML = `It’s <strong>${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</strong>. `+
+    `<strong>${live}</strong> member${live===1?'':'s'} with us right now.`;
+
+  let rows = [];
+  retention.forEach(m=>{
+    memberDueToday(m).forEach(item=>{
+      rows.push({m, item, overdue: memberDay(m) > item.day});
+    });
+  });
+  const order = {physical:0, inperson:1, digital:2};
+  rows.sort((a,b)=> order[a.item.ch]-order[b.item.ch] || a.item.day-b.item.day);
+
+  const tally = document.getElementById('retTodayCount');
+  if(tally) tally.textContent = rows.length;
+
+  if(!rows.length){
+    list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
+      Nothing due for a member right now. The quiet weeks are the ones that keep people — check the Members tab to see where everyone sits.</div>`;
+    return;
+  }
+
+  const groups = [
+    ['physical','Cards & gifts to send', r=>r.item.ch==='physical'],
+    ['digital','Voice notes & check-ins', r=>r.item.ch==='digital'],
+  ];
+  let html='';
+  groups.forEach(([gid,label,test])=>{
+    const g = rows.filter(test);
+    if(!g.length) return;
+    html += `<div class="group-label">${label}<span class="gcount">${g.length}</span></div>`;
+    g.forEach(({m,item,overdue})=>{
+      const chClass = item.ch==='inperson'?'inperson':item.ch;
+      html += `<div class="action ${chClass}" id="act-${m.id}-${item.id}">
+        <span class="ch ${chClass}">${CH_LABEL[item.ch]}</span>
+        <div class="body" onclick="toggleExpand('${m.id}','${item.id}')">
+          <div class="who">
+            <span class="nm">${esc(m.name)}</span>${notesBtn(m)}
+            <span class="ttl">${esc(item.title)}</span>
+            <span class="day">Day ${memberDay(m)}</span>
+            ${overdue?'<span class="overdue">Overdue</span>':''}
+          </div>
+          <div class="detail">${esc(stripTags(item.what))}</div>
+        </div>
+        <span class="chev" onclick="toggleExpand('${m.id}','${item.id}')">▶</span>
+        <div class="mark-btns">
+          <button class="btn sm primary mark" onclick="event.stopPropagation();retToggleDone('${m.id}','${item.id}',true)">Done</button>
+          <button class="btn sm ghost missed-btn" onclick="event.stopPropagation();retMarkMissed('${m.id}','${item.id}')">Missed</button>
+        </div>
+      </div>`;
+    });
+  });
+  list.innerHTML = html;
+}
+
+/* The whole member journey at a glance — the same grid as the onboarding tracker's, four
+   columns wide instead of ten. */
+function renderRetentionTable(){
+  const host = document.getElementById('retTodayTable'); if(!host) return;
+  const arr = retention.slice().sort((a,b)=> (a.joined||0)-(b.joined||0));
+  if(!arr.length){
+    host.innerHTML = `<div class="empty"><div class="big">No members yet.</div>
+      Anyone marked <b>Stayed on</b> in the Onboarding tracker arrives here automatically.</div>`;
+    return;
+  }
+  const head = `<thead><tr>
+      <th class="who">Member</th><th>Day</th>
+      ${MEMBER_JOURNEY.map(c=>`<th>${MEMBER_COL_LABEL[c.id]}</th>`).join('')}
+    </tr></thead>`;
+  const body = arr.map(m=>{
+    const cells = MEMBER_JOURNEY.map(c=>{
+      const st = memberCellStatus(m,c);
+      const glyph = st==='done'?'✓' : st==='missed'?'✕' : st==='overdue'?'!' : st==='due'?'•' : '–';
+      return `<td><span class="cell ${st}" title="${esc(m.name+' · '+c.title+' · '+st)}"
+        onclick="retTableCellTap('${m.id}','${c.id}')">${glyph}</span></td>`;
+    }).join('');
+    const meta = (m.coach?'Coach '+esc(m.coach):'') + (m.joined?` · joined ${fmt(m.joined)}`:'');
+    return `<tr>
+      <td class="who"><div class="nm">${esc(m.name)}${notesBtn(m)}</div><div class="meta">${meta}</div></td>
+      <td class="day">${memberStarted(m)?memberDay(m):'–'}</td>
+      ${cells}
+    </tr>`;
+  }).join('');
+  host.innerHTML = `<div class="tbl-scroll"><table class="journey member-journey">${head}<tbody>${body}</tbody></table></div>
+    <div class="tbl-legend">
+      <span><i class="done"></i> Done ✓</span>
+      <span><i class="missed"></i> Missed ✕</span>
+      <span><i class="due"></i> Due now</span>
+      <span><i class="overdue"></i> Overdue</span>
+      <span><i class="future"></i> Not yet due</span>
+      <span>· Tap a cell to cycle done → missed → clear</span>
+    </div>`;
+}
+
 /* ---------------- RETENTION · MEMBERS view ----------------
    The Challengers tab's opposite number, minus everything that belongs to the 42 days: no
    clock, no touchpoints, no conversion. Same card, same notes icon, same styling — a member
@@ -2779,7 +2993,8 @@ function saveRetMember(){
     if(m){ m.name=name; m.email=email; m.coach=coach; m.dob=dob; }
   }else{
     retention.push({id:newClientId('r'), name, email, coach, dob,
-      personal:'', notes:'', joined:today0(), fromChallenger:null});
+      personal:'', notes:'', joined:today0(), fromChallenger:null,
+      completed:[], missed:[], doneMeta:{}});
   }
   closeRetModal(); saveRetention(); renderAll();
 }
@@ -2792,7 +3007,6 @@ function removeRetMember(id){
 /* ---------------- PLAYBOOK view ---------------- */
 function dayBadge(it){
   if(it.phase==='intro') return 'Before Day 0';
-  if(it.id==='welcome_card') return 'On sign-up';
   if(it.id==='wk4') return 'Day 28';
   return 'Day '+it.day;
 }
@@ -2823,8 +3037,9 @@ function stripTags(s){ return (s==null?'':String(s)).replace(/<[^>]*>/g,''); }
 
 function renderAll(){
   renderConvBar(); renderToday(); renderMembers(); renderBirthdays(); renderPlaybook();
-  renderRetentionMembers(); renderRetentionBirthdays();
+  renderRetentionToday(); renderRetentionMembers(); renderRetentionBirthdays();
   if(todayView==='table') renderMemberTable();
+  if(retTodayView==='table') renderRetentionTable();
   const live = members.filter(m=>(status(m)==='live'||status(m)==='paused'||status(m)==='notstarted') && !isInactive(m)).length;
   document.getElementById('liveCount').textContent = live;
 }
@@ -2840,14 +3055,14 @@ function renderAll(){
    `tracker` is null at home, and 'onboarding' | 'retention' once you are inside one. */
 const TRACKER_TABS = {
   onboarding:['today','members','birthdays','playbook'],
-  retention:['ret-members','ret-birthdays']      // attendance and the rest land here later
+  retention:['ret-today','ret-members','ret-birthdays']   // attendance and the rest land here later
 };
 const TRACKER_LABEL = {
   onboarding:{ title:'Onboarding', sub:'The First 42 Days · Warrington' },
   retention: { title:'Retention',  sub:'Every day after · Warrington' }
 };
 let tracker = null;                                          // null = the home screen
-const activeTab = { onboarding:'today', retention:'ret-members' };
+const activeTab = { onboarding:'today', retention:'ret-today' };
 
 /* Go into a tracker, and come back out. Which tab you were on inside each one survives the
    round trip — leaving Onboarding on the Playbook and coming back puts you on the Playbook —

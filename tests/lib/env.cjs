@@ -213,9 +213,8 @@ function boot(opts = {}) {
   get CACHE(){ return CACHE; },
   get RET_CACHE(){ return RET_CACHE; }
 };`;
-  // localStorage as it is BEFORE the app script runs — a returning device. The app reads
-  // some keys (the theme, which tracker you were last on) at load, so they have to be in
-  // place first, not written afterwards.
+  // localStorage as it is BEFORE the app script runs — a returning device. The app reads a
+  // key or two at load (the theme), so they have to be in place first, not written after.
   for (const [k, v] of Object.entries(opts.stored || {})) store.set(k, String(v));
 
   vm.runInContext(src, ctx, { filename: "index.html<script>" });
@@ -253,7 +252,6 @@ function boot(opts = {}) {
     findMember: (id) => ctx.__t.retention.find((m) => m.id === id),
     // what localStorage holds, for the keys the app persists outside the rosters
     stored: (k) => (store.has(k) ? store.get(k) : null),
-    setStored: (k, v) => store.set(k, String(v)),
   };
 }
 

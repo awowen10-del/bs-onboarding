@@ -1,16 +1,16 @@
-// Retention tracker harness — stage one: the two-way switch and the Retention shell.
+// Retention tracker harness — the home screen and the Retention shell.
 //
 // The two things that matter most here are separation and non-disturbance. Separation: a
 // full member and a challenger are two different lists, in two different rows, with two
 // different caches, and a write to one must never appear in the other. Non-disturbance:
 // everything the onboarding tracker did before this existed, it still does, byte for byte.
-// The rest is the shell itself — the switch, the Members tab and a Birthdays tab that reads
-// the member list instead of the roster.
+// The rest is the shell itself — the home screen you pick a tracker from, the Members tab
+// and a Birthdays tab that reads the member list instead of the roster.
 //
-// The last block is different in kind: it runs the app's CONNECTED path against a stub
-// Supabase client, because the tracker choice is shared data now. Which tracker the team is
-// looking at lives in its own row, is pushed when somebody taps the switch, and arrives on
-// the realtime channel when somebody else does — so that is how it has to be tested.
+// Which tracker you are in is in-memory UI state and nothing else: every load starts at
+// home, and there is no row, no key and no realtime handler behind it. The last block runs
+// the app's CONNECTED path against a stub Supabase client to prove exactly that — the two
+// rosters sync as they always did, and the tracker choice is not part of the traffic.
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -37,84 +37,144 @@ function member(id, name, extra) {
   return Object.assign({ id, name, coach: "Grace", email: "", dob: null }, extra || {});
 }
 
-/* ---------- 1: the top-level switch, and that it remembers ---------- */
+/* ---------- 1: the app opens on the home screen, every time ---------- */
 {
   const app = boot({});
-  assert.strictEqual(app.ctx.__t.tracker, "onboarding", "Onboarding is what the app opens on");
-  assert.strictEqual(app.el("view-today").classList.contains("active"), true,
-    "…showing the onboarding tab it always showed");
-  assert.strictEqual(app.el("view-ret-members").classList.contains("active"), false,
-    "…and nothing from the retention side");
-  assert.strictEqual(app.el("nav-onboarding").classList.contains("hide"), false, "onboarding tab bar visible");
-  assert.strictEqual(app.el("nav-retention").classList.contains("hide"), true, "retention tab bar hidden");
+  assert.strictEqual(app.ctx.__t.tracker, null, "no tracker is chosen for you");
+  assert.strictEqual(app.el("homeScreen").classList.contains("hide"), false, "the home screen is what you see");
+  assert.strictEqual(app.el("nav-onboarding").classList.contains("hide"), true, "…with neither tab bar");
+  assert.strictEqual(app.el("nav-retention").classList.contains("hide"), true);
+  ["today", "members", "birthdays", "playbook", "ret-members", "ret-birthdays"].forEach((v) =>
+    assert.strictEqual(app.el("view-" + v).classList.contains("active"), false,
+      "no view is showing behind the home screen: " + v));
+  assert.strictEqual(app.el("homeBtn").classList.contains("hide"), true, "nothing to go back to yet");
+  assert.strictEqual(app.el("mastMeta").classList.contains("hide"), true, "and no 42-days count either");
+  assert.strictEqual(app.el("brandHome").classList.contains("is-link"), false, "the brand is not a link at home");
+  assert.strictEqual(app.el("brandHome").getAttribute("role"), null, "…and carries no button semantics");
 
-  app.ctx.setTracker("retention");
-  assert.strictEqual(app.ctx.__t.tracker, "retention");
-  assert.strictEqual(app.el("view-ret-members").classList.contains("active"), true, "Members leads the retention tracker");
-  assert.strictEqual(app.el("view-today").classList.contains("active"), false, "…and Today's moves steps aside");
+  // the two cards, with the titles and subtitles they were asked for
+  assert.ok(/<section class="home" id="homeScreen">/.test(HTML), "there is a home screen");
+  assert.ok(/enterTracker\('onboarding'\)/.test(HTML) && /enterTracker\('retention'\)/.test(HTML),
+    "…with a card for each tracker");
+  const home = HTML.slice(HTML.indexOf('id="homeScreen"'), HTML.indexOf("<!-- ===== TODAY"));
+  assert.ok(home.indexOf("Onboarding") < home.indexOf("Retention"), "Onboarding is offered first");
+  assert.ok(/Onboarding<[\s\S]*?The First 42 Days/.test(home), "Onboarding — The First 42 Days");
+  assert.ok(/Retention<[\s\S]*?Every day after/.test(home), "Retention — Every day after");
+  assert.ok(!/class="view[^"]*active/.test(HTML), "and no view is marked active in the markup either");
+}
+
+/* ---------- 2: entering a tracker, and getting back out ---------- */
+{
+  const app = boot({});
+
+  app.ctx.enterTracker("onboarding");
+  assert.strictEqual(app.ctx.__t.tracker, "onboarding");
+  assert.strictEqual(app.el("homeScreen").classList.contains("hide"), true, "the home screen steps aside");
+  assert.strictEqual(app.el("nav-onboarding").classList.contains("hide"), false, "its tab bar appears");
+  assert.strictEqual(app.el("nav-retention").classList.contains("hide"), true, "…and only its own");
+  assert.strictEqual(app.el("view-today").classList.contains("active"), true, "landing on Today's moves");
+  assert.strictEqual(app.el("brandTitle").textContent, "Onboarding", "the masthead says where you are");
+  assert.strictEqual(app.el("brandSub").textContent, "The First 42 Days · Warrington");
+  assert.strictEqual(app.el("mastMeta").classList.contains("hide"), false, "the live count belongs here");
+  assert.strictEqual(app.el("homeBtn").classList.contains("hide"), false, "and there is a way back");
+  assert.strictEqual(app.el("brandHome").classList.contains("is-link"), true, "the brand is the other way back");
+  assert.strictEqual(app.el("brandHome").getAttribute("role"), "button");
+  assert.strictEqual(app.el("brandHome").getAttribute("tabindex"), "0");
+
+  app.ctx.goHome();
+  assert.strictEqual(app.ctx.__t.tracker, null);
+  assert.strictEqual(app.el("homeScreen").classList.contains("hide"), false, "home again");
+  assert.strictEqual(app.el("view-today").classList.contains("active"), false, "…with the tracker put away");
+  assert.strictEqual(app.el("brandTitle").textContent, "Bodysculpt Warrington");
+  assert.strictEqual(app.el("brandSub").textContent, "Choose a tracker");
+  assert.strictEqual(app.el("homeBtn").classList.contains("hide"), true);
+
+  app.ctx.enterTracker("retention");
+  assert.strictEqual(app.ctx.__t.tracker, "retention", "…so the other one can be picked");
+  assert.strictEqual(app.el("view-ret-members").classList.contains("active"), true, "Members leads Retention");
+  assert.strictEqual(app.el("view-today").classList.contains("active"), false);
   assert.strictEqual(app.el("nav-retention").classList.contains("hide"), false);
   assert.strictEqual(app.el("nav-onboarding").classList.contains("hide"), true);
+  assert.strictEqual(app.el("brandTitle").textContent, "Retention");
+  assert.strictEqual(app.el("brandSub").textContent, "Every day after · Warrington");
   assert.strictEqual(app.el("mastMeta").classList.contains("hide"), true,
     "the 42-days live count is meaningless on the retention side");
-  assert.ok(/retention/i.test(app.el("brandSub").textContent), "the masthead says which tracker you are in");
 
-  // …and back again
-  app.ctx.setTracker("onboarding");
-  assert.strictEqual(app.el("view-today").classList.contains("active"), true, "Onboarding comes back exactly as it was");
-  assert.strictEqual(app.el("view-ret-members").classList.contains("active"), false);
-  assert.strictEqual(app.el("mastMeta").classList.contains("hide"), false);
-  assert.strictEqual(app.el("brandSub").textContent, "Warrington · membership journey");
+  // tapping the brand is the second way home, and it only fires once there is somewhere to go
+  app.el("brandHome").__fire("click");
+  assert.strictEqual(app.ctx.__t.tracker, null, "tapping the title goes home");
+  app.el("brandHome").__fire("click");
+  assert.strictEqual(app.ctx.__t.tracker, null, "…and does nothing at all once you are there");
+  app.ctx.enterTracker("retention");
+  app.el("brandHome").__fire("keydown", { key: "Enter", preventDefault() {} });
+  assert.strictEqual(app.ctx.__t.tracker, null, "…and it answers the keyboard too");
 
-  // anything unrecognised is the onboarding tracker, never a blank page
-  app.ctx.setTracker("nonsense");
-  assert.strictEqual(app.ctx.__t.tracker, "onboarding");
+  // anything unrecognised is a tracker, not a blank page
+  assert.strictEqual(app.ctx.enterTracker("nonsense"), "onboarding");
+  assert.strictEqual(app.ctx.showTracker("nonsense"), null, "…while showTracker(junk) is home");
 }
 
-/* ---------- 2: the choice is shared data, not a note on this device ---------- */
+/* ---------- 3: nothing about the choice is persisted or synced ---------- */
 {
-  // Nothing about the tracker is kept in localStorage any more — the shared row is the only
-  // source of truth, so a stale key left over from the old build is ignored, not obeyed.
-  const stale = boot({ stored: { "bsj_tracker": "retention" } });
-  assert.strictEqual(stale.ctx.__t.tracker, "onboarding",
-    "a leftover bsj_tracker from the old per-device build has no say");
-
   const app = boot({});
-  app.ctx.setTracker("retention");
-  assert.strictEqual(app.stored("bsj_tracker"), null, "and nothing writes it back");
-  assert.ok(!HTML.includes("bsj_tracker"), "the key is gone from the app entirely");
-  assert.ok(!/localStorage[^\n]*tracker/i.test(HTML), "…and the tracker touches localStorage nowhere");
+  app.ctx.enterTracker("retention");
+  assert.strictEqual(app.stored("bsj_tracker"), null, "no localStorage key");
+  assert.ok(!HTML.includes("bsj_tracker"), "…not even the name of one");
+  assert.ok(!/localStorage[^\n]*[Tt]racker|[Tt]racker[^\n]*localStorage/.test(HTML),
+    "the tracker touches localStorage nowhere");
 
-  // a device that has never seen a tracker row opens on Onboarding
-  assert.strictEqual(boot({}).ctx.__t.tracker, "onboarding");
+  // and no dead sync machinery left behind
+  for (const gone of ["TRACKER_ROW_KEY", "saveTracker", "pushTrackerToCloud", "applySharedTracker",
+    "readTrackerValue", "lastOwnTrackerWrite", "setTracker", "trackerswitch"]) {
+    assert.ok(!HTML.includes(gone), gone + " should be gone from the app");
+  }
+  assert.strictEqual((HTML.match(/key=eq\./g) || []).length, 2,
+    "exactly two realtime subscriptions remain — the roster and the member list");
+
+  // a fresh load is always home, whatever the last one did
+  const again = boot({});
+  assert.strictEqual(again.ctx.__t.tracker, null);
 }
 
-/* ---------- 3: each tracker keeps its own tab ---------- */
+/* ---------- 4: each tracker keeps its tab across a trip home ---------- */
 {
   const app = boot({});
+  app.ctx.enterTracker("onboarding");
   app.ctx.setTab("onboarding", "playbook");
   assert.strictEqual(app.el("view-playbook").classList.contains("active"), true);
 
-  app.ctx.setTracker("retention");
+  app.ctx.goHome();
+  assert.strictEqual(app.el("view-playbook").classList.contains("active"), false,
+    "the view is put away while you are at home");
+
+  app.ctx.enterTracker("retention");
   app.ctx.setTab("retention", "ret-birthdays");
   assert.strictEqual(app.el("view-ret-birthdays").classList.contains("active"), true);
   assert.strictEqual(app.el("view-playbook").classList.contains("active"), false,
     "the onboarding view is not left on screen underneath");
 
-  app.ctx.setTracker("onboarding");
+  app.ctx.goHome();
+  app.ctx.enterTracker("onboarding");
   assert.strictEqual(app.el("view-playbook").classList.contains("active"), true,
-    "switching back puts you on the tab you left");
+    "coming back puts you on the tab you left");
   assert.strictEqual(app.el("view-ret-birthdays").classList.contains("active"), false);
 
-  app.ctx.setTracker("retention");
+  app.ctx.goHome();
+  app.ctx.enterTracker("retention");
   assert.strictEqual(app.el("view-ret-birthdays").classList.contains("active"), true,
     "…and the retention side remembers its own tab too");
 
   // a tab that doesn't belong to a tracker can't strand you on a blank page
   assert.strictEqual(app.ctx.setTab("retention", "playbook"), "ret-members");
   assert.strictEqual(app.ctx.setTab("onboarding", "ret-members"), "today");
+  // …and going home leaves both remembered tabs alone
+  app.ctx.setTab("onboarding", "birthdays");
+  app.ctx.goHome();
+  app.ctx.enterTracker("onboarding");
+  assert.strictEqual(app.el("view-birthdays").classList.contains("active"), true);
 }
 
-/* ---------- 4: two lists, two rows, two caches — nothing bleeds across ---------- */
+/* ---------- 5: two lists, two rows, two caches — nothing bleeds across ---------- */
 {
   const app = boot({
     members: [challenger("c1", "Chris Challenger")],
@@ -155,7 +215,7 @@ function member(id, name, extra) {
   assert.strictEqual(app.cached().length, 1);
 }
 
-/* ---------- 5: migration — a member record is filled in, never clobbered ---------- */
+/* ---------- 6: migration — a member record is filled in, never clobbered ---------- */
 {
   const app = boot({});
   const { migrateRetentionList } = app.ctx;
@@ -199,7 +259,7 @@ function member(id, name, extra) {
   assert.strictEqual(legacy.dob, null);
 }
 
-/* ---------- 6: an existing device, with no member list at all, boots clean ---------- */
+/* ---------- 7: an existing device, with no member list at all, boots clean ---------- */
 {
   // exactly what every device has today: a roster in the cache and no retention row anywhere
   const app = boot({ members: [challenger("c1", "Chris Challenger", { dob: `1990-${pad(OTHER_M)}-03` })] });
@@ -211,7 +271,7 @@ function member(id, name, extra) {
   assert.ok(app.html("birthdayList").includes("Chris Challenger"));
 }
 
-/* ---------- 7: the Members tab holds and shows the core fields ---------- */
+/* ---------- 8: the Members tab holds and shows the core fields ---------- */
 {
   const app = boot({ retention: [
     member("r1", "Mo Member", { email: "mo@example.com", dob: "1990-04-23", coach: "Grace" }),
@@ -242,7 +302,7 @@ function member(id, name, extra) {
   assert.ok(!app.html("retMemberList").includes("No members yet"), "an empty search is everyone, not nobody");
 }
 
-/* ---------- 8: add, edit and remove a member through the modal ---------- */
+/* ---------- 9: add, edit and remove a member through the modal ---------- */
 {
   const app = boot({});
   app.ctx.openRetAdd();
@@ -288,7 +348,7 @@ function member(id, name, extra) {
   assert.ok(app.html("retMemberList").includes("No members yet"), "back to the empty state");
 }
 
-/* ---------- 9: the retention Birthdays tab reads the member list, and only that ---------- */
+/* ---------- 10: the retention Birthdays tab reads the member list, and only that ---------- */
 {
   const app = boot({
     members: [challenger("c1", "Chris Challenger", { dob: `1990-${pad(OTHER_M)}-03` })],
@@ -326,7 +386,7 @@ function member(id, name, extra) {
   assert.ok(/openNotes\((&#39;|')r1\1\)/.test(ret));
 }
 
-/* ---------- 10: one notes document per person, in whichever list holds them ---------- */
+/* ---------- 11: one notes document per person, in whichever list holds them ---------- */
 {
   const app = boot({
     members: [challenger("c1", "Chris Challenger")],
@@ -366,7 +426,7 @@ function member(id, name, extra) {
   app.ctx.closeNotes();
 }
 
-/* ---------- 11: the CSV backfill runs over whichever list you opened it from ---------- */
+/* ---------- 12: the CSV backfill runs over whichever list you opened it from ---------- */
 {
   const CSV = [
     "Full Name,First Name,Last Name,Email,Date of Birth",
@@ -405,7 +465,7 @@ function member(id, name, extra) {
     "…and the no-argument call is the onboarding tracker, as it always was");
 }
 
-/* ---------- 12: the onboarding tracker is completely undisturbed ---------- */
+/* ---------- 13: the onboarding tracker is completely undisturbed ---------- */
 {
   // every tab and section it had is still there, with the same ids the app has always used
   ["today", "members", "birthdays", "playbook"].forEach((v) => {
@@ -441,163 +501,58 @@ function member(id, name, extra) {
   assert.deepStrictEqual(beside.cached(), alone.cached(), "and the roster blob that syncs is identical");
 }
 
-/* ---------- 13: the tracker choice travels over the shared backend ----------
-   Everything above drives the app with no Supabase behind it. These run the connected path
-   for real, against a stub client: bootData pulls the shared row, a tap pushes one back, and
-   a change arriving over the realtime channel is somebody else's phone. */
-const TRACKER_ROW = "tracker";
-
+/* ---------- 14: the connected path — the two rosters sync, the tracker does not ----------
+   Everything above drives the app with no Supabase behind it. This runs the real connected
+   path against a stub client, to show that the only things travelling are the roster and the
+   member list. Which tracker you are looking at is not stored anywhere, so it is not here. */
 async function cloudTests() {
-  /* --- boots onto whichever tracker the team was last on, from any device --- */
+  /* --- boot pulls the two rosters, and nothing about the tracker --- */
   {
     const app = boot({ cloud: { rows: {
       roster: [challenger("c1", "Chris Challenger")],
       retention: [member("r1", "Mo Member")],
-      tracker: { tracker: "retention" },
       seeded: true,
     } } });
-    assert.strictEqual(app.ctx.__t.tracker, "onboarding", "before the data arrives we are on Onboarding");
-
     await app.ctx.bootData();
-    assert.strictEqual(app.ctx.__t.tracker, "retention",
-      "a device opening cold lands on the tracker the team was last using");
-    assert.strictEqual(app.el("view-ret-members").classList.contains("active"), true);
-    assert.strictEqual(app.el("view-today").classList.contains("active"), false);
-    assert.strictEqual(app.el("nav-retention").classList.contains("hide"), false);
 
-    // the rest of the shared data still arrived intact through the same call
-    assert.strictEqual(app.members().length, 1, "the roster came down too");
+    assert.strictEqual(app.members().length, 1, "the roster came down");
     assert.strictEqual(app.retention().length, 1, "…and the member list");
     assert.ok(app.html("memberList").includes("Chris Challenger"));
     assert.ok(app.html("retMemberList").includes("Mo Member"));
 
-    // reading the row never writes one back
-    assert.strictEqual(app.cloud.writesTo(TRACKER_ROW).length, 0,
-      "following the shared choice does not push it straight back");
+    // and we are still at the front door: loading data does not pick a tracker for you
+    assert.strictEqual(app.ctx.__t.tracker, null, "a connected boot still lands on the home screen");
+    assert.strictEqual(app.el("homeScreen").classList.contains("hide"), false);
+    assert.strictEqual(app.el("view-today").classList.contains("active"), false);
 
-    // the app is listening for later changes to it
-    assert.ok(app.cloud.subscribedTo().includes("key=eq." + TRACKER_ROW),
-      "the tracker row is on the realtime channel");
+    // the realtime channel carries the two rosters and nothing else
+    assert.deepStrictEqual(app.cloud.subscribedTo().slice().sort(),
+      ["key=eq.retention", "key=eq.roster"],
+      "no third subscription for a tracker row");
   }
 
-  /* --- a gym that has never tapped the switch, and a row full of junk --- */
+  /* --- a tracker row left over from the old build is never read or written --- */
   {
-    const none = boot({ cloud: { rows: { seeded: true } } });
-    await none.ctx.bootData();
-    assert.strictEqual(none.ctx.__t.tracker, "onboarding", "no row yet: Onboarding, as always");
-    assert.strictEqual(none.cloud.writesTo(TRACKER_ROW).length, 0, "…and still no row is created");
-
-    for (const junk of [null, "", "sideways", 42, {}, { tracker: "nope" }, []]) {
-      const app = boot({ cloud: { rows: { tracker: junk, seeded: true } } });
-      await app.ctx.bootData();
-      assert.strictEqual(app.ctx.__t.tracker, "onboarding",
-        JSON.stringify(junk) + " in the row leaves us on Onboarding, not on a blank page");
-    }
-    // a bare string is read too, not just the {tracker:…} shape we write
-    const bare = boot({ cloud: { rows: { tracker: "retention", seeded: true } } });
-    await bare.ctx.bootData();
-    assert.strictEqual(bare.ctx.__t.tracker, "retention");
-  }
-
-  /* --- tapping the switch pushes it to everyone --- */
-  {
-    const app = boot({ cloud: { rows: { seeded: true } } });
+    const app = boot({ cloud: { rows: { tracker: { tracker: "retention" }, seeded: true } } });
     await app.ctx.bootData();
+    assert.strictEqual(app.ctx.__t.tracker, null,
+      "an orphaned tracker row has no effect — the app opens at home regardless");
 
-    app.ctx.setTracker("retention");
-    assert.strictEqual(app.cloud.writesTo(TRACKER_ROW).length, 0, "the write is debounced, like every other");
+    app.ctx.enterTracker("retention");
+    app.ctx.goHome();
+    app.ctx.enterTracker("onboarding");
     await settle();
-
-    const w = app.cloud.lastWriteTo(TRACKER_ROW);
-    assert.ok(w, "the choice reached the shared backend");
-    assert.strictEqual(w.key, TRACKER_ROW, "…in its own row in the same table");
-    assert.deepStrictEqual(w.value, { tracker: "retention" });
-    assert.ok(w.updated_at, "…stamped, so other devices can spot our own echo");
-
-    app.ctx.setTracker("onboarding");
-    await settle();
-    assert.deepStrictEqual(app.cloud.lastWriteTo(TRACKER_ROW).value, { tracker: "onboarding" },
-      "and switching back travels too");
-
-    // a burst of taps collapses into one write, exactly like the roster's debounce
-    const before = app.cloud.writesTo(TRACKER_ROW).length;
-    app.ctx.setTracker("retention");
-    app.ctx.setTracker("onboarding");
-    app.ctx.setTracker("retention");
-    await settle();
-    assert.strictEqual(app.cloud.writesTo(TRACKER_ROW).length, before + 1, "one write, not three");
-    assert.deepStrictEqual(app.cloud.lastWriteTo(TRACKER_ROW).value, { tracker: "retention" },
-      "…and it is the tracker we ended on");
-  }
-
-  /* --- somebody else taps it: this device follows, keeping its place --- */
-  {
-    const app = boot({ cloud: { rows: {
-      roster: [challenger("c1", "Chris Challenger")], seeded: true,
-    } } });
-    await app.ctx.bootData();
-
-    // put each tracker on a tab that is not its default, so we can see them survive
-    app.ctx.setTab("onboarding", "playbook");
-    app.ctx.setTab("retention", "ret-birthdays");
-    await settle();
-    const writesBefore = app.cloud.writesTo(TRACKER_ROW).length;
-
-    app.cloud.emit(TRACKER_ROW, { tracker: "retention" });
-    assert.strictEqual(app.ctx.__t.tracker, "retention", "Dan tapped Retention; Ash's iPad follows");
-    assert.strictEqual(app.el("view-ret-birthdays").classList.contains("active"), true,
-      "…landing on the retention tab this device was last on, not back at the default");
-    assert.strictEqual(app.el("view-playbook").classList.contains("active"), false,
-      "…and the onboarding view is not left on screen underneath");
-
-    // following is not the same as choosing: nothing is written back, so two devices can
-    // never bounce the row off each other
-    assert.strictEqual(app.cloud.writesTo(TRACKER_ROW).length, writesBefore,
-      "an incoming change is never echoed back to the backend");
-
-    app.cloud.emit(TRACKER_ROW, { tracker: "onboarding" });
-    assert.strictEqual(app.ctx.__t.tracker, "onboarding");
-    assert.strictEqual(app.el("view-playbook").classList.contains("active"), true,
-      "…and the onboarding tab we were on is still the one we come back to");
-    assert.strictEqual(app.cloud.writesTo(TRACKER_ROW).length, writesBefore);
-
-    // the roster is untouched by any of this
-    assert.strictEqual(app.members().length, 1);
-    assert.ok(app.html("memberList").includes("Chris Challenger"));
-  }
-
-  /* --- no flicker loop: an update naming the tracker we are already on does nothing --- */
-  {
-    const app = boot({ cloud: { rows: { roster: [challenger("c1", "Chris Challenger")], seeded: true } } });
-    await app.ctx.bootData();
-    app.ctx.setTab("onboarding", "birthdays");
-    await settle();
-
-    const beforeHtml = app.html("birthdayList");
-    const beforeWrites = app.cloud.writesTo(TRACKER_ROW).length;
-    assert.strictEqual(app.ctx.applySharedTracker({ tracker: "onboarding" }), false,
-      "an update we are already showing is a no-op");
-    for (let i = 0; i < 5; i++) app.cloud.emit(TRACKER_ROW, { tracker: "onboarding" });
-
-    assert.strictEqual(app.ctx.__t.tracker, "onboarding");
-    assert.strictEqual(app.el("view-birthdays").classList.contains("active"), true,
-      "…and it does not knock us back to the tracker's default tab");
-    assert.strictEqual(app.html("birthdayList"), beforeHtml, "nothing re-rendered");
-    assert.strictEqual(app.cloud.writesTo(TRACKER_ROW).length, beforeWrites, "nothing was written");
-
-    // the echo of our OWN write is dropped on its timestamp, before the value is even read
-    app.ctx.setTracker("retention");
-    await settle();
-    const ours = app.cloud.lastWriteTo(TRACKER_ROW);
-    app.cloud.emit(TRACKER_ROW, { tracker: "onboarding" }, ours.updated_at);
-    assert.strictEqual(app.ctx.__t.tracker, "retention",
-      "a payload stamped with our own write is our echo, and is ignored");
+    assert.strictEqual(app.cloud.writesTo("tracker").length, 0,
+      "…and moving between trackers writes nothing to it");
+    assert.deepStrictEqual(app.cloud.upserts.map((u) => u.key).filter((k) => k === "tracker"), [],
+      "the tracker row is never touched at all");
   }
 
   /* --- the rosters still sync exactly as they did --- */
   {
     const app = boot({ cloud: { rows: { seeded: true } } });
     await app.ctx.bootData();
+    app.ctx.enterTracker("onboarding");
 
     app.ctx.openAdd();
     app.el("f-name").value = "Nina New";
@@ -606,6 +561,8 @@ async function cloudTests() {
     assert.deepStrictEqual(app.cloud.lastWriteTo("roster").value.map((m) => m.name), ["Nina New"],
       "a new challenger still goes up in the roster row");
 
+    app.ctx.goHome();
+    app.ctx.enterTracker("retention");
     app.ctx.openRetAdd();
     app.el("rf-name").value = "Mo Member";
     app.ctx.saveRetMember();
@@ -615,12 +572,16 @@ async function cloudTests() {
     assert.deepStrictEqual(app.cloud.lastWriteTo("roster").value.map((m) => m.name), ["Nina New"],
       "…without disturbing the other");
 
-    // A roster change from another device still lands, and does not move the tracker.
-    // Stamped clear of our own write, or the app's echo guard would (rightly) drop it.
-    app.cloud.emit("roster", [challenger("c9", "Sent From Elsewhere")],
-      new Date(Date.now() + 10000).toISOString());
+    // A change from another device still lands on both, and never moves you out of the
+    // tracker you are in. Stamped clear of our own write, or the echo guard would drop it.
+    const later = () => new Date(Date.now() + 10000).toISOString();
+    app.cloud.emit("roster", [challenger("c9", "Sent From Elsewhere")], later());
     assert.ok(app.html("memberList").includes("Sent From Elsewhere"), "incoming roster changes still render");
-    assert.strictEqual(app.ctx.__t.tracker, "onboarding", "…and leave the tracker alone");
+    app.cloud.emit("retention", [member("r9", "Also From Elsewhere")], later());
+    assert.ok(app.html("retMemberList").includes("Also From Elsewhere"), "…and incoming member changes");
+    assert.strictEqual(app.ctx.__t.tracker, "retention", "…without moving you anywhere");
+    assert.strictEqual(app.el("view-ret-members").classList.contains("active"), true,
+      "…or knocking you off the tab you were on");
   }
 }
 

@@ -110,26 +110,42 @@
   .brand h1{font-size:15px;font-weight:800;letter-spacing:-.2px}
   .brand .sub{font-size:12px;color:var(--ink-faint);font-weight:600}
   .mast-right{display:flex;align-items:center;gap:14px;flex-shrink:0}
-  /* theme toggle — a quiet chip in the masthead, same family as the dashboard's */
-  .themebtn{flex:0 0 auto;background:transparent;border:1px solid var(--line);color:var(--ink-dim);
+  /* the masthead's quiet chips — theme toggle and the way back home. Same family as the
+     dashboard's, and the same as each other, so they read as one control group. */
+  .themebtn,.homebtn{flex:0 0 auto;background:transparent;border:1px solid var(--line);color:var(--ink-dim);
     border-radius:10px;padding:9px 13px;font-family:inherit;font-size:12.5px;font-weight:800;
     letter-spacing:.2px;cursor:pointer;display:flex;align-items:center;gap:6px}
-  .themebtn:hover{color:var(--ink);background:var(--card);border-color:var(--orange)}
+  .themebtn:hover,.homebtn:hover{color:var(--ink);background:var(--card);border-color:var(--orange)}
+  /* the brand block is the other way home, so it picks up a hint of affordance — but only
+     once there is somewhere to go back to */
+  .brand.is-link{cursor:pointer}
+  .brand.is-link:hover h1{color:var(--orange-soft)}
   .mast-meta{text-align:right;font-size:12px;color:var(--ink-faint);font-weight:600;flex-shrink:0}
   .mast-meta strong{display:block;font-size:24px;font-family:var(--display);color:var(--orange-soft);font-weight:800}
 
-  /* ---------- Tracker switch (Onboarding | Retention) ----------
-     The top-level choice: WHICH tracker you are looking at. It sits above the tab bar and is
-     deliberately a size up from it — same segmented-control family as nav.tabs and
-     .viewtoggle, but taller type and a heavier selected state, so the reading order down the
-     page is tracker → tab → view rather than two identical-looking rows of buttons. */
-  .trackerswitch{display:inline-flex;gap:5px;background:var(--navy-2);border:1px solid var(--line);
-    border-radius:13px;padding:5px;margin-bottom:12px;flex-wrap:wrap}
-  .trackerswitch button{appearance:none;background:transparent;border:none;color:var(--ink-dim);
-    font-family:inherit;font-size:14px;font-weight:800;letter-spacing:-.1px;padding:10px 20px;
-    border-radius:9px;cursor:pointer;transition:background .15s ease,color .15s ease}
-  .trackerswitch button[aria-pressed="false"]:hover{color:var(--ink)}
-  .trackerswitch button[aria-pressed="true"]{background:var(--orange);color:var(--on-accent)}
+  /* ---------- Home screen (pick a tracker) ----------
+     The app's front door. Two cards, deliberately large and quiet: this is a fork in the
+     road, not a toolbar, so it borrows the raised-card treatment of .day-banner/.conv-main
+     rather than the segmented-control look of the tab bars below it. */
+  .home{padding:6px 0 4px}
+  .home-lead{font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-dim);
+    font-weight:800;margin-bottom:16px}
+  .home-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .home-card{appearance:none;cursor:pointer;font-family:inherit;text-align:left;
+    display:flex;flex-direction:column;justify-content:flex-end;gap:5px;min-height:168px;
+    background:linear-gradient(135deg,var(--card),var(--card-2));border:1px solid var(--line);
+    border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 26px 24px;
+    position:relative;overflow:hidden;
+    transition:transform .12s ease,border-color .15s ease}
+  .home-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;
+    background:linear-gradient(var(--orange),var(--orange-soft))}
+  .home-card:hover{border-color:var(--orange);transform:translateY(-2px)}
+  .home-card:active{transform:translateY(0)}
+  .home-card .ht{font-size:26px;font-weight:800;letter-spacing:-.5px;color:var(--ink);font-family:var(--display);line-height:1.1}
+  .home-card .hs{font-size:14px;color:var(--ink-dim);font-weight:600}
+  .home-card .hgo{margin-top:11px;font-size:11px;font-weight:800;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--orange-soft)}
+  @media (max-width:640px){ .home-grid{grid-template-columns:1fr} .home-card{min-height:120px;padding:22px} }
 
   /* ---------- Tabs (matches .viewtoggle) ---------- */
   nav.tabs{display:inline-flex;gap:4px;background:var(--navy-2);border:1px solid var(--line);
@@ -572,14 +588,15 @@
 
 <header class="mast">
   <div class="wrap mast-inner">
-    <div class="brand">
+    <div class="brand" id="brandHome">
       <div class="mark"><img src="data:image/png;base64,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" alt="Bodysculpt"></div>
       <div class="btxt">
-        <h1>The First 42 Days</h1>
-        <span class="sub" id="brandSub">Warrington · membership journey</span>
+        <h1 id="brandTitle">Bodysculpt Warrington</h1>
+        <span class="sub" id="brandSub">Choose a tracker</span>
       </div>
     </div>
     <div class="mast-right">
+      <button type="button" class="homebtn hide" id="homeBtn" onclick="goHome()" title="Back to the home screen — pick the other tracker">← Home</button>
       <button type="button" class="themebtn" id="themeToggle" onclick="bsToggleTheme()" aria-pressed="false" title="Switch theme">☾ Dark</button>
       <div class="mast-meta" id="mastMeta">
         <strong id="liveCount">0</strong>
@@ -587,14 +604,7 @@
       </div>
     </div>
   </div>
-  <!-- ===== Which tracker are we in? (top-level, above the tabs) ===== -->
-  <div class="wrap">
-    <div class="trackerswitch" id="trackerSwitch" role="group" aria-label="Choose a tracker">
-      <button type="button" data-tracker="onboarding" aria-pressed="true" onclick="setTracker('onboarding')">Onboarding</button>
-      <button type="button" data-tracker="retention" aria-pressed="false" onclick="setTracker('retention')">Retention</button>
-    </div>
-  </div>
-  <div class="wrap" id="nav-onboarding">
+  <div class="wrap hide" id="nav-onboarding">
     <nav class="tabs" id="tabs-onboarding" data-tracker="onboarding" role="tablist">
       <button role="tab" aria-selected="true" data-tracker="onboarding" data-view="today">Today's moves <span class="count" id="todayCount">0</span></button>
       <button role="tab" aria-selected="false" data-tracker="onboarding" data-view="members">Challengers</button>
@@ -613,8 +623,30 @@
 
 <main class="wrap">
 
+  <!-- ===== HOME — which tracker? =====
+       The app's front door. It opens here every time, on purpose: the two trackers answer
+       different questions, so the first thing we do is ask which one you came for rather
+       than guess from last time. -->
+  <section class="home" id="homeScreen">
+    <div class="home-lead">Which tracker?</div>
+    <div class="home-grid">
+      <button type="button" class="home-card" onclick="enterTracker('onboarding')">
+        <span class="ht">Onboarding</span>
+        <span class="hs">The First 42 Days</span>
+        <span class="hgo">Enter →</span>
+      </button>
+      <button type="button" class="home-card" onclick="enterTracker('retention')">
+        <span class="ht">Retention</span>
+        <span class="hs">Every day after</span>
+        <span class="hgo">Enter →</span>
+      </button>
+    </div>
+  </section>
+
   <!-- ===== TODAY ===== -->
-  <section class="view active" id="view-today" data-tracker="onboarding">
+  <!-- no view is `active` in the markup: the app opens on the home screen above, and a
+       tracker's first tab is switched on when you enter it -->
+  <section class="view" id="view-today" data-tracker="onboarding">
     <div class="sec-head">
       <h2>Today's moves</h2>
     </div>
@@ -1147,21 +1179,16 @@ async function bootData(){
   }
   sb = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
   try{
-    // pull the roster, the member list, the shared tracker choice and a one-time "seeded"
-    // marker in one go
+    // pull the roster, the member list and a one-time "seeded" marker in one go
     const { data, error } = await sb.from('bodysculpt').select('key,value,updated_at')
-      .in('key', [ROW_KEY, RET_ROW_KEY, TRACKER_ROW_KEY, 'seeded']);
+      .in('key', [ROW_KEY, RET_ROW_KEY, 'seeded']);
     if(error) throw error;
     const rosterRow = (data||[]).find(r=>r.key===ROW_KEY);
     const retRow = (data||[]).find(r=>r.key===RET_ROW_KEY);
-    const trackerRow = (data||[]).find(r=>r.key===TRACKER_ROW_KEY);
     const seededRow = (data||[]).find(r=>r.key==='seeded');
     members = migrateList(rosterRow && Array.isArray(rosterRow.value) ? rosterRow.value : []);
     // No retention row yet is the normal case on every device until the first member exists.
     retention = migrateRetentionList(retRow && Array.isArray(retRow.value) ? retRow.value : []);
-    // Open on whichever tracker the team was last using. No row yet — a gym that has never
-    // tapped the switch — leaves us on Onboarding without writing one.
-    if(trackerRow) applySharedTracker(trackerRow.value);
     // Seed the examples ONLY on the very first run ever (no seeded marker yet).
     // After that, an empty list stays empty — removing everyone is respected.
     if(!seededRow){
@@ -1191,14 +1218,6 @@ async function bootData(){
           const incomingTime = payload.new && Date.parse(payload.new.updated_at||0);
           if(incomingTime && Math.abs(incomingTime - lastOwnRetWrite) < 1500) return;
           if(Array.isArray(incoming)){ retention = migrateRetentionList(incoming); writeRetentionCache(); renderAll(); }
-        })
-      // and so does the tracker choice: tapping the switch on one device moves the others.
-      // Only the classes on the nav and the views change, so there is nothing to re-render.
-      .on('postgres_changes', { event:'*', schema:'public', table:'bodysculpt', filter:'key=eq.'+TRACKER_ROW_KEY },
-        payload=>{
-          const incomingTime = payload.new && Date.parse(payload.new.updated_at||0);
-          if(incomingTime && Math.abs(incomingTime - lastOwnTrackerWrite) < 1500) return;
-          applySharedTracker(payload.new && payload.new.value);
         })
       .subscribe();
   }catch(e){
@@ -2650,120 +2669,109 @@ function renderAll(){
   document.getElementById('liveCount').textContent = live;
 }
 
-/* ---------------- Which tracker, and which tab within it ----------------
+/* ---------------- Home, and which tracker you went into ----------------
    Two trackers over one app: Onboarding is the 42 days (everything that was here before),
-   Retention is full members. The choice is the outermost piece of state on the page — it
-   decides which tab bar and which set of views you see — so it is kept here rather than
-   inside either tracker.
+   Retention is full members. They answer different questions, so the app opens on a home
+   screen and you say which one you came for — every time, deliberately. Nothing about the
+   choice is remembered or shared: it is in-memory UI state that dies with the page, so there
+   is nothing to persist, nothing to sync, and no way for one coach's tap to move another's
+   screen. Only the two rosters live in Supabase.
 
-   It is SHARED, not per-device: its own row in the same Supabase table as the roster and the
-   member list, saved and picked up over the same realtime channel. So the app reopens on
-   whichever tracker the team was last using, on any device, and a tap on one phone moves
-   everyone. With a team this size that is the point — if Dan switches the gym over to
-   Retention, Ash's iPad is looking at the same thing. There is deliberately no local copy:
-   one row is the single source of truth. */
-const TRACKER_ROW_KEY = 'tracker';
+   `tracker` is null at home, and 'onboarding' | 'retention' once you are inside one. */
 const TRACKER_TABS = {
   onboarding:['today','members','birthdays','playbook'],
   retention:['ret-members','ret-birthdays']      // attendance and the rest land here later
 };
-let tracker = 'onboarding';
+const TRACKER_LABEL = {
+  onboarding:{ title:'Onboarding', sub:'The First 42 Days · Warrington' },
+  retention: { title:'Retention',  sub:'Every day after · Warrington' }
+};
+let tracker = null;                                          // null = the home screen
 const activeTab = { onboarding:'today', retention:'ret-members' };
 
-/* What the row means. Stored as {tracker:"…"} so later shared UI state can join it there,
-   but a bare string is read too — and anything unrecognised is the onboarding tracker, so a
-   junk value can never leave somebody staring at a blank page. */
-function readTrackerValue(value){
-  const raw = value && typeof value === 'object' ? value.tracker : value;
-  return raw === 'retention' ? 'retention' : 'onboarding';
-}
+/* Go into a tracker, and come back out. Which tab you were on inside each one survives the
+   round trip — leaving Onboarding on the Playbook and coming back puts you on the Playbook —
+   because that is per-visit convenience, not a remembered preference. */
+function enterTracker(which){ return showTracker(which==='retention' ? 'retention' : 'onboarding'); }
+function goHome(){ return showTracker(null); }
 
-/* Push the choice, debounced and echo-guarded exactly like the two rosters. Unlike them it
-   fails QUIETLY: which tracker is on screen is not gym data, so a dropped write costs
-   nothing and does not deserve a red banner across everyone's app. */
-let trackerSaveTimer=null;
-let lastOwnTrackerWrite=0;
-function saveTracker(){
-  if(!sb) return;                       // local-only mode: the switch still works, it just doesn't travel
-  clearTimeout(trackerSaveTimer);
-  trackerSaveTimer = setTimeout(pushTrackerToCloud, 400);
-}
-async function pushTrackerToCloud(){
-  if(!sb) return;
-  const stamp = new Date().toISOString();
-  lastOwnTrackerWrite = Date.parse(stamp);
-  try{
-    const { error } = await sb.from('bodysculpt')
-      .upsert({ key: TRACKER_ROW_KEY, value: { tracker: tracker }, updated_at: stamp }, { onConflict: 'key' });
-    if(error) throw error;
-  }catch(e){
-    console.warn('Could not sync the tracker choice:', (e && e.message) || e);
-  }
-}
-
-/* Somebody else tapped the switch. Applied WITHOUT writing it back — that is what stops two
-   devices bouncing the row off each other — and without touching activeTab, so whichever tab
-   you were on inside each tracker is still the one you land on. An update that names the
-   tracker we are already on does nothing at all: no DOM work, no flicker, no loop. */
-function applySharedTracker(value){
-  const next = readTrackerValue(value);
-  if(next === tracker) return false;
-  setTracker(next, false);
-  return true;
-}
-
-/* Switch tracker. `remember` is false when we are FOLLOWING a change rather than making one
-   — restoring the shared choice at boot, or applying somebody else's tap. */
-function setTracker(which, remember){
-  tracker = which==='retention' ? 'retention' : 'onboarding';
+function showTracker(which){
+  tracker = TRACKER_TABS[which] ? which : null;
+  const home = document.getElementById('homeScreen');
+  if(home) home.classList.toggle('hide', tracker!==null);
   Object.keys(TRACKER_TABS).forEach(k=>{
     const nav=document.getElementById('nav-'+k);
     if(nav) nav.classList.toggle('hide', k!==tracker);
   });
-  const sw=document.getElementById('trackerSwitch');
-  if(sw && sw.querySelectorAll){
-    sw.querySelectorAll('button').forEach(b=>
-      b.setAttribute('aria-pressed', b.dataset.tracker===tracker ? 'true' : 'false'));
-  }
-  // the masthead's live count is a 42-days figure; it means nothing on the Retention side
+  // the masthead's live count is a 42-days figure; it means nothing anywhere else
   const meta=document.getElementById('mastMeta');
   if(meta) meta.classList.toggle('hide', tracker!=='onboarding');
+  // the title says where you are, and both ways home appear only once there is a way back
+  const label = TRACKER_LABEL[tracker] || { title:'Bodysculpt Warrington', sub:'Choose a tracker' };
+  const h1=document.getElementById('brandTitle');
+  if(h1) h1.textContent = label.title;
   const sub=document.getElementById('brandSub');
-  if(sub) sub.textContent = tracker==='retention' ? 'Warrington · member retention' : 'Warrington · membership journey';
+  if(sub) sub.textContent = label.sub;
+  const back=document.getElementById('homeBtn');
+  if(back) back.classList.toggle('hide', tracker===null);
+  const brand=document.getElementById('brandHome');
+  if(brand){
+    brand.classList.toggle('is-link', tracker!==null);
+    if(tracker){
+      brand.setAttribute('role','button');
+      brand.setAttribute('tabindex','0');
+      brand.setAttribute('title','Back to the home screen');
+    }else{
+      brand.removeAttribute('role'); brand.removeAttribute('tabindex'); brand.removeAttribute('title');
+    }
+  }
+  try{ document.title = tracker ? label.title+' — Bodysculpt' : 'Bodysculpt — The First 42 Days'; }catch(e){}
   setTab(tracker, activeTab[tracker]);
-  if(remember!==false) saveTracker();
   return tracker;
 }
 
-/* Show one view within a tracker. Each tracker remembers its own tab, so switching across
-   and back puts you where you were. Views belonging to the other tracker are always cleared,
-   which is what keeps exactly one section on screen. */
+/* Show one view within a tracker. Each tracker remembers its own tab, so leaving one and
+   coming back puts you where you were. Views belonging to the other tracker — and every view
+   at all, at home — are cleared, which is what keeps at most one section on screen.
+   Called with null (from goHome) it clears everything and leaves both remembered tabs alone. */
 function setTab(which, view){
-  const tk = TRACKER_TABS[which] ? which : 'onboarding';
-  const tabs = TRACKER_TABS[tk];
-  if(tabs.indexOf(view)===-1) view = tabs[0];
-  activeTab[tk] = view;
+  const tk = TRACKER_TABS[which] ? which : null;
+  if(tk){
+    const tabs = TRACKER_TABS[tk];
+    if(tabs.indexOf(view)===-1) view = tabs[0];
+    activeTab[tk] = view;
+  }
   Object.keys(TRACKER_TABS).forEach(k=>{
     TRACKER_TABS[k].forEach(v=>{
       const sec=document.getElementById('view-'+v);
-      if(sec) sec.classList.toggle('active', k===tracker && k===tk && v===view);
+      if(sec) sec.classList.toggle('active', tk!==null && k===tracker && k===tk && v===view);
     });
   });
-  const nav=document.getElementById('tabs-'+tk);
-  if(nav && nav.querySelectorAll){
-    nav.querySelectorAll('button').forEach(b=>
-      b.setAttribute('aria-selected', b.dataset.view===view ? 'true' : 'false'));
+  if(tk){
+    const nav=document.getElementById('tabs-'+tk);
+    if(nav && nav.querySelectorAll){
+      nav.querySelectorAll('button').forEach(b=>
+        b.setAttribute('aria-selected', b.dataset.view===view ? 'true' : 'false'));
+    }
   }
-  return view;
+  return tk ? view : null;
 }
 
 /* tabs */
 document.querySelectorAll('nav.tabs button').forEach(b=>{
   b.addEventListener('click',()=> setTab(b.dataset.tracker||'onboarding', b.dataset.view));
 });
-/* Start on Onboarding with the DOM and the state in step; the shared choice arrives with the
-   rest of the data in bootData() and moves us if the team was last on Retention. */
-setTracker('onboarding', false);
+/* the brand block is the second way home, alongside the ← Home chip */
+(function wireBrandHome(){
+  const brand=document.getElementById('brandHome');
+  if(!brand) return;
+  brand.addEventListener('click',()=>{ if(tracker) goHome(); });
+  brand.addEventListener('keydown',e=>{
+    if(tracker && (e.key==='Enter' || e.key===' ')){ e.preventDefault(); goHome(); }
+  });
+})();
+/* every load starts at the front door, with the DOM and the state in step */
+goHome();
 
 /* close modals on backdrop */
 document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});

@@ -395,6 +395,10 @@
   .nut-hint{margin-top:12px;font-size:12.5px;color:var(--ink-faint);text-align:center}
   @media (max-width:480px){ .nut-grid{grid-template-columns:minmax(0,1fr)} }
   .tag.member{background:rgba(var(--orange-rgb),.16);color:var(--orange-soft)}
+  /* "→ Member": they also exist on the Retention tracker. Outlined rather than filled, so it
+     reads as a pointer somewhere else rather than as another status sitting beside the
+     status tags — and green, which is the accent Retention wears on the home screen. */
+  .tag.moved{background:transparent;border:1px solid rgba(var(--green-rgb),.45);color:var(--green)}
   .mcard .sub{font-size:12.5px;color:var(--ink-dim);margin-top:3px;margin-bottom:0;overflow-wrap:anywhere}
   .mcard .day-no{text-align:right;flex-shrink:0}
   .mcard .day-no .n{font-size:30px;font-weight:800;line-height:1;color:var(--orange-soft)}
@@ -836,7 +840,7 @@
       <h2>Members</h2>
       <button class="btn primary" onclick="openRetAdd()">+ Add member</button>
     </div>
-    <p class="sub" style="margin-top:-2px;margin-bottom:14px">Full members — the people who stayed on. Everyone here carries the same details as a challenger, and the same shared notes, so a challenger can be handed over without losing anything.</p>
+    <p class="sub" style="margin-top:-2px;margin-bottom:14px">Full members — the people who stayed on. Anyone marked <b>Stayed on</b> in the Onboarding tracker lands here automatically, details and shared notes intact, dated from the day they joined.</p>
     <div class="toolbar" style="margin-top:14px">
       <input type="search" id="retSearch" placeholder="Search by name…" oninput="renderRetentionMembers()">
     </div>
@@ -1913,6 +1917,8 @@ function renderMembers(){
     const outcomeTag = m.outcome==='stayed' ? `<span class="tag member">Stayed ✓</span>`
                      : m.outcome==='left' ? `<span class="tag left">Left</span>`
                      : '';
+    // they exist on the Retention tracker now — say so, on whichever card they render as
+    const movedTag = memberFromChallenger(m.id) ? `<span class="tag moved">→ Member</span>` : '';
     const applicable = JOURNEY.filter(it=> !it.conditional || m[it.conditional]);
     const doneCount = applicable.filter(it=> isDone(m,it.id)).length;
     const introPending = !isDone(m,'intro');
@@ -1923,7 +1929,7 @@ function renderMembers(){
       return `<div class="mcard notstarted">
         <div class="top">
           <div>
-            <div class="name">${esc(m.name)}${notesBtn(m)}${tag}</div>
+            <div class="name">${esc(m.name)}${notesBtn(m)}${tag}${movedTag}</div>
             <div class="sub">Coach ${esc(m.coach)} · 1st session ${bookedTxt}${m.personal?' · '+esc(m.personal):''}</div>
           </div>
           <div class="day-no"><div class="n">—</div><div class="l">not started</div></div>
@@ -1958,7 +1964,7 @@ function renderMembers(){
     return `<div class="mcard ${s==='paused'?'paused':''} ${m.outcome==='left'?'inactive':''}">
       <div class="top">
         <div>
-          <div class="name">${esc(m.name)}${notesBtn(m)}${tag}${outcomeTag}${fuTag}</div>
+          <div class="name">${esc(m.name)}${notesBtn(m)}${tag}${outcomeTag}${movedTag}${fuTag}</div>
           <div class="sub">Coach ${esc(m.coach)} · started ${fmt(m.day0)}${m.personal?' · '+esc(m.personal):''}</div>
         </div>
         <div class="day-no"><div class="n">${s==='done'?'✓':cd}</div><div class="l">${s==='done'?'done':'of '+tot}</div></div>
@@ -2072,6 +2078,7 @@ function setOutcome(id,outcome){
   m.outcome = outcome;
   if(outcome==='stayed'){
     m.signedUp = true;            // unlocks welcome card + month follow-ups
+    handOffToRetention(m);        // …and they become a member on the other tracker
   }else if(outcome==='left'){
     m.signedUp = false;           // inactive: no member touchpoints
   }else{ // undecided / undo
@@ -2085,6 +2092,45 @@ function setOutcome(id,outcome){
   save(); renderAll();
 }
 function isInactive(m){ return m.outcome==='left'; }
+
+/* ---------------- Onboarding → Retention handoff ----------------
+   The moment a challenger stays on, they become a member on the other tracker. They are not
+   MOVED: the challenger record stays exactly where it is, still counted by the conversion
+   bar, still on their card — a person who has finished the 42 days and joined exists in both
+   places, which is the point. What crosses is a copy of who they are, including the shared
+   notes, so the coach reading their member card sees the same history they always did.
+
+   The link is the member's fromChallenger. It is what makes this idempotent, and idempotency
+   is the whole safety story here: setOutcome runs on every tap of "Stayed on", including
+   taps that undo and redo the decision, so the ONLY thing standing between a converted
+   challenger and a duplicate member is this lookup. Undoing the decision deliberately leaves
+   the member behind — they joined the gym; an outcome toggle on the other tracker is not a
+   reason to delete them — and the link stops a second copy appearing if it is set again.
+
+   Notes are copied at this moment and not kept in step afterwards; two-way sync is a later
+   stage. */
+function memberFromChallenger(challengerId){
+  return retention.find(x=>x.fromChallenger===challengerId) || null;
+}
+function handOffToRetention(m){
+  if(!m) return null;
+  const already = memberFromChallenger(m.id);
+  if(already) return already;                 // already across — never a second copy
+  const member = {
+    id: newClientId('r'),
+    name: m.name || '',
+    email: m.email || '',
+    coach: m.coach || '',
+    personal: m.personal || '',
+    notes: m.notes || '',                     // the shared document travels with them
+    dob: m.dob || null,
+    joined: today0(),                         // the anchor for day-30, day-60, anniversaries
+    fromChallenger: m.id
+  };
+  retention.push(member);
+  saveRetention();                            // its own list, its own row, its own sync
+  return member;
+}
 
 /* ---------------- "Left — follow up later" ----------------
    For people who finished well, or said they'd have a go on their own: park them, but come
@@ -2669,7 +2715,7 @@ function renderRetentionMembers(){
     host.innerHTML = retention.length
       ? `<div class="empty"><div class="big">Nobody matches that.</div>Try a different search.</div>`
       : `<div class="empty"><div class="big">No members yet.</div>
-         Full members will arrive here from the onboarding tracker once the handoff is built — until then you can add someone by hand.</div>`;
+         Anyone marked <b>Stayed on</b> in the Onboarding tracker arrives here automatically — or add somebody by hand.</div>`;
     return;
   }
 
@@ -2679,6 +2725,8 @@ function renderRetentionMembers(){
     if(m.email) bits.push(esc(m.email));
     const p = dobParts(m.dob);
     if(p) bits.push('Born '+ordinal(p.d)+' '+MONTH_NAMES[p.m-1]);
+    // the day they joined — the anchor every later member touchpoint will hang off
+    if(m.joined) bits.push('Member since '+fmt(m.joined));
     if(m.personal) bits.push(esc(m.personal));
     return `<div class="mcard">
       <div class="top">

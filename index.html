@@ -94,22 +94,50 @@
     --lift-a:.05;
     --shadow:0 10px 30px rgba(var(--shadow-rgb),.35);
   }
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  /* border-box on pseudo-elements too, not just real ones — the bare "*" selector never
+     matched ::before/::after, so those were still sizing on content-box. (The one rule that
+     noticed is .pb::before, whose 13px + 2px border used to paint 17px; it is declared at 17
+     below so the Playbook's timeline dots are pixel-identical.) */
+  *,*::before,*::after{box-sizing:border-box}
+  *{margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{background:var(--navy);color:var(--ink)}
+  /* Nothing may ever be wider than the screen. The width cap and the clip are the backstop;
+     the real work is done at the source below — every grid track is minmax(0,1fr) and every
+     flex row can shrink, so nothing pushes past the viewport in the first place.
+     text-size-adjust is not cosmetic: iOS Safari inflates type inside blocks it decides are
+     too wide for the screen, which grows the layout, which makes the block wider still —
+     the exact runaway that clipped the masthead chip and the right-hand card on a phone.
+     overflow-x is declared twice on purpose: `clip` is what we want (it does not create a
+     scroll container, so the journey table's sticky header keeps working), with `hidden` in
+     front of it for anything too old to know the keyword. */
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  html,body{max-width:100%;overflow-x:hidden;overflow-x:clip}
   body{font-family:var(--body);line-height:1.5;-webkit-font-smoothing:antialiased;padding-bottom:56px}
   .wrap{max-width:1100px;margin:0 auto;padding:0 20px}
 
   /* ---------- Masthead ---------- */
   header.mast{padding-top:env(safe-area-inset-top)}
-  .mast-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:26px 0 18px;flex-wrap:wrap}
-  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  /* THE overflow bug: this element is `class="wrap mast-inner"`, and .wrap supplies the
+     page's 20px side gutter — but a `padding` SHORTHAND here reset left and right to 0, so
+     the masthead alone ignored the gutter. The logo sat flush against the left edge and the
+     theme chip against the right, which on a phone is the toggle running off the screen.
+     Vertical longhands only, so .wrap's horizontal padding survives and the masthead lines
+     up with the content beneath it. */
+  .mast-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding-top:26px;padding-bottom:18px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0;flex:1 1 auto}
   .brand .mark{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--mark-bg);
     display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
   .brand .mark img{width:100%;height:100%;object-fit:cover;display:block}
-  .brand .btxt{display:flex;flex-direction:column;gap:1px}
-  .brand h1{font-size:15px;font-weight:800;letter-spacing:-.2px}
-  .brand .sub{font-size:12px;color:var(--ink-faint);font-weight:600}
-  .mast-right{display:flex;align-items:center;gap:14px;flex-shrink:0}
+  /* min-width:0 or this column refuses to go below its longest word and shoves the chips on
+     the right off the screen — a flex item's automatic minimum is min-content, not zero */
+  .brand .btxt{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .brand h1{font-size:15px;font-weight:800;letter-spacing:-.2px;overflow-wrap:break-word}
+  .brand .sub{font-size:12px;color:var(--ink-faint);font-weight:600;overflow-wrap:break-word}
+  /* the chips wrap among themselves rather than refusing to shrink, so however many of them
+     are on screen (one at home, three inside a tracker) the row always fits */
+  .mast-right{display:flex;align-items:center;justify-content:flex-end;gap:14px;row-gap:8px;
+    flex-wrap:wrap;min-width:0}
   /* the masthead's quiet chips — theme toggle and the way back home. Same family as the
      dashboard's, and the same as each other, so they read as one control group. */
   .themebtn,.homebtn{flex:0 0 auto;background:transparent;border:1px solid var(--line);color:var(--ink-dim);
@@ -130,7 +158,12 @@
   .home{padding:6px 0 4px}
   .home-lead{font-size:13px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-dim);
     font-weight:800;margin-bottom:16px}
-  .home-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  /* minmax(0,1fr), never a bare 1fr: a 1fr track's automatic minimum is its content's
+     MIN-CONTENT width, so a card whose icon + padding + longest word came to more than half
+     the screen would push the track — and the whole page — wider than the viewport. That is
+     what ran the cards off the right edge on a phone and dragged the masthead chip with it.
+     minmax(0,…) drops that floor, so the tracks can only ever be as wide as the screen. */
+  .home-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
 
   /* Each card carries its OWN accent as three local variables, so every accented part below
      — rule, icon, hover border, "Enter" — is written once and follows whichever card it is
@@ -141,6 +174,7 @@
 
   .home-card{appearance:none;cursor:pointer;font-family:inherit;text-align:left;
     display:flex;flex-direction:column;align-items:flex-start;min-height:212px;
+    min-width:0;max-width:100%;
     /* the card's own tone, with a breath of its accent pooling in the top-left corner */
     background:radial-gradient(115% 95% at 0% 0%, rgba(var(--accent-rgb),.10), transparent 62%),
                linear-gradient(135deg,var(--card),var(--card-2));
@@ -157,9 +191,12 @@
     background:rgba(var(--accent-rgb),.13);border:1px solid rgba(var(--accent-rgb),.30);
     transition:background .16s ease,color .16s ease,border-color .16s ease}
   .home-card .hicon svg{width:28px;height:28px;display:block;pointer-events:none}
-  .home-card .htxt{display:flex;flex-direction:column;gap:3px;margin-top:22px}
-  .home-card .ht{font-size:27px;font-weight:800;letter-spacing:-.5px;color:var(--ink);font-family:var(--display);line-height:1.1}
-  .home-card .hs{font-size:14px;color:var(--ink-dim);font-weight:600}
+  .home-card .htxt{display:flex;flex-direction:column;gap:3px;margin-top:22px;min-width:0}
+  /* the title is the widest unbreakable thing on the card, so it is explicitly allowed to
+     break rather than set a floor under the card's width */
+  .home-card .ht{font-size:27px;font-weight:800;letter-spacing:-.5px;color:var(--ink);
+    font-family:var(--display);line-height:1.1;overflow-wrap:break-word;min-width:0}
+  .home-card .hs{font-size:14px;color:var(--ink-dim);font-weight:600;overflow-wrap:break-word}
   .home-card .hgo{margin-top:13px;font-size:11px;font-weight:800;letter-spacing:.06em;
     text-transform:uppercase;color:var(--accent-soft);display:flex;align-items:center;gap:6px}
   .home-card .harrow{transition:transform .16s ease}
@@ -173,9 +210,9 @@
   .home-card:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 
   @media (max-width:640px){
-    .home-grid{grid-template-columns:1fr;gap:14px}
+    .home-grid{grid-template-columns:minmax(0,1fr);gap:14px}
     /* on a phone the card lies down: badge on the left, words beside it, no wasted height */
-    .home-card{display:grid;grid-template-columns:auto 1fr;align-items:center;
+    .home-card{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;
       column-gap:15px;min-height:0;padding:20px 22px}
     .home-card .hicon{width:46px;height:46px;border-radius:14px;margin-bottom:0}
     .home-card .hicon svg{width:24px;height:24px}
@@ -307,7 +344,11 @@
   .mcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px;box-shadow:var(--shadow)}
   .mcard.paused{background:repeating-linear-gradient(135deg,var(--card),var(--card) 14px,var(--card-2) 14px,var(--card-2) 28px)}
   .mcard .top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-  .mcard .name{font-size:17px;font-weight:800;letter-spacing:-.2px}
+  /* the text column must be allowed to shrink, and an unbreakable run inside it — a long
+     email on a member card, a name with no spaces — must be allowed to break. Without both,
+     one long address sets a floor under the card and pushes it off a phone screen. */
+  .mcard .top>div:first-child{min-width:0}
+  .mcard .name{font-size:17px;font-weight:800;letter-spacing:-.2px;overflow-wrap:anywhere}
   .mcard .name .tag{font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;padding:2px 8px;border-radius:6px;margin-left:9px;vertical-align:middle}
   .tag.live{background:rgba(var(--green-rgb),.14);color:var(--green)}
   .tag.paused{background:rgba(var(--amber-rgb),.16);color:var(--amber)}
@@ -336,10 +377,13 @@
   .nut-toggle:hover{background:rgba(var(--lift-rgb),var(--lift-a))}
   .nut-chev{color:var(--ink-faint)}
   .nut-body{padding:4px 14px 14px}
-  .nut-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .nut-grid label{display:flex;flex-direction:column;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-dim);gap:4px}
+  /* minmax(0,…) and min-width:0 for the same reason as the home grid, and here it matters
+     twice over: a bare <input> carries a default intrinsic width of its own that a 1fr track
+     would happily grow to accommodate, pushing the intro card off a narrow screen. */
+  .nut-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+  .nut-grid label{display:flex;flex-direction:column;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-dim);gap:4px;min-width:0}
   .nut-grid .nut-opt{text-transform:none;letter-spacing:0;color:var(--ink-faint);font-weight:500}
-  .nut-grid input,.nut-grid select{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--navy);color:var(--ink);font-weight:500;text-transform:none;letter-spacing:0}
+  .nut-grid input,.nut-grid select{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--navy);color:var(--ink);font-weight:500;text-transform:none;letter-spacing:0;min-width:0;width:100%}
   .nut-grid input:focus,.nut-grid select:focus{outline:none;border-color:var(--orange)}
   .nut-result{margin-top:13px;background:rgba(var(--green-rgb),.08);border:1px solid rgba(var(--green-rgb),.3);border-radius:10px;padding:13px}
   .nut-targets{display:flex;gap:12px}
@@ -349,9 +393,9 @@
   .nut-break{font-size:11px;color:var(--ink-faint);margin-top:10px;line-height:1.5}
   .nut-result .btn{margin-top:11px;width:100%}
   .nut-hint{margin-top:12px;font-size:12.5px;color:var(--ink-faint);text-align:center}
-  @media (max-width:480px){ .nut-grid{grid-template-columns:1fr} }
+  @media (max-width:480px){ .nut-grid{grid-template-columns:minmax(0,1fr)} }
   .tag.member{background:rgba(var(--orange-rgb),.16);color:var(--orange-soft)}
-  .mcard .sub{font-size:12.5px;color:var(--ink-dim);margin-top:3px;margin-bottom:0}
+  .mcard .sub{font-size:12.5px;color:var(--ink-dim);margin-top:3px;margin-bottom:0;overflow-wrap:anywhere}
   .mcard .day-no{text-align:right;flex-shrink:0}
   .mcard .day-no .n{font-size:30px;font-weight:800;line-height:1;color:var(--orange-soft)}
   .mcard .day-no .l{font-size:11px;color:var(--ink-faint);letter-spacing:.05em;font-weight:600}
@@ -391,7 +435,8 @@
   .pb-intro p b{color:var(--ink)}
   .timeline{position:relative;margin-left:8px;padding-left:28px;border-left:2px solid var(--line)}
   .pb{position:relative;margin-bottom:16px}
-  .pb::before{content:"";position:absolute;left:-35px;top:6px;width:13px;height:13px;border-radius:50%;background:var(--navy);border:2px solid var(--orange)}
+  /* 17px = the 13px box + 2px border it painted before pseudo-elements became border-box */
+  .pb::before{content:"";position:absolute;left:-35px;top:6px;width:17px;height:17px;border-radius:50%;background:var(--navy);border:2px solid var(--orange)}
   .pb.physical::before{border-color:var(--orange)}
   .pb.digital::before{border-color:var(--amber)}
   .pb.inperson::before{border-color:var(--green)}
@@ -406,7 +451,9 @@
   .pb .pb-seed{margin-top:9px;background:rgba(var(--orange-rgb),.1);border:1px solid rgba(var(--orange-rgb),.3);border-radius:9px;padding:9px 11px;font-size:12.5px;color:var(--ink);font-style:italic;line-height:1.5}
   .pb .pb-seed-label{display:block;font-style:normal;font-weight:700;text-transform:uppercase;font-size:10.5px;letter-spacing:.05em;color:var(--orange-soft);margin-bottom:4px}
 
-  footer{text-align:center;font-size:12px;color:var(--ink-faint);padding:34px 0 0}
+  /* same trap as .mast-inner — the footer is a .wrap too, so vertical longhand only or its
+     line runs edge to edge on a phone */
+  footer{text-align:center;font-size:12px;color:var(--ink-faint);padding-top:34px}
 
   /* ---------- Cards/Table toggle (matches dashboard .viewtoggle) ---------- */
   .viewtoggle{display:inline-flex;gap:4px;background:var(--navy-2);border:1px solid var(--line);border-radius:10px;padding:4px}
@@ -569,6 +616,13 @@
     .mast-meta{text-align:left}
     .action{flex-wrap:wrap}
     .action .body{flex-basis:calc(100% - 130px)}
+    /* a phone's masthead: trim the gaps and the chips so the logo, the title and the theme
+       toggle sit on one row at 390px with room to spare, rather than the toggle being pushed
+       to the edge. Inside a tracker there are three chips and they wrap, which is fine. */
+    /* longhands here too — a shorthand would wipe .wrap's side gutter all over again */
+    .mast-inner{padding-top:20px;padding-bottom:14px;gap:12px}
+    .brand{gap:10px}
+    .themebtn,.homebtn{padding:8px 11px;font-size:12px}
   }
 
   /* ---------- Password gate ---------- */

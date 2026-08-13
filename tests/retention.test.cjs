@@ -257,7 +257,8 @@ function member(id, name, extra) {
   assert.deepStrictEqual([...m.completed], [], "no touchpoints done yet");
   assert.deepStrictEqual([...m.missed], []);
   assert.deepStrictEqual({ ...m.doneMeta }, {});
-  for (const k of ["name", "email", "coach", "notes", "dob", "completed", "missed", "doneMeta"]) {
+  assert.deepStrictEqual({ ...m.attendance }, {}, "and no attendance history");
+  for (const k of ["name", "email", "coach", "notes", "dob", "completed", "missed", "doneMeta", "attendance"]) {
     assert.ok(k in m, "core field " + k + " is present");
     assert.notStrictEqual(m[k], undefined, "core field " + k + " is never undefined");
   }
@@ -266,7 +267,8 @@ function member(id, name, extra) {
   const full = { id: "keep", name: "Keep Me", email: "k@example.com", coach: "Gaz",
     personal: "half marathon in May", notes: "<b>knee</b>", dob: "1988-02-29",
     joined: daysFromToday(-100), fromChallenger: "c9",
-    completed: ["welcome_card"], missed: ["day30"], doneMeta: { welcome_card: "3 Jun" } };
+    completed: ["welcome_card"], missed: ["day30"], doneMeta: { welcome_card: "3 Jun" },
+    attendance: { "2026-W20": { attendedPT: 2, attendedOther: 0, noShow: 0, lateCancelled: 0, registered: 0 } } };
   const once = migrateRetentionList([{ ...full }]);
   const twice = migrateRetentionList(JSON.parse(JSON.stringify(once)));
   assert.deepStrictEqual(twice[0], full, "migration is idempotent and clobbers nothing");

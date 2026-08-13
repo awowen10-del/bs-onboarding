@@ -469,6 +469,37 @@
   table.journey{border-collapse:collapse;width:100%;font-size:12.5px;min-width:760px}
   /* the member journey is four columns, not ten — it needs nowhere near the same floor */
   table.journey.member-journey{min-width:460px}
+
+  /* ---------- Attendance ---------- */
+  .att-upload{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .att-file{flex:0 0 auto;position:relative;overflow:hidden;display:inline-flex}
+  .att-file .att-file-label{appearance:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;
+    border-radius:10px;padding:9px 15px;border:1px solid var(--orange);background:var(--orange);
+    color:var(--on-accent);transition:background .15s ease,border-color .15s ease}
+  .att-file:hover .att-file-label{background:var(--orange-soft);border-color:var(--orange-soft)}
+  /* the input itself is the hit area, laid invisibly over its own label */
+  .att-file input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+  table.journey.attend{min-width:560px}
+  table.journey.attend thead th{white-space:nowrap;line-height:1.25}
+  .att-n{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;
+    border-radius:6px;font-size:13px;font-weight:800;color:var(--ink);background:var(--navy-2);
+    border:1px solid var(--line);padding:0 6px}
+  .att-n.zero{color:var(--red);background:rgba(var(--red-rgb),.1);border-color:rgba(var(--red-rgb),.3)}
+  .att-n.none{color:var(--ink-faint);background:transparent;border-color:transparent;font-weight:600}
+  tr.att-flagged td.who{box-shadow:inset 3px 0 0 var(--amber)}
+  .att-warn{color:var(--amber);font-weight:700}
+  /* the sparkline — one bar per week, oldest on the left */
+  .spark{display:inline-flex;align-items:flex-end;gap:2px;height:18px;vertical-align:middle}
+  .spark i{width:5px;border-radius:2px;background:var(--orange-soft);display:block;min-height:2px}
+  .spark i.zero{background:rgba(var(--ink-dim-rgb),.4)}
+  .spark.dropping i{background:var(--amber)}
+  .att-mini{flex-shrink:0;text-align:right}
+  .att-mini-l{font-size:10px;color:var(--ink-faint);font-weight:700;letter-spacing:.03em;margin-top:3px}
+  .tag.dropping{background:rgba(var(--amber-rgb),.16);color:var(--amber)}
+  .mcard.att-flagged{border-left:3px solid var(--amber)}
+  /* an attendance alert is a "watch this" task, not one of the three journey channels */
+  .action.attention{border-left-color:var(--amber)}
+  .ch.attention{background:rgba(var(--amber-rgb),.16);color:var(--amber)}
   table.journey th,table.journey td{padding:9px 7px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
   table.journey thead th{position:sticky;top:0;background:var(--card-2);color:var(--ink-dim);font-weight:700;
     font-size:11px;letter-spacing:.04em;text-transform:uppercase;z-index:1}
@@ -714,6 +745,7 @@
     <nav class="tabs" id="tabs-retention" data-tracker="retention" role="tablist">
       <button role="tab" aria-selected="true" data-tracker="retention" data-view="ret-today">Today's moves <span class="count" id="retTodayCount">0</span></button>
       <button role="tab" aria-selected="false" data-tracker="retention" data-view="ret-members">Members <span class="count tally" id="retCount">0</span></button>
+      <button role="tab" aria-selected="false" data-tracker="retention" data-view="ret-attendance">Attendance</button>
       <button role="tab" aria-selected="false" data-tracker="retention" data-view="ret-birthdays">Birthdays</button>
     </nav>
   </div>
@@ -872,6 +904,23 @@
       <button class="btn sm ghost" onclick="openImport('retention')">⇪ Import DOBs from CSV</button>
       <span class="admin-hint">Same backfill as the onboarding tracker, pointed at the member list. Fills in dates of birth for members already in here — it never adds anyone.</span>
     </div>
+  </section>
+
+  <!-- ===== RETENTION · ATTENDANCE ===== -->
+  <section class="view" id="view-ret-attendance" data-tracker="retention">
+    <div class="sec-head">
+      <h2>Attendance</h2>
+    </div>
+    <p class="sub" style="margin-top:-2px;margin-bottom:14px">Bodysculpt PT sessions attended, week by week. Export the week's attendance from GoTeamUp and drop the file in — people are matched by email, and anyone in the file who isn't a member here is ignored. Three weeks each lower than the last, inside someone's first six months, puts a check-in on Today's moves.</p>
+    <div class="att-upload">
+      <label class="att-file">
+        <span class="att-file-label">⇪ Upload weekly attendance</span>
+        <input type="file" id="att-file" accept=".csv,text/csv" onchange="runAttendanceImport(this)">
+      </label>
+      <span class="admin-hint">One file a week. Re-uploading the same week replaces it rather than counting it twice, so it is safe to do again if you're not sure.</span>
+    </div>
+    <div id="attResult"></div>
+    <div id="attList" style="margin-top:16px"></div>
   </section>
 
   <!-- ===== RETENTION · BIRTHDAYS ===== -->
@@ -1223,6 +1272,10 @@ function migrateRetentionList(arr){
     if(m.completed===undefined) m.completed = [];
     if(m.missed===undefined) m.missed = [];
     if(m.doneMeta===undefined) m.doneMeta = {};
+    // Weekly attendance history, ISO week key -> a bucket of counts. Empty on everyone who
+    // existed before the attendance tab did, so nobody arrives with a phantom decline.
+    if(m.attendance===undefined || m.attendance===null || typeof m.attendance!=='object'
+       || Array.isArray(m.attendance)) m.attendance = {};
   });
   return arr;
 }
@@ -2153,7 +2206,8 @@ function handOffToRetention(m){
     dob: m.dob || null,
     joined: today0(),                         // the anchor for day-30, day-60, anniversaries
     fromChallenger: m.id,
-    completed: [], missed: [], doneMeta: {}   // their member journey starts here, at day 0
+    completed: [], missed: [], doneMeta: {},  // their member journey starts here, at day 0
+    attendance: {}                            // …and their attendance history from the next upload
   };
   retention.push(member);
   saveRetention();                            // its own list, its own row, its own sync
@@ -2798,6 +2852,241 @@ function retTableCellTap(mid,iid){
   saveRetention(); renderAll();
 }
 
+/* ================= ATTENDANCE & ENGAGEMENT =================
+   A GoTeamUp attendance export is the whole gym's bookings, one row per booking. Every week
+   somebody drops the file in and this turns it into one number per member per week: how many
+   Bodysculpt PT sessions they actually attended. PT is the signal deliberately — it is the
+   committed thing they pay for and turn up to on purpose, where the classes are casual
+   drop-in, so a member drifting on PT means something and a quiet fortnight of BUILD does
+   not. Three consecutive weeks each lower than the last, inside their first six months, and
+   we put a name in front of a coach.
+
+   Weeks are ISO weeks (Monday–Sunday), keyed "YYYY-Www" — which sorts lexically into
+   chronological order, which is what every comparison below relies on. */
+
+/* Monday-based, week 1 is the week containing the first Thursday. */
+function isoWeekKeyFrom(y,mo,d){
+  const t = new Date(Date.UTC(y, mo-1, d));
+  const day = t.getUTCDay() || 7;                 // Mon=1 … Sun=7
+  t.setUTCDate(t.getUTCDate() + 4 - day);         // the Thursday of this week decides the year
+  const year = t.getUTCFullYear();
+  const jan1 = Date.UTC(year, 0, 1);
+  const week = Math.ceil(((t.getTime() - jan1)/MS_DAY + 1)/7);
+  return year + '-W' + String(week).padStart(2,'0');
+}
+/* The Monday a week key starts on, for labelling ("Week of 3 Aug"). */
+function isoWeekStart(key){
+  const m = /^(\d{4})-W(\d{2})$/.exec(String(key||''));
+  if(!m) return null;
+  const y = +m[1], w = +m[2];
+  const jan4 = new Date(y,0,4);                   // 4 January is always in ISO week 1
+  const mon1 = new Date(y, 0, 4 - ((jan4.getDay()||7) - 1));
+  const d = new Date(mon1);
+  d.setDate(d.getDate() + (w-1)*7);
+  d.setHours(0,0,0,0);
+  return d.getTime();
+}
+function isoWeekKeyOf(ts){
+  const d = new Date(ts);
+  return isoWeekKeyFrom(d.getFullYear(), d.getMonth()+1, d.getDate());
+}
+/* The week a booking belongs to. The date is taken AS WRITTEN in the export — GoTeamUp
+   writes the gym's own local time, and a session at 7am on Monday belongs to that Monday
+   whatever timezone the laptop reading the file happens to be in. Anything that isn't a
+   leading ISO date falls back to letting Date have a go. */
+function attWeekKey(value){
+  const s = String(value==null?'':value).trim();
+  if(!s) return null;
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
+  if(iso) return isoWeekKeyFrom(+iso[1], +iso[2], +iso[3]);
+  const d = new Date(s);
+  if(isNaN(d.getTime())) return null;
+  return isoWeekKeyFrom(d.getFullYear(), d.getMonth()+1, d.getDate());
+}
+
+/* Statuses and offerings as the export spells them, normalised to letters only so
+   "No show", "No-show" and "NoShow" are one thing. */
+function attStatusKey(v){
+  const s = String(v==null?'':v).toLowerCase().replace(/[^a-z]/g,'');
+  if(s==='attended') return 'attended';
+  if(s==='noshow'||s==='noshows') return 'noShow';
+  if(s==='latecancelled'||s==='latecancel'||s==='latecancellation'||s==='latecanceled') return 'lateCancelled';
+  if(s==='registered'||s==='booked') return 'registered';
+  return null;
+}
+const PT_OFFERING = 'bodysculptpt';
+function isBodysculptPT(v){
+  return String(v==null?'':v).toLowerCase().replace(/[^a-z]/g,'') === PT_OFFERING;
+}
+
+/* One week of one member. attendedPT is the signal and is PT-only; the other four are kept
+   because they are nearly free to capture now and a member who shifts from attending to
+   no-showing is the strongest disengagement signal we are not using yet. attendedOther is
+   classes they did turn up to, so "gone quiet on PT" can later be told apart from "gone". */
+function emptyWeekBucket(){
+  return {attendedPT:0, attendedOther:0, noShow:0, lateCancelled:0, registered:0};
+}
+
+const ATT_HEADERS = {
+  email:['customer email','email','customer e-mail','e-mail','email address'],
+  name:['customer name','name','full name','customer'],
+  starts:['event starts at','event start','event starts','starts at','event date','date'],
+  offering:['offering type name','offering type','offering','class type','event type'],
+  status:['status','booking status','attendance status']
+};
+function attHeaderIndex(headerRow){
+  const idx={};
+  (headerRow||[]).forEach((h,i)=>{
+    const k=String(h==null?'':h).trim().toLowerCase().replace(/\s+/g,' ');
+    Object.keys(ATT_HEADERS).forEach(key=>{
+      if(idx[key]===undefined && ATT_HEADERS[key].indexOf(k)!==-1) idx[key]=i;
+    });
+  });
+  return idx;
+}
+
+/* Read the file into week → email → bucket. Pure: it touches no member and saves nothing,
+   which is what makes it straightforward to test against a real export. */
+function readAttendanceCsv(text){
+  const table = parseCsv(text);
+  if(!table.length) return {ok:false, error:'That file looks empty.'};
+  const idx = attHeaderIndex(table[0]);
+  const cols = (table[0]||[]).map(h=>String(h||'').trim()).filter(Boolean).join(', ');
+  const missing = ['email','starts','offering','status'].filter(k=>idx[k]===undefined);
+  if(missing.length){
+    const names = {email:'Customer Email', starts:'Event Starts At',
+                   offering:'Offering Type Name', status:'Status'};
+    return {ok:false, error:'That file is missing '+missing.map(k=>'“'+names[k]+'”').join(', ')
+      +'. Columns found: '+(cols||'none')};
+  }
+
+  const weeks = {};            // weekKey -> { normalisedEmail -> bucket }
+  const r = {ok:true, rows:0, counted:0, noEmail:0, badDate:0, unknownStatus:0};
+  const cell=(row,i)=> i===undefined ? '' : String(row[i]==null?'':row[i]).trim();
+
+  for(let i=1;i<table.length;i++){
+    const row = table[i];
+    if(!row.length || row.every(c=>String(c==null?'':c).trim()==='')) continue;
+    r.rows++;
+
+    const email = normName(cell(row,idx.email));
+    if(!email){ r.noEmail++; continue; }
+    const wk = attWeekKey(cell(row,idx.starts));
+    if(!wk){ r.badDate++; continue; }
+    const status = attStatusKey(cell(row,idx.status));
+    if(!status){ r.unknownStatus++; continue; }
+
+    const pt = isBodysculptPT(cell(row,idx.offering));
+    const bucket = ((weeks[wk] = weeks[wk] || {})[email] = weeks[wk][email] || emptyWeekBucket());
+    if(status==='attended') bucket[pt ? 'attendedPT' : 'attendedOther']++;
+    else bucket[status]++;
+    r.counted++;
+  }
+
+  r.weeks = weeks;
+  r.weekKeys = Object.keys(weeks).sort();
+  return r;
+}
+
+/* Apply a read file to the member list. Every week the file covers is REPLACED on every
+   member it applies to, never added to — so the same file dropped in twice lands on the
+   same numbers, which is the one mistake this feature cannot afford to make.
+   Members who appear nowhere in the file get an explicit ZERO for that week rather than a
+   gap. That is the whole point: a member who has stopped coming produces no rows at all, and
+   without the zero their history would simply stop and no decline would ever be seen. The
+   zero is only written from the week they joined onwards, so nobody gets a run of empty
+   weeks from before they were a member. */
+function applyAttendanceToMembers(read){
+  const summary = {matched:new Set(), unmatched:new Set(), unidentifiable:new Set(),
+                   zeroed:0, weeks:read.weekKeys.slice()};
+  read.weekKeys.forEach(wk=>{
+    const byEmail = read.weeks[wk];
+    // who in the file we could not place
+    Object.keys(byEmail).forEach(em=>{
+      if(!retention.some(m=>m.email && normName(m.email)===em)) summary.unmatched.add(em);
+    });
+    retention.forEach(m=>{
+      const em = m.email ? normName(m.email) : '';
+      // No email means we could never have found them in the file, so their absence from it
+      // says nothing. Recording a zero would be asserting something we do not know.
+      if(!em){ summary.unidentifiable.add(m.id); return; }
+      const found = byEmail[em];
+      if(found){
+        m.attendance[wk] = Object.assign(emptyWeekBucket(), found);
+        summary.matched.add(m.id);
+        return;
+      }
+      // no rows for them this week — a real zero, but only once they were a member
+      if(!m.joined || isoWeekKeyOf(m.joined) > wk) return;
+      m.attendance[wk] = emptyWeekBucket();
+      summary.zeroed++;
+    });
+  });
+  return summary;
+}
+
+/* ---- reading a member's history ---- */
+function attendanceWeeks(m){
+  return Object.keys((m && m.attendance) || {}).filter(k=>/^\d{4}-W\d{2}$/.test(k)).sort();
+}
+function attendedPTIn(m, wk){
+  const b = m && m.attendance && m.attendance[wk];
+  return b ? (+b.attendedPT || 0) : 0;
+}
+/* The last n weeks we hold for them, oldest first — what the sparkline and the tab show. */
+function recentAttendance(m, n){
+  const weeks = attendanceWeeks(m).slice(-(n||8));
+  return weeks.map(wk=>({wk:wk, n:attendedPTIn(m,wk)}));
+}
+
+/* Still inside their first `months` months of membership. */
+function withinFirstMonths(m, months){
+  if(!m || !m.joined) return false;
+  const end = new Date(m.joined);
+  end.setMonth(end.getMonth() + months);
+  end.setHours(0,0,0,0);
+  return today0() < end.getTime();
+}
+
+const ATT_DROP_WEEKS = 3;          // how long a decline has to run before we say anything
+const ATT_WATCH_MONTHS = 6;        // …and how new they have to be for us to act on it
+
+/* The most recent run of three consecutive weeks-with-data, each strictly lower than the one
+   before: 3 → 2 → 1. A single zero is not a decline, and neither is 3 → 3 → 0 — that is the
+   known gap in this rule and it is deliberate for v1. */
+function attendanceDropRun(m){
+  const weeks = attendanceWeeks(m);
+  for(let i=weeks.length-1; i>=ATT_DROP_WEEKS-1; i--){
+    const run = weeks.slice(i-ATT_DROP_WEEKS+1, i+1);
+    let falling = true;
+    for(let j=1;j<run.length;j++){
+      if(!(attendedPTIn(m,run[j-1]) > attendedPTIn(m,run[j]))){ falling=false; break; }
+    }
+    if(falling) return {weeks:run, key:'drop:'+run[run.length-1],
+                        counts:run.map(w=>attendedPTIn(m,w))};
+  }
+  return null;
+}
+/* The latest decline a coach has already dealt with, done or missed. */
+function lastHandledDropWeek(m){
+  const keys = [].concat(m.completed||[], m.missed||[])
+    .filter(k=>typeof k==='string' && k.indexOf('drop:')===0)
+    .map(k=>k.slice(5)).sort();
+  return keys.length ? keys[keys.length-1] : null;
+}
+/* The decline we should be nagging about right now, or null. A run that overlaps one already
+   actioned is the same slide, not a new one, so it stays quiet until a decline begins
+   entirely after the last one we handled. */
+function attendanceAlert(m){
+  if(!withinFirstMonths(m, ATT_WATCH_MONTHS)) return null;
+  const run = attendanceDropRun(m);
+  if(!run) return null;
+  const handled = lastHandledDropWeek(m);
+  if(handled && run.weeks[0] <= handled) return null;
+  return run;
+}
+function isAttendanceFlagged(m){ return !!attendanceAlert(m); }
+
 /* ---------------- RETENTION · TODAY'S MOVES ----------------
    The same surface as the onboarding tracker's: a banner, then the due touchpoints grouped
    by channel, each an .action row with Done and Missed. Deliberately the same components and
@@ -2829,20 +3118,60 @@ function renderRetentionToday(){
   const order = {physical:0, inperson:1, digital:2};
   rows.sort((a,b)=> order[a.item.ch]-order[b.item.ch] || a.item.day-b.item.day);
 
-  const tally = document.getElementById('retTodayCount');
-  if(tally) tally.textContent = rows.length;
+  // Attendance alerts are gathered separately from the journey — they are not scheduled,
+  // they are noticed. They lead the list because they are the only thing here with a person
+  // quietly heading for the door behind it.
+  const alerts = [];
+  retention.forEach(m=>{
+    const run = attendanceAlert(m);
+    if(run) alerts.push({m, run});
+  });
+  alerts.sort((a,b)=> String(a.m.name||'').localeCompare(String(b.m.name||'')));
 
-  if(!rows.length){
+  const tally = document.getElementById('retTodayCount');
+  if(tally) tally.textContent = rows.length + alerts.length;
+
+  if(!rows.length && !alerts.length){
     list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
       Nothing due for a member right now. The quiet weeks are the ones that keep people — check the Members tab to see where everyone sits.</div>`;
     return;
+  }
+
+  let alertHtml = '';
+  if(alerts.length){
+    alertHtml += `<div class="group-label">Attendance to chase<span class="gcount">${alerts.length}</span></div>`;
+    alerts.forEach(({m,run})=>{
+      const trend = run.counts.join(' → ');
+      alertHtml += `<div class="action attention" id="act-${m.id}-${run.key}">
+        <span class="ch attention">Watch</span>
+        <div class="body" onclick="toggleExpand('${m.id}','${run.key}')">
+          <div class="who">
+            <span class="nm">${esc(m.name)}</span>${notesBtn(m)}
+            <span class="ttl">Check in with ${esc(m.name)} — attendance dropping</span>
+            <span class="day">${esc(trend)}</span>
+          </div>
+          <div class="detail">
+            Their Bodysculpt PT sessions have fallen three weeks running — <b>${esc(trend)}</b>
+            across ${esc(run.weeks.map(attWeekLabel).join(', '))} — and they are still inside
+            their first ${ATT_WATCH_MONTHS} months. No pitch: ask how they are getting on, find
+            out what has changed, and make it easy to come back.
+            ${m.personal?`<div style="margin-top:8px">Remember: <b>${esc(m.personal)}</b></div>`:''}
+          </div>
+        </div>
+        <span class="chev" onclick="toggleExpand('${m.id}','${run.key}')">▶</span>
+        <div class="mark-btns">
+          <button class="btn sm primary mark" onclick="event.stopPropagation();retToggleDone('${m.id}','${run.key}',true)">Done</button>
+          <button class="btn sm ghost missed-btn" onclick="event.stopPropagation();retMarkMissed('${m.id}','${run.key}')">Missed</button>
+        </div>
+      </div>`;
+    });
   }
 
   const groups = [
     ['physical','Cards & gifts to send', r=>r.item.ch==='physical'],
     ['digital','Voice notes & check-ins', r=>r.item.ch==='digital'],
   ];
-  let html='';
+  let html = alertHtml;
   groups.forEach(([gid,label,test])=>{
     const g = rows.filter(test);
     if(!g.length) return;
@@ -2910,6 +3239,141 @@ function renderRetentionTable(){
     </div>`;
 }
 
+/* ---------------- RETENTION · ATTENDANCE view ----------------
+   The weekly ritual: export from GoTeamUp, drop the file here, read the summary. */
+
+/* The whole import, start to finish. Everything is mutated in memory and then saved ONCE —
+   one write, one sync, however many hundred rows the file had. */
+function applyAttendanceCsv(text){
+  const read = readAttendanceCsv(text);
+  if(!read.ok) return read;
+  if(!read.weekKeys.length) return {ok:false, error:'No readable session dates in that file.'};
+
+  const flaggedBefore = new Set(retention.filter(isAttendanceFlagged).map(m=>m.id));
+  const applied = applyAttendanceToMembers(read);
+  const flaggedNow = retention.filter(isAttendanceFlagged).map(m=>m.id);
+
+  saveRetention(); renderAll();
+  return Object.assign({}, read, {
+    matched: applied.matched.size,
+    unmatched: applied.unmatched.size,
+    unidentifiable: applied.unidentifiable.size,
+    zeroed: applied.zeroed,
+    flagged: flaggedNow.length,
+    newlyFlagged: flaggedNow.filter(id=>!flaggedBefore.has(id)).length
+  });
+}
+
+function attWeekLabel(wk){
+  const ts = isoWeekStart(wk);
+  return ts ? 'Week of '+fmt(ts) : wk;
+}
+function attendanceSummaryHtml(r, filename){
+  if(!r || !r.ok){
+    return `<div class="imp-sum err"><div class="imp-head">Nothing imported</div>`
+      + esc((r&&r.error)||'Something went wrong reading that file.')+`</div>`;
+  }
+  const weeks = r.weekKeys.map(attWeekLabel).join(', ');
+  const bits = [
+    r.rows+' row'+(r.rows===1?'':'s'),
+    r.matched+' member'+(r.matched===1?'':'s')+' matched'
+  ];
+  if(r.unmatched) bits.push(r.unmatched+' customer'+(r.unmatched===1?'':'s')+' not tracked (skipped)');
+  if(r.badDate) bits.push(r.badDate+' with no readable date (skipped)');
+  if(r.unknownStatus) bits.push(r.unknownStatus+' with an unknown status (skipped)');
+  bits.push(r.flagged+' flagged as dropping'+(r.newlyFlagged?' ('+r.newlyFlagged+' new)':''));
+  return `<div class="imp-sum">
+    <div class="imp-head">${esc(weeks)} · ${esc(filename||'import')}</div>
+    ${esc(bits.join(' · '))}.
+  </div>`;
+}
+function runAttendanceImport(input){
+  const file = input && input.files && input.files[0];
+  if(!file) return;
+  const out = document.getElementById('attResult');
+  if(out) out.innerHTML = `<div class="imp-sum">Reading ${esc(file.name)}…</div>`;
+  const reader = new FileReader();
+  reader.onload = function(){
+    let r;
+    try{ r = applyAttendanceCsv(String(reader.result||'')); }
+    catch(e){ r = {ok:false, error:'Could not read that file. ('+(e.message||e)+')'}; }
+    if(out) out.innerHTML = attendanceSummaryHtml(r, file.name);
+    input.value='';                  // so the same file can be picked again
+  };
+  reader.onerror = function(){
+    if(out) out.innerHTML = attendanceSummaryHtml({ok:false, error:'Could not read that file.'}, file.name);
+    input.value='';
+  };
+  reader.readAsText(file);
+}
+
+/* A bar per week, oldest on the left — the shape of the trend at a glance. The numbers ride
+   along in the title so the actual counts are one hover (or one screen reader) away. */
+function attendanceSpark(m, n){
+  const recent = recentAttendance(m, n||6);
+  if(!recent.length) return '';
+  const max = Math.max(1, ...recent.map(x=>x.n));
+  const flagged = isAttendanceFlagged(m);
+  const label = 'Bodysculpt PT sessions, last '+recent.length+' week'+(recent.length===1?'':'s')
+    +': '+recent.map(x=>x.n).join(', ');
+  return `<span class="spark${flagged?' dropping':''}" title="${esc(label)}" aria-label="${esc(label)}">`
+    + recent.map(x=>`<i style="height:${Math.max(8, Math.round(x.n/max*100))}%"${x.n===0?' class="zero"':''}></i>`).join('')
+    + `</span>`;
+}
+
+function renderAttendance(){
+  const host = document.getElementById('attList'); if(!host) return;
+
+  const withData = retention.filter(m=>attendanceWeeks(m).length);
+  if(!retention.length){
+    host.innerHTML = `<div class="empty"><div class="big">No members yet.</div>
+      Attendance is tracked per member — anyone marked <b>Stayed on</b> in the Onboarding tracker arrives here automatically.</div>`;
+    return;
+  }
+  if(!withData.length){
+    host.innerHTML = `<div class="empty"><div class="big">No attendance uploaded yet.</div>
+      Export the week's attendance from GoTeamUp and drop the file in above. It takes three weeks of history before a decline can show.</div>`;
+    return;
+  }
+
+  // the columns are every week we hold, most recent last, capped at the last eight
+  const allWeeks = [...new Set(retention.flatMap(attendanceWeeks))].sort().slice(-8);
+  const latest = allWeeks[allWeeks.length-1];
+  const rows = retention.slice().sort((a,b)=>{
+    const fa = isAttendanceFlagged(a)?0:1, fb = isAttendanceFlagged(b)?0:1;   // flagged first
+    return fa-fb || String(a.name||'').localeCompare(String(b.name||''));
+  });
+
+  const head = `<thead><tr><th class="who">Member</th>
+    ${allWeeks.map(w=>`<th${w===latest?' class="grp"':''}>${esc(fmt(isoWeekStart(w)))}${w===latest?'<br>latest':''}</th>`).join('')}
+    <th>Trend</th></tr></thead>`;
+  const body = rows.map(m=>{
+    const flagged = isAttendanceFlagged(m);
+    const cells = allWeeks.map(w=>{
+      const has = m.attendance && m.attendance[w];
+      const n = attendedPTIn(m,w);
+      return `<td><span class="att-n${!has?' none':(n===0?' zero':'')}"
+        title="${esc(m.name+' · '+attWeekLabel(w)+' · '+(has?n+' PT session'+(n===1?'':'s'):'no data'))}"
+        >${has?n:'–'}</span></td>`;
+    }).join('');
+    const watch = withinFirstMonths(m, ATT_WATCH_MONTHS) ? '' :
+      `<div class="meta">past ${ATT_WATCH_MONTHS} months — not watched</div>`;
+    return `<tr${flagged?' class="att-flagged"':''}>
+      <td class="who"><div class="nm">${esc(m.name)}${notesBtn(m)}</div>
+        ${flagged?'<div class="meta att-warn">Attendance dropping</div>':watch}</td>
+      ${cells}
+      <td>${attendanceSpark(m, allWeeks.length)}</td>
+    </tr>`;
+  }).join('');
+
+  host.innerHTML = `<div class="tbl-scroll"><table class="journey attend">${head}<tbody>${body}</tbody></table></div>
+    <div class="tbl-legend">
+      <span>Bodysculpt PT sessions attended, by week</span>
+      <span>· “–” means we hold no file for that week</span>
+      <span>· ${ATT_DROP_WEEKS} weeks each lower than the last, inside the first ${ATT_WATCH_MONTHS} months, raises a check-in</span>
+    </div>`;
+}
+
 /* ---------------- RETENTION · MEMBERS view ----------------
    The Challengers tab's opposite number, minus everything that belongs to the 42 days: no
    clock, no touchpoints, no conversion. Same card, same notes icon, same styling — a member
@@ -2942,12 +3406,17 @@ function renderRetentionMembers(){
     // the day they joined — the anchor every later member touchpoint will hang off
     if(m.joined) bits.push('Member since '+fmt(m.joined));
     if(m.personal) bits.push(esc(m.personal));
-    return `<div class="mcard">
+    // the attendance trend, right on the card, so the state is visible without opening anything
+    const flagged = isAttendanceFlagged(m);
+    const spark = attendanceSpark(m);
+    const attTag = flagged ? `<span class="tag dropping">Attendance dropping</span>` : '';
+    return `<div class="mcard${flagged?' att-flagged':''}">
       <div class="top">
         <div>
-          <div class="name">${esc(m.name)}${notesBtn(m)}<span class="tag member">Member</span></div>
+          <div class="name">${esc(m.name)}${notesBtn(m)}<span class="tag member">Member</span>${attTag}</div>
           <div class="sub">${bits.join(' · ') || 'No details on file yet'}</div>
         </div>
+        ${spark?`<div class="att-mini">${spark}<div class="att-mini-l">PT · last ${recentAttendance(m).length}w</div></div>`:''}
       </div>
       <div class="controls">
         <button class="btn sm ghost" onclick="openRetEdit('${m.id}')">Edit</button>
@@ -2994,7 +3463,7 @@ function saveRetMember(){
   }else{
     retention.push({id:newClientId('r'), name, email, coach, dob,
       personal:'', notes:'', joined:today0(), fromChallenger:null,
-      completed:[], missed:[], doneMeta:{}});
+      completed:[], missed:[], doneMeta:{}, attendance:{}});
   }
   closeRetModal(); saveRetention(); renderAll();
 }
@@ -3037,7 +3506,7 @@ function stripTags(s){ return (s==null?'':String(s)).replace(/<[^>]*>/g,''); }
 
 function renderAll(){
   renderConvBar(); renderToday(); renderMembers(); renderBirthdays(); renderPlaybook();
-  renderRetentionToday(); renderRetentionMembers(); renderRetentionBirthdays();
+  renderRetentionToday(); renderRetentionMembers(); renderAttendance(); renderRetentionBirthdays();
   if(todayView==='table') renderMemberTable();
   if(retTodayView==='table') renderRetentionTable();
   const live = members.filter(m=>(status(m)==='live'||status(m)==='paused'||status(m)==='notstarted') && !isInactive(m)).length;
@@ -3055,7 +3524,7 @@ function renderAll(){
    `tracker` is null at home, and 'onboarding' | 'retention' once you are inside one. */
 const TRACKER_TABS = {
   onboarding:['today','members','birthdays','playbook'],
-  retention:['ret-today','ret-members','ret-birthdays']   // attendance and the rest land here later
+  retention:['ret-today','ret-members','ret-attendance','ret-birthdays']
 };
 const TRACKER_LABEL = {
   onboarding:{ title:'Onboarding', sub:'The First 42 Days · Warrington' },

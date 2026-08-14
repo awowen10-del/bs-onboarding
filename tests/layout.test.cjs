@@ -186,22 +186,52 @@ const rulesFor = (sel) => RULES.filter((r) => r.sel.split(",").map((s) => s.trim
    occupy. Asserted as a pair — the two screens are the same screen for two different rosters,
    and one of them quietly growing a heading back is exactly the drift worth catching. */
 {
-  const screens = [
-    ["Onboarding", /<section class="view" id="view-today"[\s\S]*?<div id="todayMoves"/, "todayViewToggle"],
-    ["Retention", /<section class="view" id="view-ret-today"[\s\S]*?<div id="retTodayMoves"/, "retTodayViewToggle"],
+  // Every view whose heading+blurb has been stripped. The tab you tapped already names the
+  // screen, so the heading was a second telling and the blurb a third. Checked as a set:
+  // these are the same decision applied five times, and one of them quietly growing a heading
+  // back is exactly the drift worth catching.
+  const stripped = [
+    ["Onboarding Today", "view-today"],
+    ["Retention Today", "view-ret-today"],
+    ["Onboarding Birthdays", "view-birthdays"],
+    ["Retention Birthdays", "view-ret-birthdays"],
+    ["Challengers", "view-members"],
   ];
-  for (const [label, re, toggleId] of screens) {
+  for (const [label, id] of stripped) {
+    const re = new RegExp('<section class="view" id="' + id + '"[\\s\\S]*?</section>');
     const view = re.exec(HTML);
-    assert.ok(view, "sanity: the " + label + " Today view is still there");
-    assert.ok(!/<h2>Today's moves<\/h2>/.test(view[0]),
-      label + ": no heading above the toggle on Today's moves");
+    assert.ok(view, "sanity: the " + label + " view is still there");
+    assert.ok(!/<h2>/.test(view[0]), label + ": no heading");
     assert.ok(!/sec-head/.test(view[0]), label + ": no empty heading container left behind");
     assert.ok(!/<p class="sub"/.test(view[0]), label + ": and no blurb either");
-    assert.ok(new RegExp('<div class="viewtoggle" id="' + toggleId + '">').test(view[0]),
-      label + ": the toggle and everything below it are untouched");
   }
-  assert.ok(!/you bring the warmth/.test(HTML), "Onboarding's blurb is gone from the page");
-  assert.ok(!/a gift when they hit a year/.test(HTML), "Retention's blurb is gone from the page");
+  // the exact copy, gone from the page rather than merely hidden
+  for (const gone of [
+    "you bring the warmth",                  // Onboarding Today
+    "a gift when they hit a year",           // Retention Today
+    "a shout-out in the group",              // Onboarding Birthdays
+    "reading off the member list instead",   // Retention Birthdays
+    "add time to push everything still ahead", // Challengers
+  ]) {
+    assert.ok(!HTML.includes(gone), "removed copy is gone from the page: “" + gone + "”");
+  }
+
+  // The two Today screens keep their sub-view toggle as the first thing on the screen…
+  for (const toggleId of ["todayViewToggle", "retTodayViewToggle"]) {
+    assert.ok(new RegExp('<div class="viewtoggle" id="' + toggleId + '">').test(HTML),
+      toggleId + ": the toggle and everything below it are untouched");
+  }
+  // …and Challengers keeps the one control that lived in its heading row. It creates the
+  // records every other screen reads, so losing it in a tidy-up would be the expensive kind
+  // of mistake — it moved into the toolbar rather than going away.
+  const members = /<section class="view" id="view-members"[\s\S]*?<\/section>/.exec(HTML)[0];
+  assert.ok(/openAdd\(\)/.test(members), "“+ Add challenger” is still on the Challengers screen");
+  assert.ok(/<div class="toolbar"[\s\S]*openAdd\(\)[\s\S]*<\/div>/.test(members),
+    "…in the toolbar, above the list, beside the search and filter");
+  assert.ok(members.indexOf("openAdd()") < members.indexOf('id="memberList"'),
+    "…and still ahead of the list it adds to");
+  // the search and filter it now sits with are untouched
+  assert.ok(/id="search"/.test(members) && /id="filter"/.test(members), "search and filter stay");
 }
 
 /* ---------- 10: the welcome message has no placeholder left to hand-edit ---------- */

@@ -327,6 +327,10 @@
   .toolbar input::placeholder{color:var(--ink-faint)}
   .toolbar input:focus{outline:none;border-color:var(--orange)}
   .toolbar select{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 13px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer}
+  /* "+ Add challenger", which used to sit in the section heading. It keeps its full label
+     rather than shrinking to fit — it is the one thing on this screen that creates something,
+     and the row wraps before it squashes. */
+  .toolbar .toolbar-add{flex:0 0 auto;margin-left:auto;white-space:nowrap}
 
   .mcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:12px;box-shadow:var(--shadow)}
   .mcard.paused{background:repeating-linear-gradient(135deg,var(--card),var(--card) 14px,var(--card-2) 14px,var(--card-2) 28px)}
@@ -918,12 +922,12 @@
   </section>
 
   <!-- ===== MEMBERS ===== -->
+  <!-- ===== CHALLENGERS =====
+       No heading and no blurb, the same as the Today and Birthdays screens. "+ Add challenger"
+       lived in that heading row, so it moves into the toolbar it now sits above — still the
+       first control on the screen, still above the list, and now beside the search and filter
+       it belongs with rather than stranded on a row of its own. -->
   <section class="view" id="view-members" data-tracker="onboarding">
-    <div class="sec-head">
-      <h2>Challengers</h2>
-      <button class="btn primary" onclick="openAdd()">+ Add challenger</button>
-    </div>
-    <p class="sub" style="margin-top:-2px;margin-bottom:14px">The 6 weeks begin when you mark a challenger's <b>first session complete</b> — that's their Day 0. Pause to freeze the clock while they're away; add time to push everything still ahead of them along together.</p>
     <div id="convBar"></div>
     <div class="toolbar" style="margin-top:14px">
       <input type="search" id="search" placeholder="Search by name…" oninput="renderMembers()">
@@ -935,6 +939,7 @@
         <option value="paused">Paused only</option>
         <option value="done">Finished 6 weeks</option>
       </select>
+      <button class="btn primary toolbar-add" onclick="openAdd()">+ Add challenger</button>
     </div>
     <div id="memberList"></div>
     <div class="admin-strip">
@@ -943,12 +948,10 @@
     </div>
   </section>
 
-  <!-- ===== BIRTHDAYS ===== -->
+  <!-- ===== BIRTHDAYS =====
+       No heading and no blurb, the same as both Today screens: the tab you just tapped names
+       it, and the month headings below say the rest. main's padding-top is the gap. -->
   <section class="view" id="view-birthdays" data-tracker="onboarding">
-    <div class="sec-head">
-      <h2>Birthdays</h2>
-    </div>
-    <p class="sub" style="margin-top:-2px;margin-bottom:14px">Everyone with a date of birth on file, by month — <b>this month first</b>, then the rest of the year. For planning ahead: a card in the post, a shout-out in the group, a message on the day.</p>
     <div id="birthdayList"></div>
   </section>
 
@@ -1034,12 +1037,9 @@
     <div id="attList" style="margin-top:16px"></div>
   </section>
 
-  <!-- ===== RETENTION · BIRTHDAYS ===== -->
+  <!-- ===== RETENTION · BIRTHDAYS =====
+       Stripped the same way as the onboarding one, so the two tabs stay identical. -->
   <section class="view" id="view-ret-birthdays" data-tracker="retention">
-    <div class="sec-head">
-      <h2>Birthdays</h2>
-    </div>
-    <p class="sub" style="margin-top:-2px;margin-bottom:14px">Every member with a date of birth on file, by month — <b>this month first</b>, then the rest of the year. Same tab as the onboarding one, reading off the member list instead.</p>
     <div id="retBirthdayList"></div>
   </section>
 

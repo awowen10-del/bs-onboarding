@@ -1307,6 +1307,48 @@ function readCache(){
 }
 function writeCache(){ try{ localStorage.setItem(CACHE, JSON.stringify(members)); }catch(e){} }
 
+/* ---- Never overwrite somebody this device has never heard of ----------------
+   Both lists are stored as ONE JSON blob per row, so every push is a whole-list write and
+   the last writer wins. That is fine between two coaches' phones — they see each other's
+   changes over the realtime channel and are pushing the same list — but it is NOT fine
+   against the Netlify webhooks, which append a challenger to the row without the browser
+   being involved at all. A tab that loaded before the webhook fired holds a list that
+   simply does not contain her, and its next save() deletes her: the function logs SUCCESS,
+   the record really is in Supabase, and then a coach ticks a touchpoint and she is gone.
+
+   So we remember every id this device has ever SEEN in the roster — pulled at boot, arrived
+   over realtime, or added here — and re-read the row immediately before writing it. Anything
+   in the row whose id we have never seen is somebody else's addition, and it is folded into
+   our list rather than flattened by it.
+
+   Seen-ness, not presence, is what makes deletion still work: removeMember drops her from
+   `members` but her id stays in the seen set, so the merge knows the absence is deliberate
+   and leaves her removed. Only genuinely new arrivals come back. */
+const seenRosterIds = new Set();
+const seenRetentionIds = new Set();
+function markSeen(seen, list){
+  (Array.isArray(list)?list:[]).forEach(m=>{ if(m && m.id) seen.add(m.id); });
+}
+
+/* Re-read a row and return OUR list plus any record in it we have never seen. Never throws:
+   if the read fails we push what we have, which is exactly the old behaviour. */
+async function foldInRemoteAdditions(rowKey, seen, list, migrate){
+  if(!sb) return { list:list, added:0 };
+  let remote = null;
+  try{
+    const { data, error } = await sb.from('bodysculpt').select('key,value,updated_at').in('key',[rowKey]);
+    if(error) throw error;
+    const row = (data||[]).find(r=>r.key===rowKey);
+    if(row && Array.isArray(row.value)) remote = row.value;
+  }catch(e){ return { list:list, added:0 }; }   // offline mid-save: write what we have
+  if(!remote) return { list:list, added:0 };
+  const additions = remote.filter(r=> r && r.id && !seen.has(r.id));
+  if(!additions.length){ markSeen(seen, list); return { list:list, added:0 }; }
+  const merged = list.concat(migrate(JSON.parse(JSON.stringify(additions))));
+  markSeen(seen, merged);
+  return { list:merged, added:additions.length };
+}
+
 /* save(): keep the cache instant + push to Supabase (debounced). All existing
    code calls save() synchronously and that still works — the cloud write
    happens in the background and a banner reports failures. */
@@ -1320,6 +1362,10 @@ function save(){
 }
 async function pushToCloud(){
   if(!sb) return;
+  // fold in anyone the webhooks (or another device) added while this tab wasn't looking,
+  // BEFORE we write, so a whole-list push can never delete them
+  const folded = await foldInRemoteAdditions(ROW_KEY, seenRosterIds, members, migrateList);
+  if(folded.added){ members = folded.list; writeCache(); renderAll(); }
   const stamp = new Date().toISOString();
   lastOwnWrite = Date.parse(stamp);
   try{
@@ -1351,6 +1397,10 @@ function saveRetention(){
 }
 async function pushRetentionToCloud(){
   if(!sb) return;
+  // the same guard, for the same reason: one blob, one whole-list write. Nothing external
+  // writes members today, but two coaches' phones are enough to lose one.
+  const folded = await foldInRemoteAdditions(RET_ROW_KEY, seenRetentionIds, retention, migrateRetentionList);
+  if(folded.added){ retention = folded.list; writeRetentionCache(); renderAll(); }
   const stamp = new Date().toISOString();
   lastOwnRetWrite = Date.parse(stamp);
   try{
@@ -1389,6 +1439,9 @@ async function bootData(){
     members = migrateList(rosterRow && Array.isArray(rosterRow.value) ? rosterRow.value : []);
     // No retention row yet is the normal case on every device until the first member exists.
     retention = migrateRetentionList(retRow && Array.isArray(retRow.value) ? retRow.value : []);
+    // everyone in the row at boot is "seen": a later absence from our list is a real removal
+    markSeen(seenRosterIds, members);
+    markSeen(seenRetentionIds, retention);
     // Seed the examples ONLY on the very first run ever (no seeded marker yet).
     // After that, an empty list stays empty — removing everyone is respected.
     if(!seededRow){
@@ -1409,7 +1462,7 @@ async function bootData(){
           const incomingTime = payload.new && Date.parse(payload.new.updated_at||0);
           // ignore the echo of a write we just made
           if(incomingTime && Math.abs(incomingTime - lastOwnWrite) < 1500) return;
-          if(Array.isArray(incoming)){ members = migrateList(incoming); writeCache(); renderAll(); }
+          if(Array.isArray(incoming)){ members = migrateList(incoming); markSeen(seenRosterIds, members); writeCache(); renderAll(); }
         })
       // the member list rides the same channel, with the same echo guard
       .on('postgres_changes', { event:'*', schema:'public', table:'bodysculpt', filter:'key=eq.'+RET_ROW_KEY },
@@ -1417,9 +1470,23 @@ async function bootData(){
           const incoming = payload.new && payload.new.value;
           const incomingTime = payload.new && Date.parse(payload.new.updated_at||0);
           if(incomingTime && Math.abs(incomingTime - lastOwnRetWrite) < 1500) return;
-          if(Array.isArray(incoming)){ retention = migrateRetentionList(incoming); writeRetentionCache(); renderAll(); }
+          if(Array.isArray(incoming)){ retention = migrateRetentionList(incoming); markSeen(seenRetentionIds, retention); writeRetentionCache(); renderAll(); }
         })
-      .subscribe();
+      /* Subscribing can FAIL — most commonly because Realtime has never been switched on for
+         the `bodysculpt` table, in which case the server accepts the channel and then replies
+         "Unable to subscribe to changes". Passing no callback here swallowed that entirely:
+         the app said "Connected ✓" while live updates were dead, which is how a webhook's new
+         challenger could sit in the row for hours without any open tab ever showing her.
+         Now we know, we say so, and we fall back to polling. */
+      .subscribe(status=>{
+        if(status==='SUBSCRIBED'){ liveUpdates = true; return; }
+        if(status==='CHANNEL_ERROR' || status==='TIMED_OUT' || status==='CLOSED'){
+          liveUpdates = false;
+          showSync('warn','Live updates are off for this device — checking for changes every minute instead. '+
+                          '(Turn on Realtime for the bodysculpt table to make them instant.)', true);
+        }
+      });
+    startCloudPolling();
   }catch(e){
     // connection failed — fall back to cache so the team can still work offline
     members = readCache();
@@ -1427,6 +1494,39 @@ async function bootData(){
     showSync('err','Offline — showing this device’s last copy. Changes will sync when the connection returns. ('+(e.message||e)+')');
     renderAll();
   }
+}
+
+/* ---- Picking up a webhook's new challenger without a reload ----------------
+   The merge in pushToCloud stops her being DELETED. This is what makes her APPEAR: nothing
+   in the browser is told when Ontraport adds somebody, so unless realtime is working the tab
+   only finds out when it is next reloaded — and "she's in Supabase but not on my screen" is
+   exactly the complaint this whole fix exists to answer.
+
+   Deliberately additions-only, and deliberately NOT a wholesale re-adopt of the row: a poll
+   that replaced the in-memory list could throw away an edit a coach made seconds ago that
+   hasn't finished its debounce, or — worse — one that failed to push while the connection was
+   flaky and is still sitting only in the cache. Folding in unseen records can't lose anything.
+   Another coach's EDITS still ride the realtime channel; this is the safety net under it. */
+let liveUpdates = false;         // did the realtime channel actually subscribe?
+let pollTimer = null;
+const POLL_MS = 60000;
+async function refreshFromCloud(){
+  if(!sb || document.hidden) return;
+  const r = await foldInRemoteAdditions(ROW_KEY, seenRosterIds, members, migrateList);
+  if(r.added){ members = r.list; writeCache(); }
+  const t = await foldInRemoteAdditions(RET_ROW_KEY, seenRetentionIds, retention, migrateRetentionList);
+  if(t.added){ retention = t.list; writeRetentionCache(); }
+  if(r.added || t.added) renderAll();
+}
+function startCloudPolling(){
+  if(pollTimer) return;
+  // The interval is the stand-in for a realtime channel that never subscribed, so it stands
+  // down once one has. Coming BACK to the app is checked either way: a phone that has been
+  // in a pocket all morning drops its websocket without ever telling us, and that is exactly
+  // the moment a coach opens the tracker expecting to see this morning's new challenger.
+  pollTimer = setInterval(()=>{ if(!liveUpdates) refreshFromCloud(); }, POLL_MS);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) refreshFromCloud(); });
+  if(window.addEventListener) window.addEventListener('focus', refreshFromCloud);
 }
 
 function today0(){ const d=new Date(); d.setHours(0,0,0,0); return d.getTime(); }

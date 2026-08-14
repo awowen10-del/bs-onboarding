@@ -180,7 +180,10 @@ function boot(opts = {}) {
     console,
     setTimeout,
     clearTimeout,
-    setInterval,
+    // The app polls the cloud on an interval (the fallback for a dead realtime channel). A
+    // browser tab lives forever so that is free; a node test process would simply never exit,
+    // so the sandbox's intervals are unref'd. They still fire while a test is running.
+    setInterval: (fn, ms) => { const t = setInterval(fn, ms); if (t && t.unref) t.unref(); return t; },
     clearInterval,
     Date,
     Math,

@@ -100,7 +100,13 @@ exports.handler = async (event) => {
       return resp(200, { ok: true, skipped: 'duplicate', name });
     }
 
-    // 7. Build the new challenger in the EXACT shape the app expects
+    // 7. Build the new challenger in the EXACT shape the app expects.
+    //    "Exact" means: every field index.html's migrateList() would otherwise have to
+    //    back-fill. The app copes either way — migrateList defaults anything missing — but a
+    //    record that arrives complete is a record no coach's browser has to repair before the
+    //    blob is correct in Supabase, and it keeps a webhook-created challenger byte-for-byte
+    //    comparable with one typed in through "+ Add challenger".
+    //    Anything added to migrateList from here on belongs in this object too.
     const challenger = {
       id: 'op' + Date.now() + Math.random().toString(36).slice(2, 6),
       name,
@@ -117,8 +123,12 @@ exports.handler = async (event) => {
       signedUp: false,
       outcome: null,
       completed: [],
+      missed: [],              // touchpoints explicitly marked missed
       doneMeta: {},
       checks: {},
+      notes: '',               // the shared per-client notes document
+      followUpOn: null,        // "Left — follow up": timestamp (local midnight) or null
+      followUpStatus: null,    // 'pending' | 'done' | null
       source: 'ontraport'      // handy marker; the app ignores unknown fields
     };
     roster.push(challenger);

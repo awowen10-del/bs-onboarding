@@ -452,14 +452,26 @@
   .pbx-deck{position:relative;padding-left:36px}
   .pbx-deck::before{content:"";position:absolute;left:6px;top:8px;bottom:8px;width:1px;background:var(--line)}
 
-  .pbx-chapter{position:relative;margin:38px 0 20px}
+  /* A chapter is a divider, not a label. It used to be set at 17px — SMALLER than the 19px
+     card titles underneath it — so the section header read quieter than its own contents and
+     the hierarchy was upside down. The title is now the largest thing in its section and sits
+     deliberately between the cards it introduces (19px) and the hero quote that opens the page
+     (33px at its widest), so the three levels step in the right order.
+     The eyebrow keeps its size but gains a short accent rule, which is what makes the pair
+     read as one intentional unit rather than a stray label above a heading. The rest is air:
+     a chapter needs room around it or it is just another line of text in the scroll. */
+  .pbx-chapter{position:relative;margin:64px 0 28px}
   .pbx-chapter:first-child{margin-top:0}
-  .pbx-chapter::before{content:"";position:absolute;left:-34px;top:4px;width:8px;height:8px;
+  /* the node grows with the header, and stays centred on the eyebrow's line: the eyebrow is
+     the first line of the block, so that is where the chapter starts on the spine */
+  .pbx-chapter::before{content:"";position:absolute;left:-35px;top:3px;width:10px;height:10px;
     background:var(--orange);transform:rotate(45deg);box-shadow:0 0 0 5px var(--navy)}
-  .pbx-chapter-num{font-size:10.5px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;
-    color:var(--orange-soft)}
-  .pbx-chapter-title{margin-top:8px;font-size:17px;font-weight:800;letter-spacing:-.01em;color:var(--ink)}
-  .pbx-chapter-lead{margin-top:6px;max-width:60ch;font-size:13px;line-height:1.6;color:var(--ink-faint)}
+  .pbx-chapter-num{display:flex;align-items:center;gap:12px;font-size:10.5px;font-weight:800;
+    letter-spacing:.2em;text-transform:uppercase;color:var(--orange-soft)}
+  .pbx-chapter-num::after{content:"";flex:0 0 28px;height:1px;background:rgba(var(--orange-rgb),.4)}
+  .pbx-chapter-title{margin-top:12px;font-size:clamp(23px,3vw,28px);font-weight:800;
+    letter-spacing:-.025em;line-height:1.18;color:var(--ink)}
+  .pbx-chapter-lead{margin-top:10px;max-width:58ch;font-size:13.5px;line-height:1.65;color:var(--ink-dim)}
 
   /* One touchpoint, one card. No hover state on purpose — nothing here is clickable, and a
      card that lifts under the cursor promises an interaction that does not exist. */
@@ -737,7 +749,9 @@
     .pbx-deck::before{left:3px}
     .pbx-card{padding:22px 20px}
     .pbx-card::before{left:-24px;top:26px}
-    .pbx-chapter::before{left:-23px}
+    /* the spine pulls in on a phone; both nodes re-centre on it */
+    .pbx-chapter{margin:48px 0 22px}
+    .pbx-chapter::before{left:-24px}
     .pbx-title{font-size:17px}
     .pbx-why p{font-size:15px}
     .pbx-seed{padding:18px 18px}

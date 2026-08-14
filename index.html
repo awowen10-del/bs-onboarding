@@ -417,30 +417,117 @@
   .field-row{display:flex;gap:12px}
   .field-row .field{flex:1}
 
-  /* ---------- Playbook ---------- */
-  .pb-intro{background:linear-gradient(135deg,var(--card),var(--card-2));border:1px solid var(--line);
-    border-radius:var(--radius);padding:16px 20px;margin-bottom:24px;box-shadow:var(--shadow);position:relative;overflow:hidden}
-  .pb-intro::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(var(--orange),var(--orange-soft))}
-  .pb-intro p{font-size:13.5px;color:var(--ink-dim)}
-  .pb-intro p em{font-style:italic;color:var(--ink)}
-  .pb-intro p b{color:var(--ink)}
-  .timeline{position:relative;margin-left:8px;padding-left:28px;border-left:2px solid var(--line)}
-  .pb{position:relative;margin-bottom:16px}
-  /* 17px = the 13px box + 2px border it painted before pseudo-elements became border-box */
-  .pb::before{content:"";position:absolute;left:-35px;top:6px;width:17px;height:17px;border-radius:50%;background:var(--navy);border:2px solid var(--orange)}
-  .pb.physical::before{border-color:var(--orange)}
-  .pb.digital::before{border-color:var(--amber)}
-  .pb.inperson::before{border-color:var(--green)}
-  .pb .pb-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 17px}
-  .pb .pb-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
-  .pb .pb-day{font-size:13px;font-weight:800;color:var(--orange-soft)}
-  .pb .pb-title{font-size:14px;font-weight:700}
-  .pb .pb-script{font-size:13px;color:var(--ink-dim);margin-top:4px;line-height:1.55}
-  .pb .pb-script b{color:var(--ink)}
-  .pb .pb-list{margin:8px 0 0;padding-left:18px;color:var(--ink-dim);font-size:12.5px;line-height:1.6}
-  .pb .pb-list li{margin-bottom:2px}
-  .pb .pb-seed{margin-top:9px;background:rgba(var(--orange-rgb),.1);border:1px solid rgba(var(--orange-rgb),.3);border-radius:9px;padding:9px 11px;font-size:12.5px;color:var(--ink);font-style:italic;line-height:1.5}
-  .pb .pb-seed-label{display:block;font-style:normal;font-weight:700;text-transform:uppercase;font-size:10.5px;letter-spacing:.05em;color:var(--orange-soft);margin-bottom:4px}
+  /* ---------- The Playbook ----------
+     A training manual rather than a reference list: an opening statement, three chapters, and
+     one card per touchpoint down a hairline spine. Built entirely from the existing tokens —
+     no new fonts, no new colours, the same radius and shadow as every other card on the site —
+     so it reads as this product with the volume turned up, not a different one.
+     The restraint is deliberate: accents mark MEANING (channel, the philosophy rail, the seed
+     line) and nothing else, so a page of ten cards stays calm. */
+
+  /* The opening statement. One quote, given room to be the only thing you read first. */
+  .pbx-hero{position:relative;overflow:hidden;margin-bottom:38px;padding:36px 36px 30px;
+    background:radial-gradient(120% 100% at 0% 0%, rgba(var(--orange-rgb),.09), transparent 62%),
+               linear-gradient(135deg,var(--card),var(--card-2));
+    border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .pbx-hero::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+    background:linear-gradient(rgba(var(--orange-rgb),1),rgba(var(--orange-rgb),.45))}
+  /* There is deliberately NO decorative quote glyph here. An oversized “ was tried twice, hung
+     off the top edge and then sized to sit fully inside: at display size the system UI font
+     draws it as two slanted slabs, which reads as a stray mark rather than a flourish, and no
+     amount of placing fixed that. The gradient wash and the accent bar carry the hero on their
+     own. If a mark is ever wanted here it needs to be drawn as inline SVG, not set as type. */
+  .pbx-eyebrow{position:relative;font-size:11px;font-weight:800;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--orange-soft);margin-bottom:18px}
+  .pbx-hero-quote{position:relative;max-width:22ch;font-size:clamp(23px,3.6vw,33px);line-height:1.26;
+    font-weight:800;letter-spacing:-.022em;color:var(--ink)}
+  .pbx-hero-lead{position:relative;margin-top:18px;max-width:66ch;font-size:14.5px;line-height:1.7;
+    color:var(--ink-dim)}
+  .pbx-hero-note{position:relative;margin-top:20px;padding-top:18px;border-top:1px solid var(--line);
+    font-size:12.5px;font-weight:700;color:var(--ink)}
+
+  /* The spine. One hairline down the whole deck, with a node per card and a diamond per
+     chapter; each node wears a halo in the page colour so the line appears to pass behind it
+     rather than through it. */
+  .pbx-deck{position:relative;padding-left:36px}
+  .pbx-deck::before{content:"";position:absolute;left:6px;top:8px;bottom:8px;width:1px;background:var(--line)}
+
+  .pbx-chapter{position:relative;margin:38px 0 20px}
+  .pbx-chapter:first-child{margin-top:0}
+  .pbx-chapter::before{content:"";position:absolute;left:-34px;top:4px;width:8px;height:8px;
+    background:var(--orange);transform:rotate(45deg);box-shadow:0 0 0 5px var(--navy)}
+  .pbx-chapter-num{font-size:10.5px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--orange-soft)}
+  .pbx-chapter-title{margin-top:8px;font-size:17px;font-weight:800;letter-spacing:-.01em;color:var(--ink)}
+  .pbx-chapter-lead{margin-top:6px;max-width:60ch;font-size:13px;line-height:1.6;color:var(--ink-faint)}
+
+  /* One touchpoint, one card. No hover state on purpose — nothing here is clickable, and a
+     card that lifts under the cursor promises an interaction that does not exist. */
+  .pbx-card{position:relative;margin-bottom:16px;padding:28px 30px;background:var(--card);
+    border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .pbx-card::before{content:"";position:absolute;left:-35px;top:32px;width:10px;height:10px;
+    border-radius:50%;background:var(--card);border:2px solid var(--line);box-shadow:0 0 0 5px var(--navy)}
+  .pbx-card.physical::before{border-color:var(--orange)}
+  .pbx-card.digital::before{border-color:var(--amber)}
+  .pbx-card.inperson::before{border-color:var(--green)}
+
+  .pbx-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .pbx-when{display:inline-flex;align-items:center;gap:10px;font-size:11px;font-weight:800;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
+  .pbx-when::after{content:"";width:20px;height:1px;background:var(--line)}
+  /* channel reads as a refined tag: a coloured dot, a quiet outline, never a block of colour */
+  .pbx-tag{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;
+    letter-spacing:.09em;text-transform:uppercase;padding:4px 11px;border-radius:999px;
+    border:1px solid var(--line);background:var(--card-2);color:var(--ink-dim);white-space:nowrap}
+  .pbx-tag .pbx-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .pbx-tag.physical{color:var(--orange-soft);border-color:rgba(var(--orange-rgb),.3);background:rgba(var(--orange-rgb),.07)}
+  .pbx-tag.digital{color:var(--amber);border-color:rgba(var(--amber-rgb),.3);background:rgba(var(--amber-rgb),.07)}
+  .pbx-tag.inperson{color:var(--green);border-color:rgba(var(--green-rgb),.28);background:rgba(var(--green-rgb),.07)}
+  .pbx-owner{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint)}
+  .pbx-flag{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--orange-soft)}
+  .pbx-title{font-size:19px;font-weight:800;letter-spacing:-.015em;line-height:1.32;color:var(--ink);
+    overflow-wrap:break-word}
+
+  /* The why, above the how. Given the accent rail and the largest body type on the card,
+     because a coach who understands the point of the postcard writes a better postcard. */
+  .pbx-why{margin-top:18px;padding-left:18px;border-left:2px solid rgba(var(--orange-rgb),.45)}
+  .pbx-why-label{display:block;font-size:10px;font-weight:800;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--orange-soft);margin-bottom:8px}
+  .pbx-why p{font-size:16px;line-height:1.5;font-style:italic;color:var(--ink);overflow-wrap:break-word}
+
+  .pbx-what{margin-top:18px;max-width:70ch;font-size:14px;line-height:1.72;color:var(--ink-dim);
+    overflow-wrap:break-word}
+  .pbx-what b{color:var(--ink);font-weight:700}
+  .pbx-sub{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);margin-bottom:12px}
+
+  /* the intro's checklist, set as numbered manual steps rather than bullets */
+  .pbx-steps{margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
+  .pbx-steps ol{list-style:none;counter-reset:pbx;display:grid;gap:11px}
+  .pbx-steps li{counter-increment:pbx;position:relative;padding-left:36px;font-size:13.5px;
+    line-height:1.6;color:var(--ink-dim);overflow-wrap:break-word}
+  .pbx-steps li::before{content:counter(pbx,decimal-leading-zero);position:absolute;left:0;top:-1px;
+    width:25px;height:25px;line-height:23px;text-align:center;border:1px solid var(--line);
+    border-radius:50%;background:var(--card-2);font-size:10.5px;font-weight:800;color:var(--orange-soft)}
+
+  /* the words to actually say, treated as the quotation it is */
+  /* No decorative glyph in here: at this size the corner mark landed level with the label and
+     read as a smudge rather than a flourish. The tinted panel, the accent hairline and the
+     micro-label already say "these are the words" — a second signal was one too many. */
+  .pbx-seed{position:relative;margin-top:22px;padding:20px 22px 20px 24px;border-radius:12px;
+    background:rgba(var(--orange-rgb),.06);border:1px solid rgba(var(--orange-rgb),.22);
+    border-left:3px solid rgba(var(--orange-rgb),.45)}
+  .pbx-seed blockquote{position:relative;font-size:15px;line-height:1.62;font-style:italic;
+    color:var(--ink);overflow-wrap:break-word}
+  .pbx-link{display:inline-flex;align-items:center;gap:8px;margin-top:20px;font-size:12.5px;
+    font-weight:800;color:var(--orange-soft);text-decoration:none;
+    border-bottom:1px solid rgba(var(--orange-rgb),.3);padding-bottom:2px}
+  .pbx-link:hover{color:var(--orange);border-bottom-color:var(--orange)}
+
+  .pbx-footnote{margin-top:36px;padding:22px 24px;border:1px dashed var(--line);
+    border-radius:var(--radius);background:var(--card-2)}
+  .pbx-footnote p{max-width:74ch;font-size:13px;line-height:1.7;color:var(--ink-dim);overflow-wrap:break-word}
+  .pbx-footnote b{color:var(--ink);font-weight:700}
 
   /* ---------- Cards/Table toggle (matches dashboard .viewtoggle) ---------- */
   .viewtoggle{display:inline-flex;gap:4px;background:var(--navy-2);border:1px solid var(--line);border-radius:10px;padding:4px}
@@ -641,6 +728,20 @@
     .action.awaiting .body{flex-basis:100%}
     .action.awaiting .await-actions{flex-basis:100%;margin-top:2px}
     .action.awaiting .await-actions .start-btn{flex:1 1 auto;justify-content:center}
+    /* The Playbook on a phone: the spine pulls in tight so the cards get the width, and the
+       type steps down a notch. The deck still reads as a deck — it stacks, it does not
+       reflow into something else. */
+    .pbx-hero{padding:26px 22px 24px}
+    .pbx-hero-quote{max-width:none}
+    .pbx-deck{padding-left:22px}
+    .pbx-deck::before{left:3px}
+    .pbx-card{padding:22px 20px}
+    .pbx-card::before{left:-24px;top:26px}
+    .pbx-chapter::before{left:-23px}
+    .pbx-title{font-size:17px}
+    .pbx-why p{font-size:15px}
+    .pbx-seed{padding:18px 18px}
+    .pbx-footnote{padding:20px}
     /* a phone's masthead: trim the gaps and the chip so the logo, the title and the way home
        sit on one row at 390px with room to spare. Inside a tracker there are two chips and
        they wrap, which is fine. */
@@ -837,16 +938,27 @@
     <div id="birthdayList"></div>
   </section>
 
-  <!-- ===== PLAYBOOK ===== -->
+  <!-- ===== PLAYBOOK =====
+       A training manual, not a reference list: an opening statement, then one card per
+       touchpoint down a hairline spine. The deck itself is rendered by renderPlaybook() out
+       of JOURNEY; the statement and the printing note are static copy and live here. -->
   <section class="view" id="view-playbook" data-tracker="onboarding">
-    <div class="sec-head">
-      <h2>The Playbook</h2>
+    <div class="pbx-hero">
+      <div class="pbx-eyebrow">The Playbook · The First 42 Days</div>
+      <blockquote class="pbx-hero-quote">Hospitality is the sense that you&rsquo;re on someone&rsquo;s side.</blockquote>
+      <p class="pbx-hero-lead">That is the whole point of these 42 days. Every moment in this deck is built to
+        feel personal, to anticipate rather than react, and to make a challenger feel seen. The mechanics are
+        the easy part — what follows is why each one is worth doing properly.</p>
+      <p class="pbx-hero-note">Front-load the effort: the first two weeks decide whether someone stays.</p>
     </div>
-    <div class="pb-intro">
-      <p><em>"Hospitality is the sense that you're on someone's side."</em> — the whole point of these 42 days. Each moment below is designed to feel personal, to anticipate rather than react, and to make a challenger feel seen. Front-load the effort: the first two weeks decide whether someone stays.</p>
-      <p style="margin-top:10px;font-size:13px">For the posted touchpoints, UK services that print &amp; mail for you: <b>ClickSend</b> (no minimums, pay-as-you-go), <b>Thanks.io</b> (handwriting + one all-in price), or <b>Scribeless</b> (UK facility, handwriting styles). Any of them can eventually be triggered straight from this tracker once it's on a shared backend.</p>
+    <div class="pbx-deck" id="playbookList"></div>
+    <div class="pbx-footnote">
+      <div class="pbx-sub">Printing &amp; posting</div>
+      <p>For the posted touchpoints, UK services that print &amp; mail for you: <b>ClickSend</b> (no minimums,
+        pay-as-you-go), <b>Thanks.io</b> (handwriting + one all-in price), or <b>Scribeless</b> (UK facility,
+        handwriting styles). Any of them can eventually be triggered straight from this tracker once it&rsquo;s
+        on a shared backend.</p>
     </div>
-    <div class="timeline" id="playbookList"></div>
   </section>
 
   <!-- ============================================================
@@ -3630,24 +3742,87 @@ function dayBadge(it){
   if(it.id==='wk4') return 'Day 28';
   return 'Day '+it.day;
 }
+/* The philosophy layer — the one piece of copy this screen owns.
+   JOURNEY carries the mechanics of a touchpoint: what to do, and on which day. It has no
+   field for WHY, and the why is precisely what a playbook is for. A new coach can be told to
+   post a card on day 7 and still have no idea what the card is doing, which is how a warm
+   gesture turns into an admin task somebody rushes.
+
+   These are one-line principles distilled from the copy already sitting in each `what`. They
+   live HERE and not in JOURNEY on purpose: that array is read by Today's moves, the journey
+   table and the member cards, and none of them should carry a field they never render. Edit
+   the wording freely — nothing outside this screen reads it, and a touchpoint with no entry
+   simply renders without the rail. */
+const PB_WHY = {
+  intro:       'Everything set up before they have to ask for it.',
+  d1_text:     'The hardest session is the first one.',
+  d3_postcard: 'Arrive somewhere we were never expected.',
+  wk2:         'Name the win before they start doubting it.',
+  wk3:         'Plant the seed. Don’t make the pitch.',
+  wk4:         'Help offered early beats help asked for late.',
+  wk5:         'Week five is where quiet people go quiet.',
+  wk6:         'Finish the six weeks like they mattered.',
+  month1:      'Joining is the start, not the finish line.',
+  month2:      'The habit has to outlive the challenge.'
+};
+
+/* Chapters, from the phase each touchpoint already declares. Presentation only: the order and
+   the membership come straight out of JOURNEY, so adding a touchpoint puts it in the right
+   chapter without anybody touching this. */
+const PB_CHAPTERS = [
+  {phase:'intro',   num:'Chapter I',   title:'Before day zero',
+   lead:'The welcome, and everything put in place before they have to ask for it.'},
+  {phase:'journey', num:'Chapter II',  title:'The forty-two days',
+   lead:'Six weeks of deliberate contact. This is the stretch that decides whether somebody stays.'},
+  {phase:'member',  num:'Chapter III', title:'After they join',
+   lead:'For challengers who signed up. The relationship carries on past the finish line.'}
+];
+const PB_OWNER = {coach:'Coach', team:'Team'};
+
+function playbookCardHtml(it){
+  const ch = it.ch==='inperson' ? 'inperson' : it.ch;
+  const why = PB_WHY[it.id];
+  const whyBlock = why ? `<div class="pbx-why">
+      <span class="pbx-why-label">Why this matters</span>
+      <p>${esc(why)}</p>
+    </div>` : '';
+  const steps = it.checklist ? `<div class="pbx-steps">
+      <div class="pbx-sub">How it’s done</div>
+      <ol>${it.checklist.map(c=>`<li>${esc(c)}</li>`).join('')}</ol>
+    </div>` : '';
+  const seed = it.seed ? `<figure class="pbx-seed">
+      <div class="pbx-sub">End the voice note with this</div>
+      <blockquote>${esc(it.seed)}</blockquote>
+    </figure>` : '';
+  const walk = it.walkthrough ? `<a class="pbx-link" href="${esc(it.walkthrough)}" target="_blank" rel="noopener">Watch the walkthrough →</a>` : '';
+  // No "·" joining this to the owner: the header wraps on a phone and a leading separator
+  // orphans itself at the start of the next line. The accent colour does the separating.
+  const win = it.win ? `<span class="pbx-flag">Named win</span>` : '';
+  return `<article class="pbx-card ${ch}">
+    <div class="pbx-top">
+      <span class="pbx-when">${esc(dayBadge(it))}</span>
+      <span class="pbx-tag ${ch}"><span class="pbx-dot"></span>${esc(CH_LABEL[it.ch])}</span>
+      <span class="pbx-owner">${esc(PB_OWNER[it.owner] || it.owner || '')}</span>${win}
+    </div>
+    <h3 class="pbx-title">${esc(it.title)}</h3>
+    ${whyBlock}
+    <div class="pbx-what">${it.what}</div>
+    ${steps}
+    ${seed}
+    ${walk}
+  </article>`;
+}
+
 function renderPlaybook(){
   const el=document.getElementById('playbookList');
-  el.innerHTML = JOURNEY.map(it=>{
-    const chClass = it.ch==='inperson'?'inperson':it.ch;
-    const checklist = it.checklist ? `<ul class="pb-list">${it.checklist.map(c=>`<li>${esc(c)}</li>`).join('')}</ul>` : '';
-    const seed = it.seed ? `<div class="pb-seed"><span class="pb-seed-label">End the voice note with this:</span> “${esc(it.seed)}”</div>` : '';
-    return `<div class="pb ${chClass}">
-      <div class="pb-card">
-        <div class="pb-head">
-          <span class="pb-day">${dayBadge(it)}</span>
-          <span class="ch ${chClass}">${CH_LABEL[it.ch]}</span>
-          <span class="pb-title">${it.title}</span>
-        </div>
-        <div class="pb-script">${it.what}</div>
-        ${checklist}
-        ${seed}
-      </div>
-    </div>`;
+  el.innerHTML = PB_CHAPTERS.map(c=>{
+    const items = JOURNEY.filter(it=>it.phase===c.phase);
+    if(!items.length) return '';
+    return `<div class="pbx-chapter">
+        <div class="pbx-chapter-num">${esc(c.num)}</div>
+        <h2 class="pbx-chapter-title">${esc(c.title)}</h2>
+        <p class="pbx-chapter-lead">${esc(c.lead)}</p>
+      </div>` + items.map(playbookCardHtml).join('');
   }).join('');
 }
 

@@ -93,11 +93,17 @@ const rulesFor = (sel) => RULES.filter((r) => r.sel.split(",").map((s) => s.trim
     .replace(/\*,\*::before,\*::after\{box-sizing:border-box\}/, "*,*::before,*::after{box-sizing:border-box}"))
     || /\*\s*,\s*\*::before\s*,\s*\*::after\s*\{[^}]*box-sizing:\s*border-box/.test(CSS),
     "box-sizing:border-box must cover ::before/::after too — a bare * never matched them");
-  // the one pseudo-element with a border was re-declared so it paints the same size as before
-  const pb = rulesFor(".pb::before");
-  assert.strictEqual(pb.length, 1);
-  assert.ok(/width:17px;height:17px/.test(pb[0].body) && /border:2px/.test(pb[0].body),
-    "the Playbook timeline dot keeps its old painted size (13px content + 2px border = 17px)");
+  // Every bordered pseudo-element must state the size it PAINTS, because border-box means the
+  // border eats into the declared width rather than adding to it. This used to be about one
+  // dot on the old Playbook timeline; the redesigned deck draws its spine nodes the same way,
+  // so the rule is now checked across the board rather than pinned to a single selector.
+  const bordered = RULES.filter((r) => /::(before|after)/.test(r.sel) && /(^|;)\s*border:/.test(r.body));
+  assert.ok(bordered.length, "sanity: something still draws a bordered pseudo-element");
+  for (const r of bordered) {
+    assert.ok(/width:\s*\d/.test(r.body) && /height:\s*\d/.test(r.body),
+      r.sel + " has a border, so it must declare width AND height explicitly — under border-box "
+      + "the border is drawn inside them. Found: " + r.body.trim());
+  }
 }
 
 /* ---------- 5: flex rows that hold the masthead can actually shrink ---------- */

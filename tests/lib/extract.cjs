@@ -1,9 +1,9 @@
 // Pull the page's main inline <script> body out of index.html so it can be syntax-checked
 // and evaluated inside the test sandbox.
-// The page carries TWO inline scripts — the few-line theme boot that has to run before the
-// stylesheet is parsed sits at the top of <head>, ahead of the app. Taking the first match
-// would hand the harness that snippet instead of the app (and every test would boot an empty
-// sandbox), so the LARGEST block wins: the app script is orders of magnitude bigger.
+// The page carries more than one inline script — the BSJ_CONFIG block sits in <head>, ahead
+// of the app. Taking the first match would hand the harness that snippet instead of the app
+// (and every test would boot an empty sandbox), so the LARGEST block wins: the app script is
+// orders of magnitude bigger.
 const fs = require("fs");
 const path = require("path");
 

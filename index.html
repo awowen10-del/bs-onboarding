@@ -1,97 +1,61 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<script>
-/* Theme boot — runs before the stylesheet is parsed, so the page never flashes the wrong
-   theme. Light is the default; the choice is remembered in localStorage under the same key
-   the dashboard/monthly/quarterly pages use, so a theme picked on any of them carries here.
-   Deleting this script (and the light token block) reverts to dark. */
-(function(){
-  var t = "light";
-  try{ var s = localStorage.getItem("bodysculpt:theme"); if(s === "dark" || s === "light") t = s; }catch(e){}
-  try{ document.documentElement.setAttribute("data-theme", t); }catch(e){}
-})();
-</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bodysculpt — The First 42 Days</title>
+<title>Bodysculpt - Client Journey</title>
 <link rel="icon" type="image/png" href="data:image/png;base64,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">
 <style>
   /* ===================== THEME TOKENS =====================
      Every colour in this stylesheet resolves to one of these — there are no literal colours
-     below this block. Two themes, one set of names: ":root,:root[data-theme=\"dark\"]" is the
-     original dark navy, ":root[data-theme=\"light\"]" is the neutral light theme (the default
-     — see the boot script at the top of <head>). Same tokens, same names, and the same
-     palette as the KPI dashboard, so the two sites read as one product.
+     below this block. ONE palette, the light one: the app used to ship a dark navy alternative
+     behind an attribute switch on <html>, and that has been removed entirely — no toggle, no
+     stored preference, no second token block. Same names and the same palette as the KPI
+     dashboard, so the two sites read as one product.
      The *-rgb tokens are bare "r,g,b" triples so the rgba(<accent>,<alpha>) tints below stay
      tied to a single source of truth.
-     The accents CARRY MEANING and stay distinct in both themes:
+     The accents CARRY MEANING and stay distinct from each other:
        orange = brand / physical touchpoints    amber = digital + watch
        green  = in-person + done                red   = missed / problem
-     "orange" is a TOKEN NAME, not a promise of hue: in light it points at the dashboard's
-     muted slate-blue. The name was kept so the ~40 var(--orange*) references stay one switch.
-     In light the accents are re-mapped, not merely reused — the dark theme's tones are tuned
-     for a navy background and would wash out on a near-white card. */
+     "orange" is a TOKEN NAME, not a promise of hue: it points at the dashboard's muted
+     slate-blue. The name was kept so the ~40 var(--orange*) references stay one switch. */
   :root{
-    /* metrics + type — not themed */
+    color-scheme:light;
+    /* metrics + type */
     --radius:16px;
-    /* a darkening sat ON a solid accent fill (the count pill on the selected tab). It rides
-       whatever the accent is, so it is deliberately the same value in both themes. */
+    /* a darkening sat ON a solid accent fill (the count pill on the selected tab) */
     --accent-inset:rgba(0,0,0,.25);
     --display:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     --body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  }
-  :root,:root[data-theme="dark"]{
-    color-scheme:dark;
-    /* surfaces */
-    --navy:#0f1b2d; --navy-2:#16273f; --card:#1b2c45; --card-2:#203552;
-    --line:#2c405e;
-    /* ink */
-    --ink:#eaf0f8; --ink-dim:#9fb1c7; --ink-faint:#6b7f99;
-    --ink-dim-rgb:159,177,199;
-    --on-accent:#fff;              /* text sitting ON a solid accent fill */
-    --on-amber:#1a1408;            /* text on the solid amber sync banner */
-    --on-green:#06210f;            /* text on the solid green sync banner */
-    /* accents */
-    --orange:#e8732a; --orange-soft:#f0935a; --orange-rgb:232,115,42;
-    --green:#3fbf7f; --green-rgb:63,191,127;
-    --amber:#e8a93a; --amber-rgb:232,169,58;
-    --red:#e25555; --red-rgb:226,85,85;
-    --mark-bg:#000;                /* the letterbox behind the logo */
-    --backdrop-rgb:8,14,24;        /* modal scrim */
-    --shadow-rgb:0,0,0;            /* every box-shadow */
-    --lift-rgb:255,255,255;        /* hover lift over a surface */
-    --lift-a:.03;                  /* ...and how strong it is */
-    --shadow:0 10px 30px rgba(var(--shadow-rgb),.35);
-  }
-  :root[data-theme="light"]{
-    color-scheme:light;
     /* THREE TIERS OF DEPTH, and they must stay three: the page (--navy) is a soft, slightly
        cool grey; the card (--card) is near-white and therefore visibly LIFTS off it; --line
        is a fine neutral hairline that draws the card's edge. Tone step + hairline do the
        work — the shadows are deliberately soft. --navy-2 is the recessed inset inside a card
-       (toolbars, inputs, sub-panels), so it sits BELOW the card, not above. */
+       (toolbars, inputs, sub-panels), so it sits BELOW the card, not above.
+       (--navy is a token NAME too: the surface is grey, not navy. Kept for the same reason
+       as --orange — it is referenced everywhere and renaming buys nothing.) */
     --navy:#f2f4f8; --navy-2:#e8ecf3; --card:#ffffff; --card-2:#f7f9fc;
     --line:#dde2ea;
     /* dark-but-soft ink — a cool near-black, never #000; --ink-dim/-faint are muted greys */
     --ink:#1d2330; --ink-dim:#5a6474; --ink-faint:#6e7889;
     --ink-dim-rgb:90,100,116;
-    --on-accent:#fff; --on-amber:#fff; --on-green:#fff;
+    --on-accent:#fff;              /* text sitting ON a solid accent fill */
+    --on-amber:#fff;               /* text on the solid amber sync banner */
+    --on-green:#fff;               /* text on the solid green sync banner */
     /* the brand accent — a muted, low-strain SLATE-BLUE (see the note above about the name).
-       Each *-soft/deep pair INVERTS on light: -soft is now the DARKER tone, because it is
-       used for text on pale tinted chips where a pale hue would vanish. */
+       -soft is the DARKER partner of each pair, because it is used for text on pale tinted
+       chips where a paler hue would vanish. Green has no separate -soft and doubles as its own. */
     --orange:#4a5f8a; --orange-soft:#3a4d73; --orange-rgb:74,95,138;
     --green:#17804d; --green-rgb:23,128,77;
     --amber:#9a6a05; --amber-rgb:154,106,5;
     --red:#b81e28; --red-rgb:184,30,40;
-    --mark-bg:#eef1f7;
-    /* the alphas above were tuned for a dark theme, so these carry the light theme's half: a
-       cool near-black scrim genuinely dims the page behind a modal, while the shadow and the
-       hover "lift" are mid-greys. --lift-rgb inverts (dark, so a hover DARKENS the surface). */
-    --backdrop-rgb:26,33,48;
-    --shadow-rgb:116,127,148;
-    --lift-rgb:24,35,56;
-    --lift-a:.05;
+    --mark-bg:#eef1f7;             /* the letterbox behind the logo */
+    /* a cool near-black scrim genuinely dims the page behind a modal, while the shadow and
+       the hover "lift" are mid-greys — --lift-rgb is dark, so a hover DARKENS the surface. */
+    --backdrop-rgb:26,33,48;       /* modal scrim */
+    --shadow-rgb:116,127,148;      /* every box-shadow */
+    --lift-rgb:24,35,56;           /* hover lift over a surface */
+    --lift-a:.05;                  /* ...and how strong it is */
     --shadow:0 10px 30px rgba(var(--shadow-rgb),.35);
   }
   /* border-box on pseudo-elements too, not just real ones — the bare "*" selector never
@@ -120,7 +84,7 @@
   /* THE overflow bug: this element is `class="wrap mast-inner"`, and .wrap supplies the
      page's 20px side gutter — but a `padding` SHORTHAND here reset left and right to 0, so
      the masthead alone ignored the gutter. The logo sat flush against the left edge and the
-     theme chip against the right, which on a phone is the toggle running off the screen.
+     chip against the right, which on a phone is the chip running off the screen.
      Vertical longhands only, so .wrap's horizontal padding survives and the masthead lines
      up with the content beneath it. */
   .mast-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;
@@ -132,18 +96,24 @@
   /* min-width:0 or this column refuses to go below its longest word and shoves the chips on
      the right off the screen — a flex item's automatic minimum is min-content, not zero */
   .brand .btxt{display:flex;flex-direction:column;gap:1px;min-width:0}
-  .brand h1{font-size:15px;font-weight:800;letter-spacing:-.2px;overflow-wrap:break-word}
-  .brand .sub{font-size:12px;color:var(--ink-faint);font-weight:600;overflow-wrap:break-word}
+  .brand h1{font-size:15px;font-weight:800;letter-spacing:-.2px;overflow-wrap:break-word;margin:0}
+  /* WHY margin:0 and max-width:none are spelled out here: this span shares its class with the
+     page's intro paragraphs, and the generic `.sub` rule further down carries
+     margin-bottom:18px. That margin was landing inside the masthead, so the text column
+     measured 59.5px against a 40px logo while only its top 41.5px held any text — .brand
+     centred the two boxes correctly and the logo still read as sitting high against the
+     words. Neutralise the inherited paragraph spacing and the column is its text again. */
+  .brand .sub{font-size:12px;color:var(--ink-faint);font-weight:600;overflow-wrap:break-word;
+    margin:0;max-width:none}
   /* the chips wrap among themselves rather than refusing to shrink, so however many of them
      are on screen (one at home, three inside a tracker) the row always fits */
   .mast-right{display:flex;align-items:center;justify-content:flex-end;gap:14px;row-gap:8px;
     flex-wrap:wrap;min-width:0}
-  /* the masthead's quiet chips — theme toggle and the way back home. Same family as the
-     dashboard's, and the same as each other, so they read as one control group. */
-  .themebtn,.homebtn{flex:0 0 auto;background:transparent;border:1px solid var(--line);color:var(--ink-dim);
+  /* the masthead's quiet chip — the way back home. Same family as the dashboard's. */
+  .homebtn{flex:0 0 auto;background:transparent;border:1px solid var(--line);color:var(--ink-dim);
     border-radius:10px;padding:9px 13px;font-family:inherit;font-size:12.5px;font-weight:800;
     letter-spacing:.2px;cursor:pointer;display:flex;align-items:center;gap:6px}
-  .themebtn:hover,.homebtn:hover{color:var(--ink);background:var(--card);border-color:var(--orange)}
+  .homebtn:hover{color:var(--ink);background:var(--card);border-color:var(--orange)}
   /* the brand block is the other way home, so it picks up a hint of affordance — but only
      once there is somewhere to go back to */
   .brand.is-link{cursor:pointer}
@@ -455,10 +425,6 @@
   .pb .pb-seed{margin-top:9px;background:rgba(var(--orange-rgb),.1);border:1px solid rgba(var(--orange-rgb),.3);border-radius:9px;padding:9px 11px;font-size:12.5px;color:var(--ink);font-style:italic;line-height:1.5}
   .pb .pb-seed-label{display:block;font-style:normal;font-weight:700;text-transform:uppercase;font-size:10.5px;letter-spacing:.05em;color:var(--orange-soft);margin-bottom:4px}
 
-  /* same trap as .mast-inner — the footer is a .wrap too, so vertical longhand only or its
-     line runs edge to edge on a phone */
-  footer{text-align:center;font-size:12px;color:var(--ink-faint);padding-top:34px}
-
   /* ---------- Cards/Table toggle (matches dashboard .viewtoggle) ---------- */
   .viewtoggle{display:inline-flex;gap:4px;background:var(--navy-2);border:1px solid var(--line);border-radius:10px;padding:4px}
   .viewtoggle .vt{background:transparent;border:none;color:var(--ink-dim);font-family:inherit;font-size:13px;font-weight:700;padding:8px 16px;border-radius:7px;cursor:pointer}
@@ -617,7 +583,7 @@
   .notes-btn:hover{color:var(--ink);background:var(--navy-2);border-color:var(--line)}
   .notes-btn:active{transform:translateY(1px)}
   /* "has notes" — brand accent on a tinted pill. The pill (not just the stroke colour) is
-     what makes it readable at a glance on both themes and on a phone in the gym. */
+     what makes it readable at a glance on a phone in the gym. */
   .notes-btn.has{color:var(--orange-soft);background:rgba(var(--orange-rgb),.14);
     border-color:rgba(var(--orange-rgb),.34)}
   .notes-btn.has:hover{background:rgba(var(--orange-rgb),.22);color:var(--orange-soft)}
@@ -653,13 +619,13 @@
     .mast-meta{text-align:left}
     .action{flex-wrap:wrap}
     .action .body{flex-basis:calc(100% - 130px)}
-    /* a phone's masthead: trim the gaps and the chips so the logo, the title and the theme
-       toggle sit on one row at 390px with room to spare, rather than the toggle being pushed
-       to the edge. Inside a tracker there are three chips and they wrap, which is fine. */
+    /* a phone's masthead: trim the gaps and the chip so the logo, the title and the way home
+       sit on one row at 390px with room to spare. Inside a tracker there are two chips and
+       they wrap, which is fine. */
     /* longhands here too — a shorthand would wipe .wrap's side gutter all over again */
     .mast-inner{padding-top:20px;padding-bottom:14px;gap:12px}
     .brand{gap:10px}
-    .themebtn,.homebtn{padding:8px 11px;font-size:12px}
+    .homebtn{padding:8px 11px;font-size:12px}
   }
 
   /* ---------- Password gate ---------- */
@@ -725,7 +691,6 @@
     </div>
     <div class="mast-right">
       <button type="button" class="homebtn hide" id="homeBtn" onclick="goHome()" title="Back to the home screen — pick the other tracker">← Home</button>
-      <button type="button" class="themebtn" id="themeToggle" onclick="bsToggleTheme()" aria-pressed="false" title="Switch theme">☾ Dark</button>
       <div class="mast-meta" id="mastMeta">
         <strong id="liveCount">0</strong>
         live
@@ -934,8 +899,6 @@
 
 </main>
 
-<footer class="wrap">Bodysculpt Warrington · The First 42 Days · saved on this device</footer>
-
 <!-- ===== Add / Edit modal ===== -->
 <div class="modal-bg" id="modalBg">
   <div class="modal">
@@ -1089,34 +1052,6 @@
 /* ============================================================
    THE FIRST 42 DAYS — day-based journey engine
    ============================================================ */
-
-/* ===================== LIGHT / DARK THEME =====================
-   Purely visual. The palette lives in the token blocks at the top of the stylesheet; this
-   only flips the data-theme attribute on <html>, remembers the choice, and keeps the
-   toggle's label in step. No render path, no data, no behaviour depends on it. The storage
-   key is shared with the KPI dashboard, so the theme follows you between the two sites. */
-function bsTheme(){
-  try{ return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"; }
-  catch(e){ return "light"; }
-}
-function bsSetTheme(t){
-  const next = t === "dark" ? "dark" : "light";
-  try{ document.documentElement.setAttribute("data-theme", next); }catch(e){}
-  try{ localStorage.setItem("bodysculpt:theme", next); }catch(e){}
-  bsSyncThemeBtn();
-  return next;
-}
-function bsToggleTheme(){ return bsSetTheme(bsTheme() === "dark" ? "light" : "dark"); }
-// The button offers the theme you'd switch TO, so its label always names the next state.
-function bsSyncThemeBtn(){
-  const b = document.getElementById("themeToggle");
-  if(!b) return;
-  const dark = bsTheme() === "dark";
-  b.textContent = dark ? "☀ Light" : "☾ Dark";
-  b.title = dark ? "Switch to the light theme" : "Switch to the dark theme";
-  b.setAttribute("aria-pressed", dark ? "true" : "false");
-}
-bsSyncThemeBtn();
 
 const STORE = 'bsj_v1';
 const MS_DAY = 86400000;
@@ -3669,7 +3604,7 @@ function showTracker(which){
       brand.removeAttribute('role'); brand.removeAttribute('tabindex'); brand.removeAttribute('title');
     }
   }
-  try{ document.title = tracker ? label.title+' — Bodysculpt' : 'Bodysculpt — The First 42 Days'; }catch(e){}
+  try{ document.title = tracker ? label.title+' — Bodysculpt' : 'Bodysculpt - Client Journey'; }catch(e){}
   setTab(tracker, activeTab[tracker]);
   return tracker;
 }

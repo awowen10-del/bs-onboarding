@@ -272,6 +272,23 @@
   .action .missed-btn:hover{color:var(--red);border-color:rgba(var(--red-rgb),.5)}
   .overdue{display:inline-block;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:800;color:var(--on-accent);background:var(--red);border-radius:5px;padding:2px 7px}
 
+  /* "Waiting on a first session" — the standing task between the intro and Day 0.
+     The quietest row on Today by design: it is a waiting-for state, not work due today, so it
+     sits on the RECESSED card tone (--card-2, the same step-down the toolbars use) with a soft
+     green edge rather than a full channel colour. Green because green is the start accent
+     everywhere else.
+     Its control is INLINE on the row, not a panel and not behind the chevron. Both matter: a
+     panel is what made this heavy enough to bury the day's real work beneath three of them,
+     and the chevron would put a tap between the coach and the one action that clears the task.
+     So the row stays one line high and the button sits on it. */
+  .action.awaiting{background:var(--card-2);border-left-color:rgba(var(--green-rgb),.45)}
+  .ch.awaiting{background:rgba(var(--green-rgb),.12);color:var(--green)}
+  .action.awaiting .body{cursor:default}
+  .action.awaiting .await-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
+  .action.awaiting .await-date{font-family:inherit;font-size:13px;padding:7px 10px;
+    border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink)}
+  .action.awaiting .await-date:focus{outline:none;border-color:var(--green)}
+
   /* checklist inside detail (fix #4) */
   .walk-link{display:flex;align-items:center;gap:6px;width:100%;margin-top:11px;font-size:12px;font-weight:700;
     color:var(--orange-soft);text-decoration:none;border:1px solid var(--line);background:var(--navy-2);
@@ -619,6 +636,11 @@
     .mast-meta{text-align:left}
     .action{flex-wrap:wrap}
     .action .body{flex-basis:calc(100% - 130px)}
+    /* the waiting row's control is a date field AND a full-sentence button, far wider than the
+       130px column the rule above reserves, so on a phone it takes the next line to itself */
+    .action.awaiting .body{flex-basis:100%}
+    .action.awaiting .await-actions{flex-basis:100%;margin-top:2px}
+    .action.awaiting .await-actions .start-btn{flex:1 1 auto;justify-content:center}
     /* a phone's masthead: trim the gaps and the chip so the logo, the title and the way home
        sit on one row at 390px with room to spare. Inside a tracker there are two chips and
        they wrap, which is fine. */
@@ -1581,6 +1603,33 @@ function dueToday(m){
   return out;
 }
 
+/* ---------------- The gap between the intro and Day 0 ----------------
+   The intro admin and the first session are two jobs on two different days: the paperwork
+   happens in the welcome chat, the session itself is usually booked for later that week. They
+   used to be ONE card on Today's moves — the intro checklist with the start-the-clock control
+   buried inside it — so marking the admin done swept the whole thing off Today while the clock
+   was still sitting at zero, and starting it meant remembering to go and dig the person out of
+   the Challengers tab. That is how somebody ends up two weeks in with no journey running.
+
+   So the two are separate tasks now, and this is the second one: a standing, deliberately
+   quiet row that appears the moment the intro is done, carries the start control itself, and
+   does not go away until the clock is actually started.
+
+   isDone, not isHandled: an intro marked MISSED is a record that it did not happen, and
+   nagging for a first session off the back of it would be wrong. */
+function awaitingStart(m){
+  return !!m && !isInactive(m) && isDone(m,'intro') && !hasStarted(m);
+}
+/* The booked date as it reads on the task's chip. Planning only until the clock starts. */
+function bookedLabel(m){
+  return (m && m.booked) ? 'Booked '+fmt(m.booked) : 'No date yet';
+}
+/* Their booked session date has been and gone and nobody started the clock — exactly the
+   drift this task exists to catch, so it earns the same flag a late touchpoint gets. */
+function startOverdue(m){
+  return !!m && !!m.booked && today0() > m.booked;
+}
+
 /* ---------------- TODAY view ---------------- */
 function renderToday(){
   const banner = document.getElementById('todayBanner');
@@ -1612,9 +1661,16 @@ function renderToday(){
   // to reconnect with someone after they've gone, so they're gathered separately here.
   const fuRows = members.filter(followUpDue).sort((a,b)=> (a.followUpOn||0)-(b.followUpOn||0));
 
-  document.getElementById('todayCount').textContent = rows.length + fuRows.length;
+  // Waiting on a first session. Gathered separately for the same reason follow-ups are: this
+  // is a STATE, not a dated touchpoint, so dueToday() has nothing to say about it. Soonest
+  // booked date first; anyone without a date yet sorts to the back.
+  const FAR = 8.64e15;
+  const startRows = members.filter(awaitingStart)
+    .sort((a,b)=> (a.booked||FAR) - (b.booked||FAR));
 
-  if(rows.length===0 && fuRows.length===0){
+  document.getElementById('todayCount').textContent = rows.length + fuRows.length + startRows.length;
+
+  if(rows.length===0 && fuRows.length===0 && startRows.length===0){
     list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
       No touchpoints due right now. Consistency is the magic — check the Challengers tab to see where everyone sits.</div>`;
     return;
@@ -1654,6 +1710,37 @@ function renderToday(){
         <div class="mark-btns">
           <button class="btn sm primary mark" onclick="event.stopPropagation();followUpDone('${m.id}')">Done</button>
           <button class="btn sm ghost missed-btn" onclick="event.stopPropagation();followUpSnooze('${m.id}')">Snooze 30 days</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  // Waiting on a first session — the intro is done, the clock isn't running yet. Near the top
+  // so it is easy to find, and the quietest row on the page because it is not work due today:
+  // it is a person to chase up, standing there until their Day 0 exists.
+  //
+  // No Done and no Missed. There is nothing to perform and nothing to let slide — the only
+  // thing that resolves this task is the clock actually starting, so the start control IS the
+  // row rather than something hidden behind the chevron.
+  if(startRows.length){
+    html += `<div class="group-label">Waiting on a first session<span class="gcount">${startRows.length}</span></div>`;
+    startRows.forEach(m=>{
+      const late = startOverdue(m);
+      const dateVal = m.booked ? toDateInput(m.booked) : '';
+      html += `<div class="action awaiting" id="act-${m.id}-startclock">
+        <span class="ch awaiting">To start</span>
+        <div class="body">
+          <div class="who">
+            <span class="nm">${esc(m.name)}</span>${notesBtn(m)}
+            <span class="ttl">Confirm their first session to start their 42 days</span>
+            <span class="day">${esc(bookedLabel(m))}</span>
+            ${late?'<span class="overdue">Session date passed</span>':''}
+          </div>
+        </div>
+        <div class="await-actions">
+          <input type="date" class="await-date" value="${dateVal}" aria-label="First session date for ${esc(m.name)}"
+            onchange="setBookedDate('${m.id}', this.value)">
+          <button class="btn sm start-btn" onclick="markFirstSession('${m.id}',true)">✓ First session attended — start clock</button>
         </div>
       </div>`;
     });
@@ -1707,7 +1794,8 @@ function toggleExpand(mid,iid){
   if(el) el.classList.toggle('open');
 }
 
-/* Jump to a member's intro card on Today's moves (used from the Challengers tab) */
+/* Jump to whichever of a challenger's two pre-start tasks is actually on Today's moves — the
+   intro card while the admin is outstanding, the start-the-clock task once it is done. */
 function goToIntro(mid){
   // switch to the Today tab
   document.querySelectorAll('nav.tabs button').forEach(x=>x.setAttribute('aria-selected','false'));
@@ -1718,8 +1806,10 @@ function goToIntro(mid){
   if(todaySection) todaySection.classList.add('active');
   // make sure we're on the moves sub-view (not the table) so the intro card shows
   setTodayView('moves');
-  // expand that member's intro card and scroll to it
-  const el=document.getElementById('act-'+mid+'-intro');
+  // expand whichever card is there and scroll to it. Once the intro admin is marked Done the
+  // intro card is gone from Today, and what is waiting is the start-the-clock task.
+  const el=document.getElementById('act-'+mid+'-intro')
+        || document.getElementById('act-'+mid+'-startclock');
   if(el){ el.classList.add('open'); el.scrollIntoView({behavior:'smooth', block:'center'}); }
 }
 
@@ -2065,8 +2155,8 @@ function renderMembers(){
           <div class="day-no"><div class="n">—</div><div class="l">not started</div></div>
         </div>
         <div class="start-box">
-          <div class="start-txt">Their 6 weeks begin when you run the intro and start the clock. ${introPending?'The intro is still to run.':'Intro done — start the clock from the intro card on Today\u2019s moves.'}</div>
-          <button class="btn sm start-btn" onclick="goToIntro('${m.id}')">Go to the intro on Today\u2019s moves →</button>
+          <div class="start-txt">Their 6 weeks begin when you run the intro and start the clock. ${introPending?'The intro is still to run.':'Intro done — their start-the-clock task is waiting on Today\u2019s moves.'}</div>
+          <button class="btn sm start-btn" onclick="goToIntro('${m.id}')">${introPending?'Go to the intro on Today\u2019s moves →':'Go to their start-the-clock task →'}</button>
         </div>
         <div class="sub" style="margin-top:10px">${doneCount} of ${applicable.length} touchpoints done${introPending?' · <span style="color:var(--amber);font-weight:700">intro still to run</span>':''}</div>
         <div class="controls">
@@ -2396,6 +2486,12 @@ function setBookedDate(id, dateStr){
     renderToday();
     const el=document.getElementById('act-'+id+'-intro');
     if(el) el.classList.add('open');
+  }else if(awaitingStart(m)){
+    // the start-the-clock task shows the booked date in its chip, and flags a date that has
+    // already passed, so both would go stale. It has no collapsed state to lose — the row is
+    // always open — so a re-render is safe here in a way it is not on the intro card.
+    save();
+    renderToday();
   }else{
     // not started yet: nothing else on screen depends on this, so just save
     // quietly — re-rendering here is what was collapsing the card mid-edit.

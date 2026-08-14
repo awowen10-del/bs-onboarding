@@ -173,4 +173,30 @@ const rulesFor = (sel) => RULES.filter((r) => r.sel.split(",").map((s) => s.trim
   assert.ok(!/The First 42 Days<\/title>/.test(HTML), "…and not the old one");
 }
 
+/* ---------- 9: Today's moves opens straight onto the work ----------
+   The tab you just tapped says "Today's moves" and the toggle under it says so again, so the
+   heading and its blurb were a third telling. Both are gone; the section's first child is the
+   toggle, and main's padding-top is what supplies the gap they used to occupy. */
+{
+  const view = /<section class="view" id="view-today"[\s\S]*?<div id="todayMoves"/.exec(HTML);
+  assert.ok(view, "sanity: the onboarding Today view is still there");
+  assert.ok(!/<h2>Today's moves<\/h2>/.test(view[0]),
+    "no heading above the toggle on Today's moves");
+  assert.ok(!/sec-head/.test(view[0]), "…and no empty heading container left behind");
+  assert.ok(!/you bring the warmth/.test(HTML), "the blurb is gone from the page entirely");
+  assert.ok(/<div class="viewtoggle" id="todayViewToggle">/.test(view[0]),
+    "the toggle and everything below it are untouched");
+  // the retention side keeps its own heading — this change was onboarding-only
+  const ret = /<section class="view" id="view-ret-today"[\s\S]*?<div class="viewtoggle"/.exec(HTML);
+  assert.ok(ret && /<h2>Today's moves<\/h2>/.test(ret[0]),
+    "Retention's Today heading is left exactly as it was");
+}
+
+/* ---------- 10: the welcome message has no placeholder left to hand-edit ---------- */
+{
+  assert.ok(!/\[First Name\]/.test(HTML),
+    "the Trainerize welcome message must not ship a [First Name] placeholder — it is built "
+    + "from the challenger's own name now");
+}
+
 console.log("layout.test.cjs: OK");

@@ -784,11 +784,10 @@
   <!-- ===== TODAY ===== -->
   <!-- no view is `active` in the markup: the app opens on the home screen above, and a
        tracker's first tab is switched on when you enter it -->
+  <!-- No heading and no blurb: the tab you just tapped already says "Today's moves", and the
+       toggle underneath repeats it. The screen goes straight to the work. main's padding-top
+       supplies the gap the removed block used to sit in. -->
   <section class="view" id="view-today" data-tracker="onboarding">
-    <div class="sec-head">
-      <h2>Today's moves</h2>
-    </div>
-    <p class="sub" style="margin-top:-2px;margin-bottom:14px">Every challenger, sorted by what they need from us right now. The system tells you the day — you bring the warmth.</p>
     <div class="viewtoggle" id="todayViewToggle">
       <button class="vt active" data-tview="moves" onclick="setTodayView('moves')">Today's moves</button>
       <button class="vt" data-tview="table" onclick="setTodayView('table')">Whole journey</button>
@@ -1123,7 +1122,11 @@ const CH_LABEL = {physical:'Physical', digital:'Digital', inperson:'In person'};
 const WELCOME_MSG = {
   title:'Welcome to Week 1 🎉',
   sections:[
-    {h:'', body:'Hey [First Name]\nWelcome to your 6-Week Transformation Program. We’re excited to have you on board and can’t wait to see you start making progress with us.\n\nA couple of quick things to set you up for a strong start:'},
+    // greeting:true — the salutation is built per challenger and prepended to this body, the
+    // same way the Calories & Protein section's numbers are. It used to open with a bracketed
+    // first-name placeholder that needed editing by hand after every paste — exactly the sort
+    // of step that gets forgotten and sends somebody a message addressed to nobody.
+    {greeting:true, h:'', body:'Welcome to your 6-Week Transformation Program. We’re excited to have you on board and can’t wait to see you start making progress with us.\n\nA couple of quick things to set you up for a strong start:'},
     {h:'Calories & Protein', body:'We’ve uploaded your personal targets into your profile (check the Nutrition tab in the app).'},
     {h:'Members Area', body:'Useful videos on hitting protein, planning food, weekends, eating out & more.\nhttps://bodysculptwarrington1.members-only.online/login'},
     {h:'Facebook Group', body:'Join for support, wins and community.\nhttps://www.facebook.com/groups/1682899088395867'},
@@ -1146,11 +1149,29 @@ function welcomeCaloriesBody(m){
   }
   return 'We’ve uploaded your personal targets into your profile (check the Nutrition tab in the app).';
 }
-/* Build the message sections for a specific member (Calories section is dynamic) */
+/* What we call them. The stored name is one free-text field a coach typed, so the first name
+   is simply its first word — "Sophie Webhook" -> "Sophie", "WENDY BOOTH" -> "WENDY". No
+   cleverness about middle names or double-barrelled surnames: the first word is the bit people
+   answer to, and anything smarter would be wrong more often than it was right. */
+function firstNameOf(m){
+  const n = String((m && m.name) || '').trim();
+  return n ? n.split(/\s+/)[0] : '';
+}
+/* A challenger with no name at all shouldn't produce "Hey " with a hole in it, so the whole
+   salutation changes rather than the name being blank. */
+function welcomeGreeting(m){
+  const f = firstNameOf(m);
+  return f ? 'Hey ' + f : 'Hi there';
+}
+/* Build the message sections for a specific member. Two are dynamic: the greeting takes their
+   first name, and Calories & Protein takes their actual targets. Everything else is fixed
+   copy, so what comes out is a straight copy-and-paste with nothing left to edit. */
 function welcomeSectionsFor(m){
-  return WELCOME_MSG.sections.map(s=>
-    s.h==='Calories & Protein' ? {h:s.h, body:welcomeCaloriesBody(m)} : s
-  );
+  return WELCOME_MSG.sections.map(s=>{
+    if(s.greeting) return {h:s.h, body:welcomeGreeting(m)+'\n'+s.body};
+    if(s.h==='Calories & Protein') return {h:s.h, body:welcomeCaloriesBody(m)};
+    return s;
+  });
 }
 function welcomeMsgPlainText(m){
   let out = WELCOME_MSG.title + '\n\n';

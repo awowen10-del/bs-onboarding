@@ -1216,14 +1216,19 @@ const JOURNEY = [
    what:'Voice note check-in. Warm, reference their effort, give a <b>named win</b>, set a focus for the week.'},
   {day:35, id:'wk6', ch:'digital', title:'Start of Week 6 check-in', owner:'coach', phase:'journey', win:true,
    what:'Final week check-in. Celebrate how far they’ve come, give a <b>named win</b>, and set up the where-next chat from a place of genuine care.'},
-  /* The welcome card used to sit here, at day 43, conditional on signing up. It is now the
-     FIRST touchpoint of the member journey instead (MEMBER_JOURNEY, below) — it belongs to
-     the day somebody becomes a member, which is the retention tracker's business, not the
-     42 days'. Nothing else in the onboarding journey moved. */
-  {day:72, id:'month1', ch:'digital', title:'Month 1 follow-up', owner:'coach', phase:'member', conditional:'signedUp',
-   what:'~30 days after they join. Check how month one as a full member has gone — anything they want to tweak?'},
-  {day:103, id:'month2', ch:'digital', title:'Month 2 follow-up', owner:'coach', phase:'member', conditional:'signedUp',
-   what:'~60 days after they join. Embed the habit, head off any wobble, look at what’s next.'},
+  /* THE JOURNEY ENDS AT DAY 35. Three touchpoints used to hang off the far end of this array,
+     all of them conditional on having signed up: a welcome card at day 43, then month-1 and
+     month-2 follow-ups at days 72 and 103. All three have moved to MEMBER_JOURNEY on the
+     retention tracker, because none of them are about the 42 days — they are about the
+     relationship that starts once somebody joins, and they hang off `joined`, not off day 0.
+     Counting them from a challenger's day 0 was always the wrong clock: somebody who signs up
+     in week 3 and somebody who signs up in week 6 got their month-1 note weeks apart.
+
+     Nothing else moved, and nothing was left behind for them: with these gone there is no
+     conditional touchpoint left in the onboarding journey and no 'member' phase, so a
+     challenger's touchpoint count is simply every item in this array. Stale 'month1'/'month2'
+     keys sitting in an old record's `completed` are inert — nothing reads an id that is not
+     in JOURNEY — so no migration was needed. */
 ];
 
 const CH_LABEL = {physical:'Physical', digital:'Digital', inperson:'In person'};
@@ -1294,8 +1299,8 @@ function welcomeMsgPlainText(m){
 }
 
 /* Table column order — mirrors the Google sheet left-to-right */
-const TABLE_COLS = ['intro','d1_text','d3_postcard','wk2','wk3','wk4','wk5','wk6','month1','month2'];
-const COL_LABEL = {intro:'Intro',d1_text:'Text',d3_postcard:'Postcard',wk2:'Wk2',wk3:'Wk3',wk4:'Wk4',wk5:'Wk5',wk6:'Wk6',month1:'Mth1',month2:'Mth2'};
+const TABLE_COLS = ['intro','d1_text','d3_postcard','wk2','wk3','wk4','wk5','wk6'];
+const COL_LABEL = {intro:'Intro',d1_text:'Text',d3_postcard:'Postcard',wk2:'Wk2',wk3:'Wk3',wk4:'Wk4',wk5:'Wk5',wk6:'Wk6'};
 
 /* ---------------- state + persistence (Supabase-backed) ---------------- */
 let members = [];          // in-memory working copy; all journey logic uses this
@@ -1717,14 +1722,10 @@ function dueToday(m){
       if(!isHandled(m,it.id) && status(m)!=='done') out.push(it);
       return;
     }
-    if(it.phase==='member'){
-      // Month 1/2 follow-ups happen AFTER the 6 weeks, so they fire even though
-      // status is 'done'. Conditional on signedUp (handled above). Day-gated with grace.
-      const edm = effectiveDay(it,m);
-      const GRACE_M = 10;
-      if(cd >= edm && cd <= edm + GRACE_M && !isHandled(m,it.id)) out.push(it);
-      return;
-    }
+    // There is no 'member' phase here any more. It existed for the month-1 and month-2
+    // follow-ups, which fired after the 6 weeks were over and so needed their own rule to
+    // survive status==='done'. Both have moved to the retention tracker's member journey,
+    // which runs off `joined` rather than day 0, so the branch went with them.
     // standard touchpoints: due from their effective day, and stay due for a
     // grace window if missed. After that they drop off Today (recorded as
     // missed on the member card) so old postcards don't pile up on later days.
@@ -2415,11 +2416,15 @@ function setOutcome(id,outcome){
   const m=members.find(x=>x.id===id); if(!m) return;
   // outcome: 'stayed' | 'left' | null (undecided)
   m.outcome = outcome;
+  // signedUp no longer unlocks anything on this tracker — the touchpoints it used to gate
+  // (the welcome card, then the month-1 and month-2 follow-ups) all live on the retention
+  // side now. It is kept because it still records the decision on the challenger themselves,
+  // and the whole-journey table reads it for the "· Member" marker beside their name.
   if(outcome==='stayed'){
-    m.signedUp = true;            // unlocks welcome card + month follow-ups
+    m.signedUp = true;
     handOffToRetention(m);        // …and they become a member on the other tracker
   }else if(outcome==='left'){
-    m.signedUp = false;           // inactive: no member touchpoints
+    m.signedUp = false;
   }else{ // undecided / undo
     m.signedUp = false;
   }
@@ -3761,21 +3766,21 @@ const PB_WHY = {
   wk3:         'Plant the seed. Don’t make the pitch.',
   wk4:         'Help offered early beats help asked for late.',
   wk5:         'Week five is where quiet people go quiet.',
-  wk6:         'Finish the six weeks like they mattered.',
-  month1:      'Joining is the start, not the finish line.',
-  month2:      'The habit has to outlive the challenge.'
+  wk6:         'Finish the six weeks like they mattered.'
 };
 
 /* Chapters, from the phase each touchpoint already declares. Presentation only: the order and
    the membership come straight out of JOURNEY, so adding a touchpoint puts it in the right
-   chapter without anybody touching this. */
+   chapter without anybody touching this.
+   There used to be a third — "After they join", for the month-1 and month-2 follow-ups. Those
+   moved to the retention tracker, and renderPlaybook already skips a chapter with nothing in
+   it, so the deck would have been correct either way; the entry is gone because a chapter
+   heading for a phase this journey no longer has is a promise the data cannot keep. */
 const PB_CHAPTERS = [
   {phase:'intro',   num:'Chapter I',   title:'Before day zero',
    lead:'The welcome, and everything put in place before they have to ask for it.'},
-  {phase:'journey', num:'Chapter II',  title:'The forty-two days',
-   lead:'Six weeks of deliberate contact. This is the stretch that decides whether somebody stays.'},
-  {phase:'member',  num:'Chapter III', title:'After they join',
-   lead:'For challengers who signed up. The relationship carries on past the finish line.'}
+  {phase:'journey', num:'Chapter II', title:'The forty-two days',
+   lead:'Six weeks of deliberate contact. This is the stretch that decides whether somebody stays.'}
 ];
 const PB_OWNER = {coach:'Coach', team:'Team'};
 

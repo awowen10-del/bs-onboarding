@@ -221,14 +221,59 @@ const dueIds = (app, m) => [...app.ctx.memberDueToday(m)].map((it) => it.id);
   assert.deepStrictEqual(dueIds(app, app.retention()[0]), ["welcome_card"],
     "day 0 of their membership");
 
-  // the rest of the onboarding journey is untouched
-  assert.deepStrictEqual([...app.ctx.__t.JOURNEY].map((it) => it.id),
-    ["intro", "d1_text", "d3_postcard", "wk2", "wk3", "wk4", "wk5", "wk6", "month1", "month2"],
-    "every other onboarding touchpoint is exactly where it was");
-  assert.deepStrictEqual([...app.ctx.__t.TABLE_COLS],
-    ["intro", "d1_text", "d3_postcard", "wk2", "wk3", "wk4", "wk5", "wk6", "month1", "month2"]);
+  // The onboarding journey is now the 42 days and nothing after them. The welcome card left
+  // first; the month-1 and month-2 follow-ups followed it to the retention side for the same
+  // reason — they hang off the day somebody JOINED, not off their day 0.
+  const ONBOARDING = ["intro", "d1_text", "d3_postcard", "wk2", "wk3", "wk4", "wk5", "wk6"];
+  assert.deepStrictEqual([...app.ctx.__t.JOURNEY].map((it) => it.id), ONBOARDING,
+    "the onboarding journey ends at week 6");
+  assert.deepStrictEqual([...app.ctx.__t.TABLE_COLS], ONBOARDING,
+    "…and the whole-journey table has a column for each and nothing more");
   assert.ok(app.html("memberList").includes("Sam Doyle"), "and the challenger still renders");
   assert.ok(app.html("memberList").includes("Stayed ✓"));
+}
+
+/* ---------- 7b: the month follow-ups are gone from the onboarding side entirely ----------
+   They fired at days 72 and 103 off a challenger's day 0, gated on signedUp, and were the
+   only reason the onboarding journey had a 'member' phase at all. Both moved to the retention
+   member journey, which counts from the day somebody joined — the clock that actually matters
+   for a follow-up about being a member. This checks the whole surface, not just the array:
+   Today's moves at the day they used to fire, the whole-journey grid, and the Playbook. */
+{
+  const app = boot({ members: [] });
+  for (const id of ["month1", "month2"]) {
+    assert.ok(!app.ctx.__t.JOURNEY.some((it) => it.id === id), id + " is out of the journey");
+    assert.ok(!app.ctx.__t.TABLE_COLS.includes(id), id + " is out of the grid");
+  }
+  assert.ok(!/Mth1|Mth2/.test(HTML), "no month columns are labelled anywhere");
+  assert.ok(!app.html("playbookList").includes("Month 1 follow-up"), "gone from the Playbook");
+  assert.ok(!app.html("playbookList").includes("Month 2 follow-up"));
+  // nothing in the onboarding code still reasons about a 'member' phase
+  assert.ok(!/phase\s*===\s*['"]member['"]/.test(HTML),
+    "no onboarding branch still special-cases the member phase");
+  assert.ok(!app.ctx.__t.JOURNEY.some((it) => it.phase === "member"),
+    "…because no touchpoint declares it");
+
+  // A signed-up challenger sitting at day 75 — squarely inside the old month-1 window, and
+  // past the end of the 42 days — has an empty Today rather than a follow-up.
+  const late = boot({ members: [{
+    id: "late", name: "Lena Late", coach: "Dan", day0: daysFromToday(-75), booked: daysFromToday(-75),
+    firstSessionDone: true, completed: ["intro", "d1_text", "d3_postcard", "wk2", "wk3", "wk4", "wk5", "wk6"],
+    doneMeta: {}, checks: {}, missed: [], outcome: "stayed", signedUp: true,
+    extraDays: 0, pausedDays: 0, pausedAt: null,
+  }] });
+  assert.strictEqual(late.ctx.currentDay(late.find("late")), 75, "sanity: they really are at day 75");
+  // spread out of the vm's realm — a sandbox array has a different Array.prototype and
+  // deepStrictEqual compares those too
+  assert.deepStrictEqual([...late.ctx.dueToday(late.find("late"))].map((it) => it.id), [],
+    "nothing is due — the 42 days are over and no month follow-up exists to fire");
+  assert.ok(late.html("todayList").includes("All caught up"), "…so Today is genuinely clear");
+  assert.strictEqual(late.el("todayCount").textContent, "0");
+  // and the conversion flow they went through is untouched
+  assert.strictEqual(late.find("late").signedUp, true, "signedUp still records the decision");
+  assert.ok(late.html("memberList").includes("Stayed ✓"), "…and still reads as stayed");
+  assert.ok(late.html("memberList").includes("8 of 8 touchpoints done"),
+    "the touchpoint count is the 42 days, all eight of them");
 }
 
 /* ---------- 8: existing members do not error, and the tab exists ---------- */

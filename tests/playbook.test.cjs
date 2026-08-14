@@ -69,20 +69,26 @@ const html = app.html("playbookList");
 
 /* ---------- 4: chapters group by the phase the data already declares ---------- */
 {
-  assert.ok(html.includes("Before day zero") && html.includes("The forty-two days")
-    && html.includes("After they join"), "three chapters");
-  // order follows JOURNEY: intro, then the 42 days, then the post-join follow-ups
+  assert.ok(html.includes("Before day zero") && html.includes("The forty-two days"),
+    "two chapters");
   assert.ok(html.indexOf("Before day zero") < html.indexOf("The forty-two days"), "chapters in order");
-  assert.ok(html.indexOf("The forty-two days") < html.indexOf("After they join"));
   // and each touchpoint sits under the right one
   const introAt = html.indexOf("Intro / Welcome experience");
   const wk2At = html.indexOf("Start of Week 2 check-in");
-  const m1At = html.indexOf("Month 1 follow-up");
   assert.ok(html.indexOf("Before day zero") < introAt && introAt < html.indexOf("The forty-two days"),
     "the intro sits in chapter I");
-  assert.ok(html.indexOf("The forty-two days") < wk2At && wk2At < html.indexOf("After they join"),
-    "week 2 sits in chapter II");
-  assert.ok(html.indexOf("After they join") < m1At, "the month-1 follow-up sits in chapter III");
+  assert.ok(html.indexOf("The forty-two days") < wk2At, "week 2 sits in chapter II");
+
+  // The third chapter is GONE, not merely empty. It held the month-1 and month-2 follow-ups,
+  // which now live on the retention tracker — a heading with nothing under it would read as
+  // work somebody had forgotten to do.
+  assert.ok(!html.includes("After they join"), "no orphaned chapter heading");
+  assert.ok(!/Chapter III/.test(html), "…and no orphaned numeral");
+  // Stated as the property rather than the number, so it keeps holding: exactly one heading
+  // per phase that actually has touchpoints, and never one for a phase that doesn't.
+  const phases = [...new Set(J.map((it) => it.phase))];
+  assert.strictEqual((html.match(/pbx-chapter-title/g) || []).length, phases.length,
+    "one chapter heading per phase present in JOURNEY — no empty chapters, no missing ones");
 }
 
 /* ---------- 5: channel and ownership read as tags, not colour alone ---------- */

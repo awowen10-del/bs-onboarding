@@ -855,12 +855,11 @@
        Attendance, check-ins and the onboarding→retention handoff come later.
        ============================================================ -->
 
-  <!-- ===== RETENTION · TODAY'S MOVES ===== -->
+  <!-- ===== RETENTION · TODAY'S MOVES =====
+       No heading and no blurb, the same as Onboarding's Today: the tab you just tapped says
+       "Today's moves" and the toggle underneath repeats it. The screen goes straight to the
+       work, and main's padding-top supplies the gap the removed block used to sit in. -->
   <section class="view" id="view-ret-today" data-tracker="retention">
-    <div class="sec-head">
-      <h2>Today's moves</h2>
-    </div>
-    <p class="sub" style="margin-top:-2px;margin-bottom:14px">Every member, sorted by what they need from us right now. The journey runs from the day they joined — a welcome card straight away, Gaz checking in at 30 and 60 days, and a gift when they hit a year.</p>
     <div class="viewtoggle" id="retTodayViewToggle">
       <button class="vt active" data-tview="moves" onclick="setRetTodayView('moves')">Today's moves</button>
       <button class="vt" data-tview="table" onclick="setRetTodayView('table')">Whole journey</button>

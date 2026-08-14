@@ -173,23 +173,29 @@ const rulesFor = (sel) => RULES.filter((r) => r.sel.split(",").map((s) => s.trim
   assert.ok(!/The First 42 Days<\/title>/.test(HTML), "…and not the old one");
 }
 
-/* ---------- 9: Today's moves opens straight onto the work ----------
+/* ---------- 9: BOTH Today's moves screens open straight onto the work ----------
    The tab you just tapped says "Today's moves" and the toggle under it says so again, so the
-   heading and its blurb were a third telling. Both are gone; the section's first child is the
-   toggle, and main's padding-top is what supplies the gap they used to occupy. */
+   heading and its blurb were a third telling. Both are gone on both trackers; each section's
+   first child is its toggle, and main's padding-top is what supplies the gap they used to
+   occupy. Asserted as a pair — the two screens are the same screen for two different rosters,
+   and one of them quietly growing a heading back is exactly the drift worth catching. */
 {
-  const view = /<section class="view" id="view-today"[\s\S]*?<div id="todayMoves"/.exec(HTML);
-  assert.ok(view, "sanity: the onboarding Today view is still there");
-  assert.ok(!/<h2>Today's moves<\/h2>/.test(view[0]),
-    "no heading above the toggle on Today's moves");
-  assert.ok(!/sec-head/.test(view[0]), "…and no empty heading container left behind");
-  assert.ok(!/you bring the warmth/.test(HTML), "the blurb is gone from the page entirely");
-  assert.ok(/<div class="viewtoggle" id="todayViewToggle">/.test(view[0]),
-    "the toggle and everything below it are untouched");
-  // the retention side keeps its own heading — this change was onboarding-only
-  const ret = /<section class="view" id="view-ret-today"[\s\S]*?<div class="viewtoggle"/.exec(HTML);
-  assert.ok(ret && /<h2>Today's moves<\/h2>/.test(ret[0]),
-    "Retention's Today heading is left exactly as it was");
+  const screens = [
+    ["Onboarding", /<section class="view" id="view-today"[\s\S]*?<div id="todayMoves"/, "todayViewToggle"],
+    ["Retention", /<section class="view" id="view-ret-today"[\s\S]*?<div id="retTodayMoves"/, "retTodayViewToggle"],
+  ];
+  for (const [label, re, toggleId] of screens) {
+    const view = re.exec(HTML);
+    assert.ok(view, "sanity: the " + label + " Today view is still there");
+    assert.ok(!/<h2>Today's moves<\/h2>/.test(view[0]),
+      label + ": no heading above the toggle on Today's moves");
+    assert.ok(!/sec-head/.test(view[0]), label + ": no empty heading container left behind");
+    assert.ok(!/<p class="sub"/.test(view[0]), label + ": and no blurb either");
+    assert.ok(new RegExp('<div class="viewtoggle" id="' + toggleId + '">').test(view[0]),
+      label + ": the toggle and everything below it are untouched");
+  }
+  assert.ok(!/you bring the warmth/.test(HTML), "Onboarding's blurb is gone from the page");
+  assert.ok(!/a gift when they hit a year/.test(HTML), "Retention's blurb is gone from the page");
 }
 
 /* ---------- 10: the welcome message has no placeholder left to hand-edit ---------- */

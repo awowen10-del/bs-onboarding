@@ -50,30 +50,27 @@ const countBadge = (colHtml) => {
 };
 const cardIds = (colHtml) => (colHtml.match(/id="act-[^"]+"/g) || []).map((s) => s.slice(4, -1));
 
-/* ---------- 1: three columns, in priority order ----------
-   Left to right is most urgent to least. The check-ins lead: they are what actually keeps
-   somebody, and the easiest thing to let slide. Intros sit in the middle — they are
-   appointments, and mostly already in the diary. The posted touches go last, being the least
-   time-critical of the three and the easiest to batch.
-
-   The order is a decision, not an accident of how the data arrived, so it is pinned here. */
+/* ---------- 1: three columns, in the order the day is worked ----------
+   Intros to run, then check-ins to write, then things to put in the post. It is a fixed
+   reading order, not anything computed off the data, so the board is the same shape every
+   morning — which is the whole reason a coach can scan it rather than read it. */
 {
   const app = boot({ members: [preStart("p", "Ned New"), live("a", "Sam Live", 8)] });
   const ids = columns(app).map((c) => c.id);
-  assert.deepStrictEqual(ids, ["digital", "intro", "physical"],
+  assert.deepStrictEqual(ids, ["intro", "digital", "physical"],
     "three columns, in a fixed order — the board's structure is not data-dependent");
 
   const titles = (board(app).match(/<span class="board-col-title">([^<]*)<\/span>/g) || [])
     .map((s) => s.replace(/<[^>]*>/g, ""));
   assert.deepStrictEqual(titles, [
-    "Texts & Trainerize check-ins",
     "Intro sessions to run",
+    "Texts & Trainerize check-ins",
     "Postcards, boxes & cards",
   ], "each column keeps the heading its stacked group used to carry");
 
   // and the order really is fixed: an emptier day does not reshuffle it
   const quiet = boot({ members: [live("c", "Katie Leicester", 1)] });
-  assert.deepStrictEqual(columns(quiet).map((c) => c.id), ["digital", "intro", "physical"],
+  assert.deepStrictEqual(columns(quiet).map((c) => c.id), ["intro", "digital", "physical"],
     "…with two of the three columns empty, the lanes are still in the same places");
 }
 
@@ -136,40 +133,88 @@ const cardIds = (colHtml) => (colHtml.match(/id="act-[^"]+"/g) || []).map((s) =>
   assert.strictEqual(board(app), "", "…and no board is drawn behind it");
 }
 
-/* ---------- 6: the cards themselves are untouched ----------
-   Same id, same channel tag, same day label, same Done and Missed wired to the same handlers.
-   The card was rearranged by CSS, not rebuilt. */
+/* ---------- 6: what a card carries ----------
+   Everything the card is for, and nothing it is not. The channel CHIP is gone — three columns
+   already sorted by channel were telling a team that knows a postcard from a text a third
+   time — but the channel is still on the card as its class, because that is what colours the
+   stripe down its left edge. */
 {
   const app = boot({ members: [live("a", "Sam Live", 8)] });
   const card = /<div class="action digital" id="act-a-wk2"[\s\S]*?(?=<div class="action|<\/div><\/div>|$)/
     .exec(column(app, "digital"))[0];
 
-  assert.ok(/<span class="ch digital">Digital<\/span>/.test(card), "the channel tag is on the card");
-  assert.ok(/<span class="day">Day 8<\/span>/.test(card), "…as is the day label");
-  assert.ok(/<span class="nm">Sam Live<\/span>/.test(card), "…and the challenger's name");
+  assert.ok(/<span class="day">Day 8<\/span>/.test(card), "the day label is on the card");
+  assert.ok(/<span class="nm">Sam Live<\/span>/.test(card), "…as is the challenger's name");
   assert.ok(/Start of Week 2 check-in/.test(card), "…and the touchpoint's title");
   assert.ok(/toggleDone\('a','wk2',true\)/.test(card), "Done is still wired to the real handler");
   assert.ok(/markMissed\('a','wk2'\)/.test(card), "…and Missed to its own");
   assert.ok(/toggleExpand\('a','wk2'\)/.test(card), "…and the card still expands");
-  assert.ok(/class="notes-btn/.test(card), "…and still carries the notes icon");
+  assert.ok(/class="chev"/.test(card), "…the expand chevron is still there to expand it with");
+  assert.ok(/class="notes-btn/.test(card), "…and it still carries the notes icon");
+
+  // the chip is gone from every card on the board, not just this one
+  assert.ok(!/class="ch /.test(board(app)),
+    "no card spells its channel out in a chip any more");
+  for (const word of ["Digital", "Physical", "In person"]) {
+    assert.ok(!board(app).includes(">" + word + "<"),
+      "…so “" + word + "” is not printed on the board at all");
+  }
+  // …but the class that colours the left edge stays
+  assert.ok(/<div class="action digital" id="act-a-wk2"/.test(card),
+    "the channel still rides on the card's own class, which is what draws its colour stripe");
 }
 
-/* ---------- 7: OVERDUE survives the reflow ----------
-   Spotting the late one inside its column is the reason to look at the board at all, so the
-   flag has to be on the card and not somewhere the new arrangement quietly dropped it. */
+/* ---------- 6b: the pre-start day label says what it means ----------
+   "Pre-start" was shorthand only the tracker used. The card now says the thing a coach would
+   say out loud. Same pill, same place — only the words changed. */
+{
+  const app = boot({ members: [preStart("p", "Ned New")] });
+  const card = column(app, "intro");
+  assert.ok(/<span class="day">Not started yet<\/span>/.test(card),
+    "an intro card's day label reads “Not started yet”");
+  assert.ok(!/Pre-start/.test(app.html("todayList")), "…and “Pre-start” is gone from Today");
+
+  // a dated touchpoint still counts days as it always did
+  const dated = boot({ members: [live("a", "Sam Live", 8)] });
+  assert.ok(/<span class="day">Day 8<\/span>/.test(column(dated, "digital")),
+    "the relabel did not touch the dated cards");
+}
+
+/* ---------- 7: OVERDUE, in the card's corner ----------
+   Spotting the late one inside its column is the reason to look at the board at all. The flag
+   used to sit in the run of chips beside the day label, where it read as one more pill; it now
+   lives in the card's top rail with the chevron, as the only red on the card.
+
+   Two things are asserted, and the second is the one that matters: that it moved, and that it
+   still only appears on cards that are actually late. */
 {
   // day 8 with nothing marked: the day-1 text and the day-7 pair are all past their day
   const app = boot({ members: [live("a", "Sam Live", 8), live("c", "Katie Leicester", 1)] });
-  const late = /<div class="action digital" id="act-a-d1_text"[\s\S]*?(?=<div class="action|$)/
-    .exec(column(app, "digital"))[0];
-  assert.ok(/<span class="overdue">Overdue<\/span>/.test(late),
+  const slice = (col, id) =>
+    new RegExp('<div class="action [a-z]+" id="' + id + '"[\\s\\S]*?(?=<div class="action|$)')
+      .exec(column(app, col))[0];
+
+  const late = slice("digital", "act-a-d1_text");
+  assert.ok(/<span class="overdue-flag">Overdue<\/span>/.test(late),
     "a touchpoint whose day has passed is flagged inside its column");
+  // in the top rail, ahead of the body — not down among the day label's chips
+  assert.ok(/<div class="card-top">\s*<span class="overdue-flag">Overdue<\/span>/.test(late),
+    "…in the card's top rail, which is what puts it in the corner");
+  assert.ok(late.indexOf("overdue-flag") < late.indexOf('class="who"'),
+    "…above the name and the day label rather than beside them");
+  assert.ok(!/<div class="who">[\s\S]*?overdue[\s\S]*?<\/div>/.test(late),
+    "…and no longer inside the run of chips it used to sit in");
 
-  const onTime = /<div class="action digital" id="act-c-d1_text"[\s\S]*?(?=<div class="action|$)/
-    .exec(column(app, "digital"))[0];
-  assert.ok(!/class="overdue"/.test(onTime), "…and one that is due today is not");
+  const onTime = slice("digital", "act-c-d1_text");
+  assert.ok(!/overdue/.test(onTime), "a touchpoint due today carries no flag at all");
+  assert.ok(/class="card-top"/.test(onTime),
+    "…though it keeps the rail, so the chevron sits in the same corner on every card");
 
-  assert.ok(/class="overdue"/.test(column(app, "physical")), "the late postcard is flagged too");
+  assert.ok(/overdue-flag/.test(column(app, "physical")), "the late postcard is flagged too");
+
+  // the flag counts exactly the late cards on the board and nothing else
+  const flags = (board(app).match(/overdue-flag/g) || []).length;
+  assert.strictEqual(flags, 3, "three of the four due cards are past their day, and three are flagged");
 }
 
 /* ---------- 8: marking a card still works, and only moves that card ---------- */

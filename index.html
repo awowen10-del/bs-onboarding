@@ -324,27 +324,39 @@
   .board-empty{margin-bottom:8px;padding:20px 12px;text-align:center;font-size:12.5px;
     color:var(--ink-faint);border:1px dashed var(--line);border-radius:11px}
 
-  /* The card, inside a column. Same element, same classes and the same handlers as the row it
-     used to be — only the arrangement changes, because a third of the width cannot hold
-     chip · name · title · day · two buttons on one line. So it stacks: chip and chevron take
-     the top line, the body takes the next, and the two mark buttons sit side by side along the
-     bottom like a card's footer. The channel colour stays on the left edge, and the OVERDUE
-     flag stays inside the body where it always was — it has to survive the reflow, since
-     spotting the late one inside its column is the whole reason to look at the board. */
+  /* The card, inside a column. Same element and the same handlers as the row it used to be —
+     only the arrangement changes, because a third of the width cannot hold name · title · day ·
+     two buttons on one line. So it stacks in three bands: a thin top rail, the body, then the
+     two mark buttons side by side along the bottom like a card's footer.
+
+     The card carries no channel chip. Which channel a touchpoint is was being spelled out on
+     every card to a team that already knows a postcard from a text, and three columns that are
+     THEMSELVES sorted by channel made it a third telling. The coloured stripe down the left
+     edge still says it for anyone who wants it. */
   .board .action{flex-wrap:wrap;align-items:center;row-gap:9px;padding:12px 13px;margin-bottom:8px}
-  .board .action .ch{order:1}
-  .board .action .chev{order:2;margin-left:auto}
-  .board .action .body{order:3;flex-basis:100%}
+
+  /* The top rail: the expand chevron, and the overdue flag when there is one, both pushed into
+     the corner. It is its own flex row (flex-basis:100%) rather than two loose items with auto
+     margins, so the corner lands in the same place whether or not the flag is there. */
+  .board .action .card-top{order:1;flex-basis:100%;display:flex;align-items:center;
+    justify-content:flex-end;gap:9px;line-height:1}
+  .board .action .card-top .chev{margin:0}
+  /* Overdue as plain small red text, not another pill. Sat next to the day label it read as one
+     more chip in a row of chips, which is exactly how you miss it; alone in the corner it is the
+     only red on the card. */
+  .overdue-flag{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--red);line-height:1;white-space:nowrap}
+
+  .board .action .body{order:2;flex-basis:100%}
   /* The body runs as normal BLOCK flow inside a card rather than as the flex row it is on a
      wide screen. Flex would treat the challenger's name as one unbreakable item and bounce the
      notes icon onto a line of its own the moment the name got long; in block flow the icon —
      which is inline-flex and vertical-aligned precisely for this — simply stays beside the last
-     word of the name. Title, then day and OVERDUE, take the lines below it. */
+     word of the name. The title, then the day label, take the lines below it. */
   .board .action .who{display:block;line-height:1.45}
   .board .action .who .ttl{display:block;margin-top:3px}
-  .board .action .who .day,
-  .board .action .who .overdue{margin-top:8px;margin-right:6px;vertical-align:middle}
-  .board .action .mark-btns{order:4;flex-basis:100%;flex-direction:row;gap:8px}
+  .board .action .who .day{margin-top:8px;vertical-align:middle}
+  .board .action .mark-btns{order:3;flex-basis:100%;flex-direction:row;gap:8px}
   .board .action .mark-btns .btn{flex:1 1 0;text-align:center}
 
   /* "Waiting on a first session" — the standing task between the intro and Day 0.
@@ -1931,11 +1943,9 @@ function renderToday(){
      four stacked group headings. Nothing about what is due changed: these only decide which
      column an already-due card is placed in.
 
-     ORDER IS PRIORITY, left to right. The check-ins lead because they are the ones that
-     actually decide whether somebody stays and the easiest to let slide — a coach reading the
-     board left to right should hit them first. Intros are appointments and mostly already in
-     the diary, so they take the middle. The posted touches go last: they are the least urgent
-     of the three and the easiest to batch at the end of a day.
+     ORDER IS THE ORDER OF THE DAY, left to right: the intro sessions that have to be run,
+     then the check-ins to write, then the things to put in the post. It is a fixed reading
+     order rather than anything computed — the board should be in the same shape every morning.
 
      Three columns are always on the board, empty or not, because a board that loses a column
      on a quiet day stops reading as a board. The fourth is the exception: no touchpoint in
@@ -1944,8 +1954,8 @@ function renderToday(){
      in-person touchpoint still lands somewhere named instead of falling off Today, and it is
      marked `whenUsed` — rendered only if it actually catches a card. */
   const groups = [
-    ['digital','Texts & Trainerize check-ins', r=>r.item.phase!=='intro' && r.item.ch==='digital'],
     ['intro','Intro sessions to run', r=>r.item.phase==='intro'],
+    ['digital','Texts & Trainerize check-ins', r=>r.item.phase!=='intro' && r.item.ch==='digital'],
     ['physical','Postcards, boxes & cards', r=>r.item.phase!=='intro' && r.item.ch==='physical'],
     ['inperson','Moments in the room', r=>r.item.phase!=='intro' && r.item.ch==='inperson', 'whenUsed'],
   ];
@@ -2028,9 +2038,12 @@ function renderToday(){
     if(!g.length) html += `<div class="board-empty">Nothing here today</div>`;
     g.forEach(r=>{
       const {m,item,key,overdue}=r;
+      // still on the card as its class: it is what colours the stripe down the left edge.
+      // The CHIP that used to spell the channel out has gone — the team knows what a postcard
+      // and a check-in involve without being told on every card, and the colour carries it.
       const chClass = item.ch==='inperson'?'inperson':item.ch;
       const cd = currentDay(m);
-      const dayLabel = item.phase==='intro' ? 'Pre-start' : 'Day '+cd;
+      const dayLabel = item.phase==='intro' ? 'Not started yet' : 'Day '+cd;
       // build the expandable detail (the action, plus a checklist where there is one)
       const cl = item.checklist ? buildChecklist(m,item) : '';
       const seedBlock = item.seed ? `<div class="seed-line">
@@ -2042,18 +2055,23 @@ function renderToday(){
         ${cl}
         ${seedBlock}
       </div>`;
+      // Overdue rides in the card's top corner, not in the run of chips beside the day label.
+      // Down there it read as one more pill among pills; up here it is the first thing on the
+      // card and the only red on it, so a late touchpoint announces itself from across the
+      // column. The corner holds the chevron too, so the row is there either way.
       html += `<div class="action ${chClass}" id="act-${m.id}-${item.id}">
-        <span class="ch ${chClass}">${CH_LABEL[item.ch]}</span>
+        <div class="card-top">
+          ${overdue?'<span class="overdue-flag">Overdue</span>':''}
+          <span class="chev" onclick="toggleExpand('${m.id}','${item.id}')">▶</span>
+        </div>
         <div class="body" onclick="toggleExpand('${m.id}','${item.id}')">
           <div class="who">
             <span class="nm">${esc(m.name)}</span>${notesBtn(m)}
             <span class="ttl">${esc(item.title)}</span>
             <span class="day">${dayLabel}</span>
-            ${overdue?'<span class="overdue">Overdue</span>':''}
           </div>
           ${detail}
         </div>
-        <span class="chev" onclick="toggleExpand('${m.id}','${item.id}')">▶</span>
         <div class="mark-btns">
           <button class="btn sm primary mark" onclick="event.stopPropagation();toggleDone('${m.id}','${key}',true)">Done</button>
           <button class="btn sm ghost missed-btn" onclick="event.stopPropagation();markMissed('${m.id}','${key}')">Missed</button>

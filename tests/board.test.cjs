@@ -143,7 +143,7 @@ const cardIds = (colHtml) => (colHtml.match(/id="act-[^"]+"/g) || []).map((s) =>
   const card = /<div class="action digital" id="act-a-wk2"[\s\S]*?(?=<div class="action|<\/div><\/div>|$)/
     .exec(column(app, "digital"))[0];
 
-  assert.ok(/<span class="day">Day 8<\/span>/.test(card), "the day label is on the card");
+  assert.ok(/<span class="status-day">Day 8<\/span>/.test(card), "the day label is on the card");
   assert.ok(/<span class="nm">Sam Live<\/span>/.test(card), "…as is the challenger's name");
   assert.ok(/Start of Week 2 check-in/.test(card), "…and the touchpoint's title");
   assert.ok(/toggleDone\('a','wk2',true\)/.test(card), "Done is still wired to the real handler");
@@ -166,18 +166,51 @@ const cardIds = (colHtml) => (colHtml.match(/id="act-[^"]+"/g) || []).map((s) =>
 
 /* ---------- 6b: the pre-start day label says what it means ----------
    "Pre-start" was shorthand only the tracker used. The card now says the thing a coach would
-   say out loud. Same pill, same place — only the words changed. */
+   say out loud. */
 {
   const app = boot({ members: [preStart("p", "Ned New")] });
   const card = column(app, "intro");
-  assert.ok(/<span class="day">Not started yet<\/span>/.test(card),
+  assert.ok(/<span class="status-day">Not started yet<\/span>/.test(card),
     "an intro card's day label reads “Not started yet”");
   assert.ok(!/Pre-start/.test(app.html("todayList")), "…and “Pre-start” is gone from Today");
+  // nothing to be late for before the clock starts, so it never picks up the red half
+  assert.ok(!/status-sep|overdue/.test(card), "…and an unstarted card carries no overdue half");
 
   // a dated touchpoint still counts days as it always did
   const dated = boot({ members: [live("a", "Sam Live", 8)] });
-  assert.ok(/<span class="day">Day 8<\/span>/.test(column(dated, "digital")),
+  assert.ok(/<span class="status-day">Day 8<\/span>/.test(column(dated, "digital")),
     "the relabel did not touch the dated cards");
+}
+
+/* ---------- 6c: the day label lives in the status line, and only there ----------
+   It used to be a pill beside the touchpoint title, with Overdue up in the corner — two places
+   to look to answer one question. The pill is gone and the day has moved up to join it. */
+{
+  const app = boot({ members: [live("a", "Sam Live", 8), preStart("p", "Ned New")] });
+  const brd = board(app);
+
+  // the day is inside the corner status line…
+  assert.ok(/<span class="card-status">\s*<span class="status-day">Day 8<\/span>/.test(brd),
+    "the day label opens the card's status line");
+  // …and the old pill beside the title is gone from every card on the board
+  assert.ok(!/<span class="day">/.test(brd),
+    "no board card still carries the day pill next to its title");
+  const bodyOf = (id) => /<div class="who">([\s\S]*?)<\/div>/.exec(
+    new RegExp('id="' + id + '"[\\s\\S]*').exec(brd)[0])[1];
+  for (const id of ["act-a-wk2", "act-p-intro"]) {
+    assert.ok(!/Day |Not started yet/.test(bodyOf(id)),
+      id + ": the name-and-title block says nothing about the day any more");
+  }
+
+  // the pill class itself is untouched — the standing rows above the board still use it, and
+  // this change had no business reaching them
+  const standing = boot({ members: [{ ...preStart("w", "Priya R"), completed: ["intro"] }] });
+  const above = standing.html("todayList");
+  const before = above.slice(0, above.indexOf('<div class="board">'));
+  assert.ok(/Waiting on a first session/.test(before), "sanity: the waiting row is rendered");
+  assert.ok(/<span class="day">/.test(before),
+    "the waiting-to-start row above the board keeps its own day pill");
+  assert.ok(!/status-day/.test(before), "…and none of the status-line treatment leaked into it");
 }
 
 /* ---------- 7: OVERDUE, in the card's corner ----------
@@ -197,24 +230,33 @@ const cardIds = (colHtml) => (colHtml.match(/id="act-[^"]+"/g) || []).map((s) =>
   const late = slice("digital", "act-a-d1_text");
   assert.ok(/<span class="overdue-flag">Overdue<\/span>/.test(late),
     "a touchpoint whose day has passed is flagged inside its column");
-  // in the top rail, ahead of the body — not down among the day label's chips
-  assert.ok(/<div class="card-top">\s*<span class="overdue-flag">Overdue<\/span>/.test(late),
-    "…in the card's top rail, which is what puts it in the corner");
-  assert.ok(late.indexOf("overdue-flag") < late.indexOf('class="who"'),
-    "…above the name and the day label rather than beside them");
-  assert.ok(!/<div class="who">[\s\S]*?overdue[\s\S]*?<\/div>/.test(late),
-    "…and no longer inside the run of chips it used to sit in");
+  // the whole status line, in one piece: day, hairline, Overdue — in that order
+  assert.ok(/<span class="card-status">\s*<span class="status-day">Day 8<\/span>\s*<span class="status-sep"[^>]*><\/span><span class="overdue-flag">Overdue<\/span>\s*<\/span>/.test(late),
+    "the late card's status line reads day, then a divider, then Overdue — one line, one order");
+  assert.ok(late.indexOf("card-status") < late.indexOf('class="who"'),
+    "…in the top rail, above the name, rather than beside the title");
 
   const onTime = slice("digital", "act-c-d1_text");
   assert.ok(!/overdue/.test(onTime), "a touchpoint due today carries no flag at all");
+  assert.ok(!/status-sep/.test(onTime),
+    "…and no divider either — on time, the status line is just the day on its own");
+  assert.ok(/<span class="card-status">\s*<span class="status-day">Day 1<\/span>\s*<\/span>/.test(onTime),
+    "…which is exactly what it shows");
   assert.ok(/class="card-top"/.test(onTime),
-    "…though it keeps the rail, so the chevron sits in the same corner on every card");
+    "…and it keeps the rail, so the corner is in the same place on every card");
 
   assert.ok(/overdue-flag/.test(column(app, "physical")), "the late postcard is flagged too");
 
-  // the flag counts exactly the late cards on the board and nothing else
-  const flags = (board(app).match(/overdue-flag/g) || []).length;
+  // the flag counts exactly the late cards on the board and nothing else, and every flag is
+  // paired with exactly one divider — no divider ever appears on its own
+  const brd = board(app);
+  const flags = (brd.match(/overdue-flag/g) || []).length;
+  const seps = (brd.match(/status-sep/g) || []).length;
   assert.strictEqual(flags, 3, "three of the four due cards are past their day, and three are flagged");
+  assert.strictEqual(seps, flags, "one divider per flag — the divider never shows without it");
+  // …and every card has a status line, late or not
+  assert.strictEqual((brd.match(/card-status/g) || []).length, 4,
+    "all four due cards carry a status line");
 }
 
 /* ---------- 8: marking a card still works, and only moves that card ---------- */

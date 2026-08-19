@@ -277,13 +277,27 @@ const rulesFor = (sel) => RULES.filter((r) => r.sel.split(",").map((s) => s.trim
          wrapped it to the bottom of the card — the same stray row, back again by another
          route. From zero the body grows into whatever the rail leaves, and the rail keeps its
          corner however long the name is. */
+  // NB: [0] is deliberate — it is the BASE rule being checked. The phone block re-declares the
+  // rail on purpose (see below), and that override must not be what this assertion reads.
   const rail = rulesFor(".board .action .card-top")[0];
   assert.ok(rail, "sanity: the board card still has its top rail");
   assert.ok(!/flex-basis:\s*100%/.test(rail.body) && !/flex:\s*[^;]*100%/.test(rail.body),
-    "the rail must not claim a full-width row of its own — that is the empty band above the "
-    + "name this layout exists to avoid. Found: " + rail.body.trim());
+    "on a wide screen the rail must not claim a full-width row of its own — that is the empty "
+    + "band above the name this layout exists to avoid. Found: " + rail.body.trim());
   assert.ok(/align-self:\s*flex-start/.test(rail.body),
     "…and it aligns to the top of the line it shares, so it reads as a corner");
+
+  /* On a phone it DOES take a row, and that is not the bug above coming back: the rail now
+     carries the day label as well as the flag, so "DAY 8 · OVERDUE" beside a name on a 350px
+     card left too little for either — the notes icon ended up orphaned on a line under the
+     name. A row with content in it is a row worth having; the empty one never was. It still
+     has to read as a corner, so it justifies to the end. */
+  const phoneRail = /\.board \.action \.card-top\{([^}]*)\}/.exec(phone);
+  assert.ok(phoneRail, "the phone block gives the rail a row of its own");
+  assert.ok(/flex-basis:100%/.test(phoneRail[1]), "…a full-width one");
+  assert.ok(/justify-content:flex-end/.test(phoneRail[1]),
+    "…still justified to the end, or the status line stops being a top-RIGHT corner and "
+    + "silently slides to the left. Found: " + phoneRail[1].trim());
 
   const cardBody = rulesFor(".board .action .body")[0];
   assert.ok(cardBody, "sanity: the board card's body is still styled as its own thing");

@@ -348,9 +348,21 @@
   .board .action .card-top{order:2;flex:0 0 auto;align-self:flex-start;margin-top:3px;
     display:flex;align-items:center;gap:9px;line-height:1}
   .board .action .card-top .chev{margin:0}
-  /* Overdue as plain small red text, not another pill. Sat next to the day label it read as one
-     more chip in a row of chips, which is exactly how you miss it; alone in the corner it is the
-     only red on the card. */
+
+  /* The status line: DAY 8 · then, only when it is late, a hairline and OVERDUE. One line
+     answering one question — where this touchpoint stands — instead of a pill beside the title
+     and a flag up in the corner, which is what it was and meant looking in two places.
+
+     The two halves share a size, a weight and a case so the line reads as one thing; only the
+     colour separates them, which is what makes the red mean something. The day sets the line's
+     colour, so the hairline can take currentColor and stay in step with it. */
+  .board .action .card-status{display:flex;align-items:center;gap:8px;min-width:0;
+    color:var(--ink-faint)}
+  .status-day{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+    line-height:1;white-space:nowrap}
+  .status-sep{flex-shrink:0;width:1px;height:10px;background:currentColor;opacity:.4}
+  /* Overdue as plain red text, not another pill. As a pill among pills it was exactly the kind
+     of thing you stop seeing; as the only red on an otherwise quiet card it is not. */
   .overdue-flag{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
     color:var(--red);line-height:1;white-space:nowrap}
 
@@ -366,10 +378,10 @@
      wide screen. Flex would treat the challenger's name as one unbreakable item and bounce the
      notes icon onto a line of its own the moment the name got long; in block flow the icon —
      which is inline-flex and vertical-aligned precisely for this — simply stays beside the last
-     word of the name. The title, then the day label, take the lines below it. */
+     word of the name, with the title on the line below. (The day label used to sit under that
+     again; it lives in the status line in the corner now.) */
   .board .action .who{display:block;line-height:1.45}
   .board .action .who .ttl{display:block;margin-top:3px}
-  .board .action .who .day{margin-top:8px;vertical-align:middle}
   .board .action .mark-btns{order:3;flex-basis:100%;flex-direction:row;gap:8px;margin-top:1px}
   .board .action .mark-btns .btn{flex:1 1 0;text-align:center}
 
@@ -866,6 +878,13 @@
        heading, its count and its empty state, so the day still reads in the same three
        chapters rather than being squeezed into columns too narrow to use. */
     .board{grid-template-columns:minmax(0,1fr);gap:16px;margin-top:18px}
+    /* On a phone the status line takes the top row of the card instead of sitting beside the
+       name. Beside it, "DAY 8 · OVERDUE" and a name leave too little between them: the notes
+       icon gets bumped onto a line of its own, orphaned under the name. A row of its own costs
+       one line and reads cleanly — and it is a row with something in it, which is the whole
+       difference between this and the empty band that used to sit here. Still top-RIGHT: the
+       row is justified to the end. */
+    .board .action .card-top{order:0;flex-basis:100%;justify-content:flex-end;margin-top:0}
     /* the waiting row's control is a date field AND a full-sentence button, far wider than the
        130px column the rule above reserves, so on a phone it takes the next line to itself */
     .action.awaiting .body{flex-basis:100%}
@@ -2066,20 +2085,23 @@ function renderToday(){
         ${cl}
         ${seedBlock}
       </div>`;
-      // Overdue rides in the card's top corner, not in the run of chips beside the day label.
-      // Down there it read as one more pill among pills; up here it is the first thing on the
-      // card and the only red on it, so a late touchpoint announces itself from across the
-      // column. The corner holds the chevron too, so the row is there either way.
+      // WHERE the touchpoint stands, all on one line in the card's corner: the day it is due,
+      // and — only when it has been missed — a divider and the word Overdue in red. The two
+      // used to be separate, the day in a pill down beside the title and Overdue up here, which
+      // meant reading two places to answer one question. Together they are a status line, and
+      // the red is the only red on the card. The corner holds the chevron too.
       html += `<div class="action ${chClass}" id="act-${m.id}-${item.id}">
         <div class="card-top">
-          ${overdue?'<span class="overdue-flag">Overdue</span>':''}
+          <span class="card-status">
+            <span class="status-day">${dayLabel}</span>
+            ${overdue?'<span class="status-sep" aria-hidden="true"></span><span class="overdue-flag">Overdue</span>':''}
+          </span>
           <span class="chev" onclick="toggleExpand('${m.id}','${item.id}')">▶</span>
         </div>
         <div class="body" onclick="toggleExpand('${m.id}','${item.id}')">
           <div class="who">
             <span class="nm">${esc(m.name)}</span>${notesBtn(m)}
             <span class="ttl">${esc(item.title)}</span>
-            <span class="day">${dayLabel}</span>
           </div>
           ${detail}
         </div>

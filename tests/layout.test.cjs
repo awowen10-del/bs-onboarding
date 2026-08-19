@@ -234,7 +234,44 @@ const rulesFor = (sel) => RULES.filter((r) => r.sel.split(",").map((s) => s.trim
   assert.ok(/id="search"/.test(members) && /id="filter"/.test(members), "search and filter stay");
 }
 
-/* ---------- 10: the welcome message has no placeholder left to hand-edit ---------- */
+/* ---------- 10: the Today's moves board survives a narrow screen ----------
+   The board is three side-by-side columns on a desktop, which is the one shape on this page
+   that could genuinely push the layout wide: three tracks of cards, each holding names and
+   titles that do not break. Two rules keep it honest, and both are the kind that get lost in a
+   later tidy-up, so they are pinned here rather than left to a browser check.
+
+     1. Every track is minmax(0,1fr). Generic rule 2 above already refuses a bare fr anywhere
+        in the sheet; this asserts the board actually declares its tracks, so that guard has
+        something to guard.
+     2. On a phone it STACKS. Three columns squeezed into 350px would be unusable, so the
+        phone block must collapse the grid to a single track — the board becomes one column
+        above the next, which is what the screen is for. */
+{
+  const board = rulesFor(".board");
+  assert.ok(board.length, "sanity: the Today's moves board still lays out on a grid");
+  const desktop = board.map((r) => r.body).join(";");
+  assert.ok(/display:grid/.test(desktop), "the board is a grid");
+  assert.ok(/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/.test(desktop),
+    "three equal, minimum-guarded columns on a wide screen");
+
+  // the phone block, taken as text so it can be asked what it actually overrides
+  const phone = CSS.slice(CSS.lastIndexOf("@media (max-width:640px)"));
+  assert.ok(/\.board\{[^}]*grid-template-columns:minmax\(0,1fr\)/.test(phone),
+    "on a phone the board collapses to ONE column and the columns stack — three of them side "
+    + "by side on a 350px screen is not a board, it is three slivers");
+  // the stacked card's body must not inherit the row layout's reserved button column
+  assert.ok(/\.board \.action \.body\{[^}]*flex-basis:100%/.test(phone),
+    "a board card puts its buttons on their own line, so its body takes the full width rather "
+    + "than the 130px-reserved column the phone rule gives an ordinary action row");
+
+  // a grid item's automatic minimum is min-content, the same trap as an fr track
+  const col = rulesFor(".board-col")[0];
+  assert.ok(col && /min-width:0/.test(col.body),
+    ".board-col needs min-width:0 — without it a long challenger name sets the column's "
+    + "minimum and the board pushes past the viewport");
+}
+
+/* ---------- 11: the welcome message has no placeholder left to hand-edit ---------- */
 {
   assert.ok(!/\[First Name\]/.test(HTML),
     "the Trainerize welcome message must not ship a [First Name] placeholder — it is built "

@@ -45,8 +45,10 @@ const hasStartTask = (app) => /id="act-c1-startclock"/.test(app.html("todayList"
   assert.ok(!/id="act-c1-startclock"[^>]*class="[^"]*\bopen\b/.test(today),
     "the task does not need expanding — the control is already on the row");
 
-  // it is a waiting-for state, so there is nothing to mark done or missed on it
-  const task = /<div class="[^"]*" id="act-c1-startclock"[\s\S]*?(?=<div class="group-label"|$)/
+  // it is a waiting-for state, so there is nothing to mark done or missed on it.
+  // The task's own slice ends at whatever comes next: another stacked group, or the board of
+  // channel columns that now sits below these standing rows.
+  const task = /<div class="[^"]*" id="act-c1-startclock"[\s\S]*?(?=<div class="group-label"|<div class="board"|$)/
     .exec(today)[0];
   assert.ok(!/toggleDone\('c1'/.test(task), "no Done button — only the clock resolves this");
   assert.ok(!/markMissed\('c1'/.test(task), "and no Missed button either");

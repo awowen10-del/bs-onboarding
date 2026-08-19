@@ -272,6 +272,59 @@
   .action .missed-btn:hover{color:var(--red);border-color:rgba(var(--red-rgb),.5)}
   .overdue{display:inline-block;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:800;color:var(--on-accent);background:var(--red);border-radius:5px;padding:2px 7px}
 
+  /* ---------- Today's moves BOARD ----------
+     The day's touchpoints laid out as columns instead of one long stack. It is a board in
+     APPEARANCE only: nothing drags, and nothing here decides what is due. The cards are sorted
+     into their column by the same journey logic that always grouped them, so a column is
+     simply the old group heading turned on its side.
+
+     One column per kind of work: the intros to run, the things that get posted, the things
+     that get typed or recorded. A column is a RECESSED well (--navy-2, the same step-down the
+     toolbars use) so the white cards inside it lift — that tone step is what makes the board
+     read as columns at a glance rather than as three lists that happen to sit side by side.
+
+     minmax(0,1fr) rather than 1fr: an fr track's automatic minimum is its content's
+     min-content width, so a long challenger name in one column would otherwise push the whole
+     board — and the page — wider than the screen. */
+  .board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start;margin-top:22px}
+  .board-col{min-width:0;background:var(--navy-2);border:1px solid var(--line);border-radius:14px;padding:12px 12px 4px}
+  .board-col-head{display:flex;align-items:center;gap:10px;margin:2px 2px 12px;padding-bottom:11px;
+    border-bottom:1px solid var(--line)}
+  .board-col-title{flex:1;min-width:0;font-size:12px;letter-spacing:.5px;text-transform:uppercase;
+    font-weight:800;color:var(--ink);line-height:1.4}
+  /* the same count pill the stacked group headings carried, on the card tone rather than the
+     recessed one, because here it sits ON the recess instead of on the page */
+  .board-col-head .gcount{flex-shrink:0;font-size:11px;font-weight:700;color:var(--ink-faint);
+    background:var(--card);border:1px solid var(--line);border-radius:20px;padding:2px 9px;letter-spacing:0}
+  /* An empty column keeps its width and says so rather than collapsing, so the board still
+     reads as a board on a quiet day. Dashed and faint on purpose — it is the absence of work,
+     not a piece of it. */
+  .board-empty{margin-bottom:8px;padding:20px 12px;text-align:center;font-size:12.5px;
+    color:var(--ink-faint);border:1px dashed var(--line);border-radius:11px}
+
+  /* The card, inside a column. Same element, same classes and the same handlers as the row it
+     used to be — only the arrangement changes, because a third of the width cannot hold
+     chip · name · title · day · two buttons on one line. So it stacks: chip and chevron take
+     the top line, the body takes the next, and the two mark buttons sit side by side along the
+     bottom like a card's footer. The channel colour stays on the left edge, and the OVERDUE
+     flag stays inside the body where it always was — it has to survive the reflow, since
+     spotting the late one inside its column is the whole reason to look at the board. */
+  .board .action{flex-wrap:wrap;align-items:center;row-gap:9px;padding:12px 13px;margin-bottom:8px}
+  .board .action .ch{order:1}
+  .board .action .chev{order:2;margin-left:auto}
+  .board .action .body{order:3;flex-basis:100%}
+  /* The body runs as normal BLOCK flow inside a card rather than as the flex row it is on a
+     wide screen. Flex would treat the challenger's name as one unbreakable item and bounce the
+     notes icon onto a line of its own the moment the name got long; in block flow the icon —
+     which is inline-flex and vertical-aligned precisely for this — simply stays beside the last
+     word of the name. Title, then day and OVERDUE, take the lines below it. */
+  .board .action .who{display:block;line-height:1.45}
+  .board .action .who .ttl{display:block;margin-top:3px}
+  .board .action .who .day,
+  .board .action .who .overdue{margin-top:8px;margin-right:6px;vertical-align:middle}
+  .board .action .mark-btns{order:4;flex-basis:100%;flex-direction:row;gap:8px}
+  .board .action .mark-btns .btn{flex:1 1 0;text-align:center}
+
   /* "Waiting on a first session" — the standing task between the intro and Day 0.
      The quietest row on Today by design: it is a waiting-for state, not work due today, so it
      sits on the RECESSED card tone (--card-2, the same step-down the toolbars use) with a soft
@@ -735,10 +788,30 @@
   .notes-saved.on{color:var(--green)}
 
   .hide{display:none !important}
+  /* The board between phone and desktop. It keeps all THREE lanes and tightens the gaps
+     instead of dropping to two: three lanes is the shape of the day's work, and a two-column
+     board leaves the third lane stranded on a half-empty second row, which reads as a mistake
+     rather than as a layout. Below 640px it stops pretending and stacks — see the phone block
+     further down. */
+  @media (max-width:900px){
+    .board{gap:10px}
+    .board-col{padding:10px 10px 2px;border-radius:12px}
+    .board-col-title{font-size:11px;letter-spacing:.4px}
+    .board .action{padding:11px 11px;gap:8px}
+    .board .action .mark-btns{gap:6px}
+  }
+
   @media (max-width:640px){
     .mast-meta{text-align:left}
     .action{flex-wrap:wrap}
     .action .body{flex-basis:calc(100% - 130px)}
+    /* The board stacks on a phone: one full-width column above the next, each keeping its
+       heading, its count and its empty state, so the day still reads in the same three
+       chapters rather than being squeezed into columns too narrow to use. */
+    .board{grid-template-columns:minmax(0,1fr);gap:16px;margin-top:18px}
+    /* the row rule above reserves a 130px column for the buttons; a board card has already
+       put them on a line of their own, so its body takes the full width */
+    .board .action .body{flex-basis:100%}
     /* the waiting row's control is a date field AND a full-sentence button, far wider than the
        130px column the rule above reserves, so on a phone it takes the next line to itself */
     .action.awaiting .body{flex-basis:100%}
@@ -1823,12 +1896,21 @@ function renderToday(){
     return;
   }
 
-  // group: intros, then the three channels
+  /* The board's columns — one per kind of work, and the SAME four tests that used to pick the
+     four stacked group headings. Nothing about what is due changed: these only decide which
+     column an already-due card is placed in.
+
+     Three of them are always on the board, empty or not, because a board that loses a column
+     on a quiet day stops reading as a board. The fourth is the exception: no touchpoint in
+     JOURNEY is in-person except the intro, so 'Moments in the room' has nothing to hold and
+     would be a permanently empty column. It is kept as a test rather than deleted so a future
+     in-person touchpoint still lands somewhere named instead of falling off Today, and it is
+     marked `whenUsed` — rendered only if it actually catches a card. */
   const groups = [
     ['intro','Intro sessions to run', r=>r.item.phase==='intro'],
     ['physical','Postcards, boxes & cards', r=>r.item.phase!=='intro' && r.item.ch==='physical'],
-    ['inperson','Moments in the room', r=>r.item.phase!=='intro' && r.item.ch==='inperson'],
     ['digital','Texts & Trainerize check-ins', r=>r.item.phase!=='intro' && r.item.ch==='digital'],
+    ['inperson','Moments in the room', r=>r.item.phase!=='intro' && r.item.ch==='inperson', 'whenUsed'],
   ];
   let html='';
 
@@ -1893,10 +1975,20 @@ function renderToday(){
     });
   }
 
-  groups.forEach(([gid,label,test])=>{
+  /* The board itself. Each column renders its own heading, its own count and its own stack of
+     cards; an empty one says so rather than disappearing. The cards are built exactly as they
+     were when this was one long list — same ids, same handlers, same buttons — they are simply
+     emitted into a column instead of under a heading. */
+  html += `<div class="board">`;
+  groups.forEach(([gid,label,test,whenUsed])=>{
     const g = rows.filter(test);
-    if(!g.length) return;
-    html += `<div class="group-label">${label}<span class="gcount">${g.length}</span></div>`;
+    if(whenUsed && !g.length) return;
+    html += `<div class="board-col" data-col="${gid}">
+      <div class="board-col-head">
+        <span class="board-col-title">${label}</span>
+        <span class="gcount">${g.length}</span>
+      </div>`;
+    if(!g.length) html += `<div class="board-empty">Nothing here today</div>`;
     g.forEach(r=>{
       const {m,item,key,overdue}=r;
       const chClass = item.ch==='inperson'?'inperson':item.ch;
@@ -1931,7 +2023,9 @@ function renderToday(){
         </div>
       </div>`;
     });
+    html += `</div>`;
   });
+  html += `</div>`;
   list.innerHTML = html;
 }
 

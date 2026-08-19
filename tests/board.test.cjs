@@ -50,22 +50,31 @@ const countBadge = (colHtml) => {
 };
 const cardIds = (colHtml) => (colHtml.match(/id="act-[^"]+"/g) || []).map((s) => s.slice(4, -1));
 
-/* ---------- 1: three columns, in the order the day is worked ----------
-   Intros first because they are the appointments, then the things that get posted, then the
-   things that get typed. The order is the shape of the board and is asserted as such. */
+/* ---------- 1: three columns, in priority order ----------
+   Left to right is most urgent to least. The check-ins lead: they are what actually keeps
+   somebody, and the easiest thing to let slide. Intros sit in the middle — they are
+   appointments, and mostly already in the diary. The posted touches go last, being the least
+   time-critical of the three and the easiest to batch.
+
+   The order is a decision, not an accident of how the data arrived, so it is pinned here. */
 {
   const app = boot({ members: [preStart("p", "Ned New"), live("a", "Sam Live", 8)] });
   const ids = columns(app).map((c) => c.id);
-  assert.deepStrictEqual(ids, ["intro", "physical", "digital"],
+  assert.deepStrictEqual(ids, ["digital", "intro", "physical"],
     "three columns, in a fixed order — the board's structure is not data-dependent");
 
   const titles = (board(app).match(/<span class="board-col-title">([^<]*)<\/span>/g) || [])
     .map((s) => s.replace(/<[^>]*>/g, ""));
   assert.deepStrictEqual(titles, [
+    "Texts & Trainerize check-ins",
     "Intro sessions to run",
     "Postcards, boxes & cards",
-    "Texts & Trainerize check-ins",
   ], "each column keeps the heading its stacked group used to carry");
+
+  // and the order really is fixed: an emptier day does not reshuffle it
+  const quiet = boot({ members: [live("c", "Katie Leicester", 1)] });
+  assert.deepStrictEqual(columns(quiet).map((c) => c.id), ["digital", "intro", "physical"],
+    "…with two of the three columns empty, the lanes are still in the same places");
 }
 
 /* ---------- 2: a card lands in the column its channel says it should ----------

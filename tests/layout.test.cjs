@@ -269,6 +269,33 @@ const rulesFor = (sel) => RULES.filter((r) => r.sel.split(",").map((s) => s.trim
   assert.ok(col && /min-width:0/.test(col.body),
     ".board-col needs min-width:0 — without it a long challenger name sets the column's "
     + "minimum and the board pushes past the viewport");
+
+  /* The board's screen raises the page's width cap, because 1100px of reading column split
+     three ways is not enough for a board. Three things are asserted about how that is done,
+     and each of them is a way it could go wrong later:
+       - it is SCOPED to the Today view, so every other screen — the roster, the Playbook, and
+         all of retention — keeps the measure it was designed at;
+       - it lifts `.wrap` itself, not the board alone, so the masthead, the tabs and the
+         content all share one left edge instead of the board hanging out past them;
+       - it is a fixed cap, so a 34" monitor gets margins rather than a board stretched the
+         whole way across. */
+  const wide = RULES.filter((r) => /:has\(#view-today\.active\)/.test(r.sel));
+  assert.strictEqual(wide.length, 1, "exactly one rule widens the Today's moves screen");
+  assert.ok(/\.wrap\s*$/.test(wide[0].sel),
+    "the cap is raised on .wrap, which sets the left edge of the masthead, the tabs and the "
+    + "content together — widening the board alone leaves it hanging past all three. Found: "
+    + wide[0].sel);
+  const cap = /max-width:\s*(\d+)px/.exec(wide[0].body);
+  assert.ok(cap, "…and it is a fixed pixel cap, not a percentage or a vw that would stretch "
+    + "the board edge to edge on a large monitor. Found: " + wide[0].body.trim());
+  assert.ok(Number(cap[1]) > 1100 && Number(cap[1]) <= 1600,
+    "…wider than the page's own 1100px, and still capped short of a big desktop. Found: "
+    + cap[1] + "px");
+
+  // the page's own measure is untouched, so nothing else on either tracker moved
+  assert.ok(/max-width:1100px/.test(rulesFor(".wrap")[0].body),
+    ".wrap's own cap stays at 1100px — the wider board is one screen's exception, not a "
+    + "new default for the roster, the Playbook or the retention tracker");
 }
 
 /* ---------- 11: the welcome message has no placeholder left to hand-edit ---------- */

@@ -272,6 +272,28 @@
   .action .missed-btn:hover{color:var(--red);border-color:rgba(var(--red-rgb),.5)}
   .overdue{display:inline-block;font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:800;color:var(--on-accent);background:var(--red);border-radius:5px;padding:2px 7px}
 
+  /* ---------- How wide the board gets ----------
+     The page is a 1100px reading column, which is right for a list, a roster or the Playbook
+     and wrong for a board: three columns inside 1060px of content leaves each one about
+     340px, and the cards spend their width wrapping while the screen sits half empty either
+     side.
+
+     So the Today's moves screen — and only that screen — raises the page's cap. It is done on
+     `.wrap` rather than on the board alone because .wrap is what sets the left edge of the
+     masthead, the tabs and the content all at once: widen the board on its own and it hangs
+     out past a logo and a tab strip that stayed where they were, which reads as a mistake.
+     Everything on the screen moves together, so the edges still line up.
+
+     1440px is the cap, not a percentage. Wide enough that three columns get ~450px each and a
+     card holds a name and a title without wrapping; short of the full width of a large
+     monitor, where a board stretched edge to edge becomes a neck exercise.
+
+     :has() rather than a class toggled in script: which view is showing is already in the DOM,
+     and a second source of truth for it would be one more thing to keep in step. Where :has()
+     is not supported the rule is simply dropped and the screen stays at its old 1100px, which
+     is the layout that shipped before this — no fallback needed. */
+  body:has(#view-today.active) .wrap{max-width:1440px}
+
   /* ---------- Today's moves BOARD ----------
      The day's touchpoints laid out as columns instead of one long stack. It is a board in
      APPEARANCE only: nothing drags, and nothing here decides what is due. The cards are sorted
@@ -788,6 +810,15 @@
   .notes-saved.on{color:var(--green)}
 
   .hide{display:none !important}
+  /* Once the screen is wide enough for the raised cap to bite, the columns get a little more
+     air: a wider gap so the three lanes read as separate, and a touch more padding in the
+     well. Declared here, with the board's other breakpoints, so it lands after the base rules
+     it is overriding rather than in front of them. */
+  @media (min-width:1200px){
+    .board{gap:18px}
+    .board-col{padding:14px 14px 6px}
+  }
+
   /* The board between phone and desktop. It keeps all THREE lanes and tightens the gaps
      instead of dropping to two: three lanes is the shape of the day's work, and a two-column
      board leaves the third lane stranded on a half-empty second row, which reads as a mistake
@@ -1900,16 +1931,22 @@ function renderToday(){
      four stacked group headings. Nothing about what is due changed: these only decide which
      column an already-due card is placed in.
 
-     Three of them are always on the board, empty or not, because a board that loses a column
+     ORDER IS PRIORITY, left to right. The check-ins lead because they are the ones that
+     actually decide whether somebody stays and the easiest to let slide — a coach reading the
+     board left to right should hit them first. Intros are appointments and mostly already in
+     the diary, so they take the middle. The posted touches go last: they are the least urgent
+     of the three and the easiest to batch at the end of a day.
+
+     Three columns are always on the board, empty or not, because a board that loses a column
      on a quiet day stops reading as a board. The fourth is the exception: no touchpoint in
      JOURNEY is in-person except the intro, so 'Moments in the room' has nothing to hold and
      would be a permanently empty column. It is kept as a test rather than deleted so a future
      in-person touchpoint still lands somewhere named instead of falling off Today, and it is
      marked `whenUsed` — rendered only if it actually catches a card. */
   const groups = [
+    ['digital','Texts & Trainerize check-ins', r=>r.item.phase!=='intro' && r.item.ch==='digital'],
     ['intro','Intro sessions to run', r=>r.item.phase==='intro'],
     ['physical','Postcards, boxes & cards', r=>r.item.phase!=='intro' && r.item.ch==='physical'],
-    ['digital','Texts & Trainerize check-ins', r=>r.item.phase!=='intro' && r.item.ch==='digital'],
     ['inperson','Moments in the room', r=>r.item.phase!=='intro' && r.item.ch==='inperson', 'whenUsed'],
   ];
   let html='';

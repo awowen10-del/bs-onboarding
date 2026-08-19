@@ -259,10 +259,39 @@ const rulesFor = (sel) => RULES.filter((r) => r.sel.split(",").map((s) => s.trim
   assert.ok(/\.board\{[^}]*grid-template-columns:minmax\(0,1fr\)/.test(phone),
     "on a phone the board collapses to ONE column and the columns stack — three of them side "
     + "by side on a 350px screen is not a board, it is three slivers");
-  // the stacked card's body must not inherit the row layout's reserved button column
-  assert.ok(/\.board \.action \.body\{[^}]*flex-basis:100%/.test(phone),
-    "a board card puts its buttons on their own line, so its body takes the full width rather "
-    + "than the 130px-reserved column the phone rule gives an ordinary action row");
+  // …and the phone rule that reserves a 130px button column on an ordinary action row must not
+  // reach a board card, whose buttons are already on a line of their own
+  assert.ok(!/\.board \.action \.body\{/.test(phone),
+    "the phone block must not re-declare the board card's body: `.board .action .body` already "
+    + "out-specifies `.action .body`, and a flex-basis here would undo the zero basis below");
+
+  /* The card's top rail — the chevron, plus the overdue flag when there is one — sits BESIDE
+     the body on the same flex line. Two declarations keep it there, and getting either wrong
+     produces a visible bug that a node harness cannot see, so both are pinned:
+
+       - the rail must NOT take a row of its own. It did once, and on a card with nothing to
+         flag that row was a lone chevron over a band of empty space, holding the challenger's
+         name a full 39px off the top of the card.
+       - the body's flex-basis must be ZERO, not auto. With an auto basis the body's base size
+         is its own content, so a long enough name pushed the rail off the end of the line and
+         wrapped it to the bottom of the card — the same stray row, back again by another
+         route. From zero the body grows into whatever the rail leaves, and the rail keeps its
+         corner however long the name is. */
+  const rail = rulesFor(".board .action .card-top")[0];
+  assert.ok(rail, "sanity: the board card still has its top rail");
+  assert.ok(!/flex-basis:\s*100%/.test(rail.body) && !/flex:\s*[^;]*100%/.test(rail.body),
+    "the rail must not claim a full-width row of its own — that is the empty band above the "
+    + "name this layout exists to avoid. Found: " + rail.body.trim());
+  assert.ok(/align-self:\s*flex-start/.test(rail.body),
+    "…and it aligns to the top of the line it shares, so it reads as a corner");
+
+  const cardBody = rulesFor(".board .action .body")[0];
+  assert.ok(cardBody, "sanity: the board card's body is still styled as its own thing");
+  assert.ok(/flex:\s*1\s+1\s+0(?![.\d])/.test(cardBody.body),
+    "the board card's body needs a ZERO flex basis, or a long challenger name sets its base "
+    + "size and knocks the top rail onto a line of its own. Found: " + cardBody.body.trim());
+  assert.ok(/min-width:0/.test(cardBody.body),
+    "…and min-width:0, so an unbroken word wraps instead of widening the card");
 
   // a grid item's automatic minimum is min-content, the same trap as an fr track
   const col = rulesFor(".board-col")[0];

@@ -335,11 +335,18 @@
      edge still says it for anyone who wants it. */
   .board .action{flex-wrap:wrap;align-items:center;row-gap:9px;padding:12px 13px;margin-bottom:8px}
 
-  /* The top rail: the expand chevron, and the overdue flag when there is one, both pushed into
-     the corner. It is its own flex row (flex-basis:100%) rather than two loose items with auto
-     margins, so the corner lands in the same place whether or not the flag is there. */
-  .board .action .card-top{order:1;flex-basis:100%;display:flex;align-items:center;
-    justify-content:flex-end;gap:9px;line-height:1}
+  /* The top rail: the expand chevron, and the overdue flag when there is one, together in the
+     card's top-right corner.
+
+     It sits BESIDE the body on the same flex line, not on a row of its own. A row of its own is
+     what it had first, and on a card with nothing to flag that row was a chevron and a band of
+     empty space holding the challenger's name away from the top of the card. Beside the body
+     the rail costs no height at all: the line is as tall as the body, the rail tucks into the
+     corner of it, and the body — which grows — automatically gives up exactly the width the
+     rail needs and no more. So a long name wraps rather than running underneath it, and a card
+     with a flag and a card without one have identical padding. */
+  .board .action .card-top{order:2;flex:0 0 auto;align-self:flex-start;margin-top:3px;
+    display:flex;align-items:center;gap:9px;line-height:1}
   .board .action .card-top .chev{margin:0}
   /* Overdue as plain small red text, not another pill. Sat next to the day label it read as one
      more chip in a row of chips, which is exactly how you miss it; alone in the corner it is the
@@ -347,7 +354,14 @@
   .overdue-flag{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
     color:var(--red);line-height:1;white-space:nowrap}
 
-  .board .action .body{order:2;flex-basis:100%}
+  /* flex:1 1 0, and the ZERO basis is the whole point: the body starts from nothing and grows
+     into whatever the rail leaves, so the rail keeps its corner however long the name is. With
+     an auto basis the body's base size is its content, and a long enough name pushed the rail
+     off the end of the line and down to the bottom of the card — which is exactly the stray
+     row this change existed to remove. min-width:0 for the same reason spelled out on
+     .board-col: a flex item's automatic minimum is min-content, and an unbroken word in a
+     title would otherwise widen the card rather than wrap. */
+  .board .action .body{order:1;flex:1 1 0;min-width:0}
   /* The body runs as normal BLOCK flow inside a card rather than as the flex row it is on a
      wide screen. Flex would treat the challenger's name as one unbreakable item and bounce the
      notes icon onto a line of its own the moment the name got long; in block flow the icon —
@@ -356,7 +370,7 @@
   .board .action .who{display:block;line-height:1.45}
   .board .action .who .ttl{display:block;margin-top:3px}
   .board .action .who .day{margin-top:8px;vertical-align:middle}
-  .board .action .mark-btns{order:3;flex-basis:100%;flex-direction:row;gap:8px}
+  .board .action .mark-btns{order:3;flex-basis:100%;flex-direction:row;gap:8px;margin-top:1px}
   .board .action .mark-btns .btn{flex:1 1 0;text-align:center}
 
   /* "Waiting on a first session" — the standing task between the intro and Day 0.
@@ -852,9 +866,6 @@
        heading, its count and its empty state, so the day still reads in the same three
        chapters rather than being squeezed into columns too narrow to use. */
     .board{grid-template-columns:minmax(0,1fr);gap:16px;margin-top:18px}
-    /* the row rule above reserves a 130px column for the buttons; a board card has already
-       put them on a line of their own, so its body takes the full width */
-    .board .action .body{flex-basis:100%}
     /* the waiting row's control is a date field AND a full-sentence button, far wider than the
        130px column the rule above reserves, so on a phone it takes the next line to itself */
     .action.awaiting .body{flex-basis:100%}

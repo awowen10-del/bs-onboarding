@@ -299,13 +299,44 @@ const rulesFor = (sel) => RULES.filter((r) => r.sel.split(",").map((s) => s.trim
     "…still justified to the end, or the status line stops being a top-RIGHT corner and "
     + "silently slides to the left. Found: " + phoneRail[1].trim());
 
+  /* The body's box is dissolved so its two halves become flex items of the card: the name block
+     shares the top line with the rail, and the detail takes a full-width row below.
+
+     This is what lets an expanded card use the whole column. While the detail lived INSIDE the
+     body, it inherited the body's width — and the body is sized to whatever the rail leaves, so
+     the checklist and the calculator were laid out in a ~210px strip inside a 335px card with
+     dead space beside them. No amount of styling inside the detail could reach past that. */
   const cardBody = rulesFor(".board .action .body")[0];
   assert.ok(cardBody, "sanity: the board card's body is still styled as its own thing");
-  assert.ok(/flex:\s*1\s+1\s+0(?![.\d])/.test(cardBody.body),
-    "the board card's body needs a ZERO flex basis, or a long challenger name sets its base "
-    + "size and knocks the top rail onto a line of its own. Found: " + cardBody.body.trim());
-  assert.ok(/min-width:0/.test(cardBody.body),
+  assert.ok(/display:contents/.test(cardBody.body),
+    "the board card's body must dissolve its box, or the expanded detail is measured by the "
+    + "space left beside the status rail instead of the full column. Found: " + cardBody.body.trim());
+
+  const detail = rulesFor(".board .action .detail")[0];
+  assert.ok(detail && /flex-basis:100%/.test(detail.body),
+    "…and the detail takes a full-width row of its own once it is a flex item of the card");
+
+  /* The name block is what shares the top line with the rail now, so it carries the zero basis
+     the body used to. Same reason as before: from an auto basis its base size is its own
+     content, and a long enough name pushes the rail off the line and down to the card's foot. */
+  const who = rulesFor(".board .action .who")[0];
+  assert.ok(who, "sanity: the board card's name block is still styled as its own thing");
+  assert.ok(/flex:\s*1\s+1\s+0(?![.\d])/.test(who.body),
+    "the name block needs a ZERO flex basis, or a long challenger name sets its base size and "
+    + "knocks the top rail onto a line of its own. Found: " + who.body.trim());
+  assert.ok(/min-width:0/.test(who.body),
     "…and min-width:0, so an unbroken word wraps instead of widening the card");
+
+  /* Flex order is what actually stacks the card, and the four bands have to stay in sequence:
+     name, rail, detail, buttons. They are separate rules, so a change to one is easy to make
+     without noticing the others. */
+  const orderOf = (sel) => {
+    const r = rulesFor(sel).map((x) => /(?:^|;)\s*order:\s*(\d+)/.exec(x.body)).filter(Boolean);
+    return r.length ? Number(r[0][1]) : null;
+  };
+  const bands = ["who", "card-top", "detail", "mark-btns"].map((c) => orderOf(".board .action ." + c));
+  assert.deepStrictEqual(bands, [1, 2, 3, 4],
+    "the card's bands run name, rail, detail, buttons — found orders " + JSON.stringify(bands));
 
   // a grid item's automatic minimum is min-content, the same trap as an fr track
   const col = rulesFor(".board-col")[0];

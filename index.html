@@ -366,23 +366,44 @@
   .overdue-flag{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
     color:var(--red);line-height:1;white-space:nowrap}
 
-  /* flex:1 1 0, and the ZERO basis is the whole point: the body starts from nothing and grows
-     into whatever the rail leaves, so the rail keeps its corner however long the name is. With
-     an auto basis the body's base size is its content, and a long enough name pushed the rail
-     off the end of the line and down to the bottom of the card — which is exactly the stray
-     row this change existed to remove. min-width:0 for the same reason spelled out on
-     .board-col: a flex item's automatic minimum is min-content, and an unbroken word in a
-     title would otherwise widen the card rather than wrap. */
-  .board .action .body{order:1;flex:1 1 0;min-width:0}
+  /* display:contents dissolves the body's own box, so its two halves become flex items of the
+     card itself: the name block takes the top line beside the status rail, and the detail drops
+     to a row of its own at FULL card width.
+
+     That full width is the point. The detail used to be inside the body, and the body is sized
+     to whatever the rail leaves — so an expanded intro card laid its checklist, its start-clock
+     block and its calculator out in a ~210px strip with 120px of dead space beside them, when
+     the card itself was 335px wide. Nothing was ever going to fix that from inside the body;
+     the body had to stop being the thing that measured it.
+
+     The body keeps its click handler: display:contents removes the box, not the element, so
+     clicks on the name or the detail still bubble through it, and `cursor` still inherits down.
+
+     flex:1 1 0 on the name block, and the ZERO basis is load-bearing: it starts from nothing
+     and grows into whatever the rail leaves, so the rail keeps its corner however long the name
+     is. With an auto basis its base size is its content, and a long enough name pushed the rail
+     off the end of the line and down to the bottom of the card. min-width:0 for the reason
+     spelled out on .board-col: a flex item's automatic minimum is min-content, and an unbroken
+     word would widen the card rather than wrap. */
+  .board .action .body{display:contents}
+  .board .action .detail{order:3;flex-basis:100%;margin-top:12px;padding-top:12px;line-height:1.6}
+  /* An expanded card is read top to bottom, so the blocks inside it get a little more air than
+     they need in a wide row: enough that the walkthrough link, the start-clock box, the
+     checklist and its tools each read as their own section rather than one long column of
+     boxes. */
+  .board .action .detail > .walk-link{margin-top:13px}
+  .board .action .detail > .startblock{margin-top:13px}
+  .board .action .detail > .checklist{margin-top:15px}
+  .board .action .detail > .checklist-progress{margin-top:12px}
   /* The body runs as normal BLOCK flow inside a card rather than as the flex row it is on a
      wide screen. Flex would treat the challenger's name as one unbreakable item and bounce the
      notes icon onto a line of its own the moment the name got long; in block flow the icon —
      which is inline-flex and vertical-aligned precisely for this — simply stays beside the last
      word of the name, with the title on the line below. (The day label used to sit under that
      again; it lives in the status line in the corner now.) */
-  .board .action .who{display:block;line-height:1.45}
+  .board .action .who{order:1;flex:1 1 0;min-width:0;display:block;line-height:1.45}
   .board .action .who .ttl{display:block;margin-top:3px}
-  .board .action .mark-btns{order:3;flex-basis:100%;flex-direction:row;gap:8px;margin-top:1px}
+  .board .action .mark-btns{order:4;flex-basis:100%;flex-direction:row;gap:8px;margin-top:1px}
   .board .action .mark-btns .btn{flex:1 1 0;text-align:center}
 
   /* "Waiting on a first session" — the standing task between the intro and Day 0.
@@ -407,10 +428,17 @@
     color:var(--orange-soft);text-decoration:none;border:1px solid var(--line);background:var(--navy-2);
     border-radius:8px;padding:8px 12px;transition:border-color .15s ease}
   .walk-link:hover{border-color:var(--orange)}
-  .checklist{margin-top:10px;display:flex;flex-direction:column;gap:7px}
-  .checklist .ci{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink);cursor:pointer}
+  .checklist{margin-top:12px;display:flex;flex-direction:column;gap:10px}
+  /* flex-start, not center: these steps run to two and three lines at column width, and a box
+     centred against a three-line step floats in the middle of it with nothing to point at. It
+     belongs beside the FIRST line, so it is aligned to the top and nudged down by the 1px that
+     centres it on that line. line-height is set here rather than inherited because the wrapped
+     lines are the whole readability problem. */
+  .checklist .ci{display:flex;align-items:flex-start;gap:10px;font-size:13px;line-height:1.5;
+    color:var(--ink);cursor:pointer}
   .checklist .ci .box{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--ink-faint);
-    display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:transparent;transition:all .15s ease}
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:transparent;
+    margin-top:1px;transition:all .15s ease}
   .checklist .ci.checked .box{background:var(--green);border-color:var(--green);color:var(--on-accent)}
   .checklist .ci.checked span{color:var(--ink-faint);text-decoration:line-through}
   .checklist-progress{margin-top:8px;font-size:11px;font-weight:700;color:var(--ink-faint);letter-spacing:.04em}
@@ -467,7 +495,12 @@
   .startblock.started{background:rgba(var(--green-rgb),.12)}
   .startblock .sb-label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--ink-dim);margin-bottom:8px}
   .startblock .sb-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .startblock .sb-date{font-family:inherit;font-size:13px;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--navy-2);color:var(--ink)}
+  /* In a board column the date and a full-sentence button will not share a line, so the row
+     wraps — and both halves take the whole width rather than sitting at their intrinsic size
+     with a ragged gap beside them. A date input in particular has a default intrinsic width it
+     otherwise clings to. */
+  .startblock .sb-date{flex:1 1 100%;min-width:0;font-family:inherit;font-size:13px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--navy-2);color:var(--ink)}
+  .startblock .sb-row .start-btn{flex:1 1 auto;text-align:center}
   .startblock .sb-date:focus{outline:none;border-color:var(--green)}
   .startblock .sb-hint{font-size:11.5px;color:var(--ink-faint);margin-top:9px;line-height:1.5}
   .startblock .sb-tick{color:var(--green);font-weight:800;font-size:15px}
@@ -475,7 +508,12 @@
   .startblock .sb-txt b{color:var(--green)}
 
   /* ---------- Nutrition calculator ---------- */
-  .ci-tool{margin:6px 0 10px 26px}
+  /* The tool that hangs off a checklist step — the calculator, the welcome message. It used to
+     be indented 26px to line its left edge up with the step's label, past the checkbox. In a
+     board column that indent is width it cannot spare, and the panel does not need it: it sits
+     directly under its own step and carries its own recessed surface, so proximity says which
+     step it belongs to. It takes the full width instead. */
+  .ci-tool{margin:8px 0 12px}
   .nutblock{margin-top:12px;background:var(--navy-2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
   .nut-toggle{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer;font-weight:700;font-size:13.5px;color:var(--ink)}
   .nut-toggle:hover{background:rgba(var(--lift-rgb),var(--lift-a))}

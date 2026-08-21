@@ -283,7 +283,8 @@ const onTab = (app, name) => app.html("birthdayList").includes(name);
 
 /* ---------- 10: the retention tab is untouched ----------
    birthdaysHtml is shared, and every one of these features is passed into it as an optional
-   hook. The members tab passes none of them, so it must render exactly what it did before. */
+   hook. The members tab now passes the same ones — see birthday-members.test.cjs for what it
+   does with them — so what this block holds is the two things that stayed DIFFERENT. */
 {
   const app = bootTab({
     members: [person("c", "Cal Challenger", turning(50))],
@@ -292,16 +293,31 @@ const onTab = (app, name) => app.html("birthdayList").includes(name);
   });
   const ret = app.html("retBirthdayList");
   assert.ok(ret.includes("Mo Member"), "the member is on their own tab");
-  assert.ok(!/bday-acts/.test(ret), "with no Ignore or Actioned buttons");
-  assert.ok(!/🎉/.test(ret), "…and no milestone badge — challengers only, for now");
-  assert.ok(!/bday-ignored-note/.test(ret), "…and no ignored line");
-  assert.ok(/Coach Dan · member/.test(ret), "…and the meta line it always had");
+  assert.ok(/bday-acts/.test(ret), "with the same Ignore and Actioned buttons a challenger has");
+  assert.ok(/🎉 Turning 50/.test(ret), "…and the same milestone badge");
 
-  // …while the challenger tab beside it has all of it
+  // …and the two things that are NOT mirrored.
+  // A member's line is their coach, not a journey status: there is no 42-day clock to report
+  // on, so the coach is the useful context here where it was noise on a challenger's card.
+  assert.ok(/Coach Dan · member/.test(ret), "a member's line still reads their coach");
+  assert.ok(!/on the journey|not started yet|finished the 6 weeks/.test(ret),
+    "…and carries no challenger-only status");
+  assert.ok(!/Example/.test(ret), "the examples are not on the member side");
+
+  // the challenger tab beside it is unchanged by any of the mirroring
   assert.ok(/bday-acts/.test(app.html("birthdayList")) && /🎉 Turning 50/.test(app.html("birthdayList")),
-    "sanity: the onboarding tab does have them");
-  // and the status line on a member is untouched — the coach only came off the challengers'
-  assert.ok(/Coach Dan · member/.test(app.html("retBirthdayList")), "a member still reads their coach");
+    "sanity: the onboarding tab still has them");
+
+  // …and the demo props are two made-up CHALLENGERS, so the toggle that reveals them must do
+  // nothing at all on the member side. Booted without this file's usual dismissal, so the
+  // toggle has something to reveal and "nothing happened" means something.
+  const demo = boot({ retention: [{ id: "r1", name: "Mo Member", coach: "Dan", dob: turning(50),
+    email: "", personal: "", notes: "", joined: daysFromToday(-90) }] });
+  demo.ctx.toggleBirthdayExamples();
+  assert.ok(/Example/.test(demo.html("birthdayList")), "sanity: the toggle did reveal them");
+  assert.ok(!/Example/.test(demo.html("retBirthdayList")),
+    "…and revealed nothing on the member tab, which is the point of that gate");
+  assert.ok(!/Example/.test(demo.html("retTodayList")), "…nor on the member Today's moves");
 }
 
 console.log("birthday-actions.test.cjs: OK");

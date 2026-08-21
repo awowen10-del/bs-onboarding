@@ -1735,6 +1735,11 @@ function migrateRetentionList(arr){
     if(m.personal===undefined) m.personal = '';
     if(m.notes===undefined) m.notes = '';       // the same shared-notes document, same editor
     if(m.dob===undefined) m.dob = null;         // "YYYY-MM-DD" or null, same as a challenger
+    // Birthdays housekeeping, named and shaped exactly as a challenger's so ONE set of
+    // functions serves both rosters. Ignored is forever; actioned is the YEAR of the birthday
+    // it settles, so next year's comes round unhandled by itself.
+    if(m.birthdayIgnored===undefined) m.birthdayIgnored = false;
+    if(m.birthdayActionedYear===undefined) m.birthdayActionedYear = null;
     // Where they came from, for the handoff that isn't built yet: the day they became a full
     // member, and the challenger record they were promoted from.
     if(m.joined===undefined) m.joined = null;   // timestamp (local midnight) or null
@@ -2173,12 +2178,16 @@ function birthdayDaysAway(m){
      the Example tag beside the name;
      the dashed edge on the row;
      the notes icon and the "Remember:" line, which need a real person behind them;
-     and WHICH state the Done button writes — toggleBirthdayActioned for a challenger, which
-     is the roster's own field, or toggleExampleActioned for a prop, which is a list of ids in
-     localStorage and cannot reach the roster at all.
+     and WHICH state the Done button writes — toggleBirthdayActioned for a real person, which
+     is their roster's own field, or toggleExampleActioned for a prop, which is a list of ids
+     in localStorage and cannot reach a roster at all.
 
-   That last one is the wall. A prop being marked done touches nothing a coach relies on. */
-function birthdayTaskHtml(x, isExample){
+   That last one is the wall. A prop being marked done touches nothing a coach relies on.
+
+   `which` picks the roster: 'retention' for a member, anything else for a challenger. A
+   member's card is otherwise identical, and identical on purpose — a birthday is a birthday
+   whichever list somebody is on, and the four steps are the same four steps. */
+function birthdayTaskHtml(x, which, isExample){
   const nb = nextBirthday(x), days = birthdayDaysAway(x), age = birthdayMilestone(x);
   const when = new Date(nb.year, nb.m-1, nb.d);
   const dayName = when.toLocaleDateString('en-GB',{weekday:'long'});
@@ -2190,7 +2199,8 @@ function birthdayTaskHtml(x, isExample){
     `<div class="ci"><span class="box" aria-hidden="true"></span><span>${esc(t)}</span></div>`).join('')
     + `</div>`;
   const personal = (!isExample && x.personal) ? `<div style="margin-top:8px">Remember: <b>${esc(x.personal)}</b></div>` : '';
-  const done = isExample ? `toggleExampleActioned('${x.id}')` : `toggleBirthdayActioned('${x.id}')`;
+  const done = isExample ? `toggleExampleActioned('${x.id}')`
+            : `toggleBirthdayActioned('${x.id}'${which==='retention'?",'retention'":''})`;
   return `<div class="action birthday${age?' milestone':''}${isExample?' example':''}" id="act-${x.id}-birthday">
     <span class="ch birthday">${days===0?'Today 🎂':'Birthday'}</span>
     <div class="body" onclick="toggleExpand('${x.id}','birthday')">
@@ -2457,10 +2467,10 @@ function renderToday(){
     // the count is the REAL birthdays and only those. The examples sit under their own line
     // below, so a number that says 1 with three rows under it never happens.
     html += `<div class="group-label">Birthdays this week<span class="gcount">${bdayRows.length}</span></div>`;
-    html += bdayRows.map(m=>birthdayTaskHtml(m,false)).join('');
+    html += bdayRows.map(m=>birthdayTaskHtml(m,'onboarding',false)).join('');
     if(egRows.length){
       html += `<div class="today-example-label">Example — for showing the team</div>`;
-      html += egRows.map(x=>birthdayTaskHtml(x,true)).join('');
+      html += egRows.map(x=>birthdayTaskHtml(x,'onboarding',true)).join('');
     }
   }
 
@@ -3163,7 +3173,13 @@ function handOffToRetention(m){
     joined: today0(),                         // the anchor for day-30, day-60, anniversaries
     fromChallenger: m.id,
     completed: [], missed: [], doneMeta: {},  // their member journey starts here, at day 0
-    attendance: {}                            // …and their attendance history from the next upload
+    attendance: {},                           // …and their attendance history from the next upload
+    /* Birthday housekeeping starts clean, and DELIBERATELY does not travel with them. Ignoring
+       somebody's birthday as a challenger was a decision about a six-week challenge; joining
+       as a member is a new relationship and a new question. Same for an Actioned tick — the
+       card that was sent went to a challenger. Both default the way a new record defaults. */
+    birthdayIgnored: false,
+    birthdayActionedYear: null
   };
   retention.push(member);
   saveRetention();                            // its own list, its own row, its own sync
@@ -3657,40 +3673,58 @@ function runImport(input){
    on from it and wraps — in December you want to see December, then January, not scroll past
    eleven months you have already had. Quiet months are dropped entirely; the current month
    is the one exception, because "nobody this month" is itself the answer to the question. */
-/* Ignored people are off the tab by default and the toggle at the bottom brings them back
-   into view. In-memory and per-visit, like every other "what am I looking at" state in this
-   app: it is a peek, not a preference. */
-let showIgnoredBirthdays = false;
-function toggleIgnoredBirthdays(){ showIgnoredBirthdays = !showIgnoredBirthdays; renderBirthdays(); }
+/* ---------------- One set of birthday functions, two rosters ----------------
+   Challengers and members get identical birthday handling, so the rules above (nextBirthday,
+   birthdayMilestone, birthdayActioned, birthdayDue) were already roster-blind — they take a
+   record and read its dob. Only the three things that WRITE needed to learn which list they
+   are writing to, and they learn it the same way the import dialog does: a scope string.
 
-/* Hide somebody from the Birthdays tab for good — they have left and we will not be sending
+   `which` is 'retention' for members and anything else for challengers, so every existing
+   call site keeps working untouched and every new one names itself. */
+function birthdayRoster(which){ return which==='retention' ? retention : members; }
+function birthdaySave(which){ return which==='retention' ? saveRetention() : save(); }
+
+/* Ignored people are off their tab by default and the toggle at the bottom brings them back
+   into view. Per tracker, not one flag for both: peeking at the challengers you have ignored
+   is not a request to see the members you have. In-memory and per-visit, like every other
+   "what am I looking at" state in this app. */
+const showIgnoredBirthdays = { onboarding:false, retention:false };
+function ignoredKey(which){ return which==='retention' ? 'retention' : 'onboarding'; }
+function toggleIgnoredBirthdays(which){
+  const k = ignoredKey(which);
+  showIgnoredBirthdays[k] = !showIgnoredBirthdays[k];
+  return which==='retention' ? renderRetentionBirthdays() : renderBirthdays();
+}
+
+/* Hide somebody from their Birthdays tab for good — they have gone and we will not be sending
    them anything. Reversible from the toggle at the bottom, which is why it does not ask. */
-function setBirthdayIgnored(id, on){
-  const m = members.find(x=>x.id===id); if(!m) return;
+function setBirthdayIgnored(id, on, which){
+  const m = birthdayRoster(which).find(x=>x.id===id); if(!m) return;
   m.birthdayIgnored = !!on;
-  save(); renderAll();
+  birthdaySave(which); renderAll();
 }
 /* Park this year's birthday, or unpark it. Stores the YEAR of the birthday being settled, so
    it lapses on its own when the next one comes round — see birthdayActioned. */
-function toggleBirthdayActioned(id){
-  const m = members.find(x=>x.id===id); if(!m) return;
+function toggleBirthdayActioned(id, which){
+  const m = birthdayRoster(which).find(x=>x.id===id); if(!m) return;
   const nb = nextBirthday(m); if(!nb) return;          // no dob, nothing to action
   m.birthdayActionedYear = birthdayActioned(m) ? null : nb.year;
-  save(); renderAll();
+  birthdaySave(which); renderAll();
 }
 
 /* The two actions on a card. Small, quiet and at the far end: they are the least important
    thing on the row until the moment you want one. Ignored rows lose the Actioned button —
    there is nothing to handle for somebody we have taken off the tab — and keep the other one,
    flipped, so the row you are looking at is always the row you can undo. */
-function birthdayActionsHtml(m){
+function birthdayActionsHtml(m, which){
   const done = birthdayActioned(m), ign = !!m.birthdayIgnored;
+  const sc = which==='retention' ? ",'retention'" : '';
   const act = ign ? '' : `<button type="button" class="bday-act${done?' done':''}"
-      onclick="toggleBirthdayActioned('${m.id}')"
+      onclick="toggleBirthdayActioned('${m.id}'${sc})"
       title="${done?'Handled for this year — tap to undo':'Mark this year\u2019s birthday as handled'}"
       aria-pressed="${done?'true':'false'}">${done?'✓ Actioned':'Actioned'}</button>`;
   const ignore = `<button type="button" class="bday-act ghost"
-      onclick="setBirthdayIgnored('${m.id}',${ign?'false':'true'})"
+      onclick="setBirthdayIgnored('${m.id}',${ign?'false':'true'}${sc})"
       title="${ign?'Put them back on the Birthdays tab':'Hide them from the Birthdays tab for good'}"
       >${ign?'Un-ignore':'Ignore'}</button>`;
   return `<div class="bday-acts">${act}${ignore}</div>`;
@@ -3850,7 +3884,7 @@ function renderBirthdays(){
            : 'on the journey';
     },
     // ignored people are out of the groups AND out of their counts, not greyed out in place
-    hidden:m=> !!m.birthdayIgnored && !showIgnoredBirthdays,
+    hidden:m=> !!m.birthdayIgnored && !showIgnoredBirthdays.onboarding,
     rowClass:m=>{
       const cls=[];
       if(birthdayMilestone(m)) cls.push('milestone');
@@ -3864,23 +3898,46 @@ function renderBirthdays(){
       const age = birthdayMilestone(m);
       return age ? `<span class="bday-milestone">🎉 Turning ${age}</span>` : '';
     },
-    rowExtra:birthdayActionsHtml,
+    rowExtra:m=>birthdayActionsHtml(m,'onboarding'),
     footer: ignored ? `<div class="bday-ignored-note">${ignored} ignored — `
-      + `<button type="button" onclick="toggleIgnoredBirthdays()">${showIgnoredBirthdays?'hide':'show'}</button></div>` : ''
+      + `<button type="button" onclick="toggleIgnoredBirthdays()">${showIgnoredBirthdays.onboarding?'hide':'show'}</button></div>` : ''
   });
 }
 
-/* The Retention tracker's Birthdays tab: the same tab, the same rules, reading the member
-   list instead of the roster. Only the wording and the meta line under a name differ —
-   a member has no 42-day clock to report on. */
+/* The Retention tracker's Birthdays tab: the same tab, the same rules, reading the member list
+   instead of the roster — and now the same three features, from the same functions. Ignore,
+   the milestone badge and Actioned all come from birthdayActionsHtml, birthdayMilestone and
+   birthdayActioned, given 'retention' so their writes land in the member list.
+
+   Two things stay different, and both because a member is not a challenger. Their meta line
+   is "Coach X · member" rather than a journey status: there is no 42-day clock to report on,
+   so the coach is the useful context here where it was noise on a challenger's card. And the
+   demo examples are NOT here — they are two made-up CHALLENGERS, and the "Show examples"
+   toggle deliberately does nothing on this side. */
 function renderRetentionBirthdays(){
   const host=document.getElementById('retBirthdayList'); if(!host) return;
+  const ignored = retention.filter(m=>m.birthdayIgnored && dobParts(m.dob)).length;
   host.innerHTML = birthdaysHtml(retention, {
     noun:'member',
     empty:`<div class="empty"><div class="big">No birthdays on file yet.</div>
       ${retention.length ? 'Add a date of birth from <b>Edit</b> on a member\'s card, or import them from a CSV.'
                          : 'No members yet — birthdays will appear here as the member list fills up.'}</div>`,
-    meta:m=>'Coach '+esc(m.coach||'—')+' · member'
+    meta:m=>'Coach '+esc(m.coach||'—')+' · member',
+    hidden:m=> !!m.birthdayIgnored && !showIgnoredBirthdays.retention,
+    rowClass:m=>{
+      const cls=[];
+      if(birthdayMilestone(m)) cls.push('milestone');
+      if(birthdayActioned(m)) cls.push('actioned');
+      if(m.birthdayIgnored) cls.push('ignored');
+      return cls.join(' ');
+    },
+    nameExtra:m=>{
+      const age = birthdayMilestone(m);
+      return age ? `<span class="bday-milestone">🎉 Turning ${age}</span>` : '';
+    },
+    rowExtra:m=>birthdayActionsHtml(m,'retention'),
+    footer: ignored ? `<div class="bday-ignored-note">${ignored} ignored — `
+      + `<button type="button" onclick="toggleIgnoredBirthdays('retention')">${showIgnoredBirthdays.retention?'hide':'show'}</button></div>` : ''
   });
 }
 
@@ -4297,10 +4354,17 @@ function renderRetentionToday(){
   });
   alerts.sort((a,b)=> String(a.m.name||'').localeCompare(String(b.m.name||'')));
 
-  const tally = document.getElementById('retTodayCount');
-  if(tally) tally.textContent = rows.length + alerts.length;
+  // Birthdays inside the next week — the same window, the same rule and the same card the
+  // onboarding tracker uses, pointed at the member list. Gathered separately for the same
+  // reason as the alerts: this is a date in the calendar, not a day in anybody's journey.
+  const bdayRows = retention.filter(birthdayDue)
+    .sort((a,b)=> birthdayDaysAway(a)-birthdayDaysAway(b)
+                || String(a.name||'').localeCompare(String(b.name||'')));
 
-  if(!rows.length && !alerts.length){
+  const tally = document.getElementById('retTodayCount');
+  if(tally) tally.textContent = rows.length + alerts.length + bdayRows.length;
+
+  if(!rows.length && !alerts.length && !bdayRows.length){
     list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
       Nothing due for a member right now. The quiet weeks are the ones that keep people — check the Members tab to see where everyone sits.</div>`;
     return;
@@ -4336,11 +4400,24 @@ function renderRetentionToday(){
     });
   }
 
+  /* Birthdays this week. Above the journey groups and below the attendance alerts, which is
+     where the onboarding tracker puts them relative to its own work — the alerts lead because
+     somebody is quietly heading for the door behind them, and a birthday is the next most
+     time-shaped thing on the screen.
+
+     No examples here, and none possible: the two demo props are made-up CHALLENGERS and this
+     renderer never asks for them. The "Show examples" toggle does nothing on this side. */
+  let bdayHtml = '';
+  if(bdayRows.length){
+    bdayHtml += `<div class="group-label">Birthdays this week<span class="gcount">${bdayRows.length}</span></div>`;
+    bdayHtml += bdayRows.map(m=>birthdayTaskHtml(m,'retention',false)).join('');
+  }
+
   const groups = [
     ['physical','Cards & gifts to send', r=>r.item.ch==='physical'],
     ['digital','Voice notes & check-ins', r=>r.item.ch==='digital'],
   ];
-  let html = alertHtml;
+  let html = alertHtml + bdayHtml;
   groups.forEach(([gid,label,test])=>{
     const g = rows.filter(test);
     if(!g.length) return;

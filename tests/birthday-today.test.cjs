@@ -243,17 +243,24 @@ const tabRow = (app, name) =>
   assert.ok(!/markMissed/.test(row), "…and no Missed: the day happens whether or not you act");
 }
 
-/* ---------- 9: challengers only, for now ---------- */
+/* ---------- 9: the two trackers keep their own ----------
+   Members have the same feature now (see birthday-members.test.cjs). What this holds is that
+   the two lists do not bleed into each other: a challenger's birthday is challenger work and
+   a member's is member work, on the screen for that tracker. */
 {
   const app = boot({
     members: [person("t", "Tara Today", at(2, 29))],
     retention: [{ id: "r1", name: "Mo Member", coach: "Dan", dob: at(2, 29),
-      email: "", personal: "", notes: "", joined: daysFromToday(-90) }],
+      email: "", personal: "", notes: "", joined: daysFromToday(-90),
+      completed: [], missed: [], doneMeta: {}, attendance: {} }],
   });
   assert.ok(onToday(app, "Tara Today"), "the challenger's birthday is on Today's moves");
-  assert.ok(!app.html("retTodayList").includes("Birthdays this week"),
-    "the retention Today has no birthday group yet — members are mirrored later");
-  assert.ok(!app.html("retTodayList").includes("Mo Member's birthday"));
+  assert.ok(!onToday(app, "Mo Member"), "…and the member's is not");
+
+  const ret = app.html("retTodayList");
+  assert.ok(ret.includes("Birthdays this week"), "the member has a group of their own");
+  assert.ok(ret.includes("Mo Member"), "…with their card in it");
+  assert.ok(!ret.includes("Tara Today"), "…and no challenger in it");
 }
 
 console.log("birthday-today.test.cjs: OK");

@@ -258,7 +258,11 @@ function member(id, name, extra) {
   assert.deepStrictEqual([...m.missed], []);
   assert.deepStrictEqual({ ...m.doneMeta }, {});
   assert.deepStrictEqual({ ...m.attendance }, {}, "and no attendance history");
-  for (const k of ["name", "email", "coach", "notes", "dob", "completed", "missed", "doneMeta", "attendance"]) {
+  // birthday housekeeping, the same two fields and the same defaults a challenger gets
+  assert.strictEqual(m.birthdayIgnored, false, "nobody is ignored by default");
+  assert.strictEqual(m.birthdayActionedYear, null, "and nothing is actioned by default");
+  for (const k of ["name", "email", "coach", "notes", "dob", "completed", "missed", "doneMeta",
+    "attendance", "birthdayIgnored", "birthdayActionedYear"]) {
     assert.ok(k in m, "core field " + k + " is present");
     assert.notStrictEqual(m[k], undefined, "core field " + k + " is never undefined");
   }
@@ -268,7 +272,8 @@ function member(id, name, extra) {
     personal: "half marathon in May", notes: "<b>knee</b>", dob: "1988-02-29",
     joined: daysFromToday(-100), fromChallenger: "c9",
     completed: ["welcome_card"], missed: ["day30"], doneMeta: { welcome_card: "3 Jun" },
-    attendance: { "2026-W20": { attendedPT: 2, attendedOther: 0, noShow: 0, lateCancelled: 0, registered: 0 } } };
+    attendance: { "2026-W20": { attendedPT: 2, attendedOther: 0, noShow: 0, lateCancelled: 0, registered: 0 } },
+    birthdayIgnored: true, birthdayActionedYear: 2019 };
   const once = migrateRetentionList([{ ...full }]);
   const twice = migrateRetentionList(JSON.parse(JSON.stringify(once)));
   assert.deepStrictEqual(twice[0], full, "migration is idempotent and clobbers nothing");

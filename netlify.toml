@@ -1,4 +1,4 @@
-# Netlify config for The First 42 Days tracker
+# Netlify config for The Power of Moments tracker
 [build]
   publish = "."
   functions = "netlify/functions"

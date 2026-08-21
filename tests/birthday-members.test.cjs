@@ -296,13 +296,15 @@ const onRetToday = (app, name) => todayGroup(app).includes(name);
   assert.ok(/bday-type challenge">6-week challenge</.test(jo), "tagged as a challenger, not a member");
   assert.ok(/bday-example-tag">Example</.test(jo), "…and as an example");
 
-  // …and nowhere near the member side's own work or data
-  for (const id of ["retTodayList", "retMemberList"]) {
-    assert.ok(!app.html(id).includes("Example"), "no example reaches #" + id);
-  }
-  assert.strictEqual(app.retention().length, 1, "and no prop was added to the member list");
+  // …and the CHALLENGER props never reach the member side's work. The member prop does — that
+  // is what it is for — and birthday-examples is where the split is nailed down.
+  assert.ok(!/Jo Example|Pat Example/.test(app.html("retTodayList")),
+    "no challenger prop reaches the member Today's moves");
+  assert.ok(!app.html("retMemberList").includes("Example"), "…and no prop reaches the member list");
+  assert.strictEqual(app.retention().length, 1, "no prop was added to the member list");
   assert.ok(onRetToday(app, "Mo Member"), "the real member's task is unaffected");
-  assert.strictEqual(app.el("retTodayCount").textContent, "1", "…and the badge counts only them");
+  assert.strictEqual(app.el("retTodayCount").textContent, "1",
+    "…and the badge counts only them: a prop is not work, however visible");
 }
 
 /* ---------- 11: the member journey and the rest of the tracker are untouched ---------- */

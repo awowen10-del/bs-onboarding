@@ -2373,7 +2373,7 @@ function renderToday(){
     .sort((a,b)=> birthdayDaysAway(a)-birthdayDaysAway(b) || a.name.localeCompare(b.name));
   // …and the demo props, when somebody has asked to see them. Never counted, never sorted in
   // among the real ones: they go under their own line at the end of the group.
-  const egRows = birthdayExampleTasks();
+  const egRows = birthdayExampleTasks('onboarding');
 
   // The tab badge is REAL work and nothing else, so the examples are missing from it on
   // purpose — a prop must never make a coach think they have something to do.
@@ -2385,7 +2385,7 @@ function renderToday(){
   // showing "All caught up" over the top of two visible cards would be the screen lying about
   // itself. They suppress it without ever reaching the badge above.
   if(rows.length===0 && fuRows.length===0 && startRows.length===0 && bdayRows.length===0
-     && birthdayExampleTasks().length===0){
+     && birthdayExampleTasks('onboarding').length===0){
     list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
       No touchpoints due right now. Consistency is the magic — check the Challengers tab to see where everyone sits.</div>`;
     return;
@@ -3777,13 +3777,29 @@ function birthdayExamples(){
     const d = new Date(addDays(today0(), daysAhead)), p = n=>String(n).padStart(2,'0');
     return (d.getFullYear()-age)+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
   };
+  /* All three inside BIRTHDAY_LEAD_DAYS, because they have to raise a task on Today's moves
+     as well as sit on the tab — the demo is the whole flow, nudge to done, not one screen of
+     it. Their days are 3, 4 and 6 so they interleave on the merged tab and the sort is
+     visibly by date rather than by which list they came from.
+
+     `scope` is the whole reason the third one exists. Two challengers demonstrate the
+     features; a member beside them demonstrates the SCOPING — that a member's birthday task
+     lands on the retention tracker's day and a challenger's on the onboarding one, and that
+     neither shows up on the other. That is a rule you cannot point at with one kind of person
+     on the screen, and it is the rule most likely to be got wrong later.
+
+     `meta` is the line under the name on the tab, and it differs the way a real person's
+     does: a challenger's is their journey status, a member's is their coach. */
   return [
-    // both inside BIRTHDAY_LEAD_DAYS, because they have to raise a task on Today's moves as
-    // well as sit on the tab — the demo is the whole flow, nudge to done, not one screen of it
-    {id:'eg-soon',      name:'Jo Example',  dob:dob(3,34), at:addDays(today0(),3)},
-    {id:'eg-milestone', name:'Pat Example', dob:dob(6,50), at:addDays(today0(),6)}
+    {id:'eg-soon',      name:'Jo Example',  scope:'onboarding', meta:'on the journey',
+     dob:dob(3,34), at:addDays(today0(),3)},
+    {id:'eg-member',    name:'Mel Example', scope:'retention',  meta:'Coach Dan',
+     dob:dob(4,38), at:addDays(today0(),4)},
+    {id:'eg-milestone', name:'Pat Example', scope:'onboarding', meta:'on the journey',
+     dob:dob(6,50), at:addDays(today0(),6)}
   ];
 }
+function birthdayExampleScope(x){ return (x && x.scope==='retention') ? 'retention' : 'onboarding'; }
 function readBdayExampleState(){
   try{
     const r = JSON.parse(localStorage.getItem(BDAY_EXAMPLE_KEY));
@@ -3818,16 +3834,19 @@ function toggleBirthdayExamples(){ showBirthdayExamples = !showBirthdayExamples;
    coach demonstrating the flow walks between the two, so anything that changes them has to
    redraw both or the second screen is showing the state before the click. Not renderAll():
    nothing about a prop concerns the roster, the conversion bar or the retention tracker. */
-function renderExampleScreens(){ renderBirthdays(); renderToday(); }   // renderBirthdays paints both tabs
+// renderBirthdays paints both merged tabs; the two Today's moves each hold their own props
+function renderExampleScreens(){ renderBirthdays(); renderToday(); renderRetentionToday(); }
 
 /* The examples that raise a task on Today's moves. Three gates, and they are the SAME three
    the real rule uses, read off the example's own per-device state instead of the roster's
    fields: showing at all, not dismissed, not already actioned. The window check is here too
    rather than assumed, so BIRTHDAY_LEAD_DAYS stays the one place the week is defined. */
-function birthdayExampleTasks(){
+function birthdayExampleTasks(which){
   if(!showBirthdayExamples) return [];
+  const want = which==='retention' ? 'retention' : 'onboarding';
   const st = readBdayExampleState();
   return birthdayExamples().filter(x=>{
+    if(birthdayExampleScope(x)!==want) return false;   // a prop belongs to one tracker's day
     if(st.dismissed.indexOf(x.id)!==-1) return false;
     if(st.actioned.indexOf(x.id)!==-1) return false;
     const days = birthdayDaysAway(x);
@@ -3864,9 +3883,9 @@ function birthdayExamplesHtml(){
         <span class="bday-day">${ordinal(nb.d)}</span>
         <div class="bday-who">
           <div class="bday-name">${esc(x.name)}<span class="bday-example-tag">Example</span>${
-            birthdayTypeTag('onboarding')}${
+            birthdayTypeTag(birthdayExampleScope(x))}${
             age?`<span class="bday-milestone">🎉 Turning ${age}</span>`:''}</div>
-          <div class="bday-meta">on the journey · ${fmt(x.at)}</div>
+          <div class="bday-meta">${esc(x.meta||'')} · ${fmt(x.at)}</div>
         </div>
         <div class="bday-acts">
           <button type="button" class="bday-act${done?' done':''}" onclick="toggleExampleActioned('${x.id}')"
@@ -4442,10 +4461,15 @@ function renderRetentionToday(){
     .sort((a,b)=> birthdayDaysAway(a)-birthdayDaysAway(b)
                 || String(a.name||'').localeCompare(String(b.name||'')));
 
+  // …and the demo props that belong to THIS tracker, when somebody has asked to see them
+  const egRows = birthdayExampleTasks('retention');
+
+  // the badge is real work and nothing else — a prop must never make a coach think they have
+  // something to do — while the empty state below is "is there anything on this screen"
   const tally = document.getElementById('retTodayCount');
   if(tally) tally.textContent = rows.length + alerts.length + bdayRows.length;
 
-  if(!rows.length && !alerts.length && !bdayRows.length){
+  if(!rows.length && !alerts.length && !bdayRows.length && !egRows.length){
     list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
       Nothing due for a member right now. The quiet weeks are the ones that keep people — check the Members tab to see where everyone sits.</div>`;
     return;
@@ -4486,12 +4510,20 @@ function renderRetentionToday(){
      somebody is quietly heading for the door behind them, and a birthday is the next most
      time-shaped thing on the screen.
 
-     No examples here, and none possible: the two demo props are made-up CHALLENGERS and this
-     renderer never asks for them. The "Show examples" toggle does nothing on this side. */
+     The demo props this screen asks for are the MEMBER ones — birthdayExampleTasks('retention')
+     — so the challenger props cannot appear here and the member one cannot appear on the
+     onboarding day. That scoping is the whole reason a member prop exists: it is the rule most
+     likely to be got wrong later, and it cannot be pointed at with one kind of person on
+     screen. Same one toggle for all three. */
   let bdayHtml = '';
-  if(bdayRows.length){
+  if(bdayRows.length || egRows.length){
+    // the count is the REAL birthdays and only those; the props sit under their own line
     bdayHtml += `<div class="group-label">Birthdays this week<span class="gcount">${bdayRows.length}</span></div>`;
     bdayHtml += bdayRows.map(m=>birthdayTaskHtml(m,'retention',false)).join('');
+    if(egRows.length){
+      bdayHtml += `<div class="today-example-label">Example — for showing the team</div>`;
+      bdayHtml += egRows.map(x=>birthdayTaskHtml(x,'retention',true)).join('');
+    }
   }
 
   const groups = [

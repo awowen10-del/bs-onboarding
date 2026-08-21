@@ -320,13 +320,13 @@ const onTab = (app, name) => app.html("birthdayList").includes(name);
   const demo = boot({ retention: [{ id: "r1", name: "Mo Member", coach: "Dan", dob: turning(50),
     email: "", personal: "", notes: "", joined: daysFromToday(-90) }] });
   demo.ctx.toggleBirthdayExamples();
-  // the Birthdays tab is merged, so they appear on it from either side — tagged as the
-  // challengers they are pretending to be. What they must never do is raise member WORK.
+  // the Birthdays tab is merged, so all three props appear on it from either side. On the two
+  // Today's moves they split the way real people do — see birthday-examples for that.
   assert.ok(/Example/.test(demo.html("birthdayList")), "sanity: the toggle did reveal them");
   assert.ok(/Example/.test(demo.html("retBirthdayList")), "…on the same merged tab from either side");
-  assert.ok(!/Example/.test(demo.html("retTodayList")),
-    "…and never on the member Today's moves, which is that tracker's own work");
-  assert.ok(!/Example/.test(demo.html("retMemberList")), "…nor in the member list");
+  assert.ok(!/Jo Example|Pat Example/.test(demo.html("retTodayList")),
+    "the CHALLENGER props never reach the member Today's moves");
+  assert.ok(!/Example/.test(demo.html("retMemberList")), "…and no prop reaches the member list");
 }
 
 console.log("birthday-actions.test.cjs: OK");

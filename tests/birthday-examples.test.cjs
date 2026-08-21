@@ -14,7 +14,7 @@ const assert = require("assert");
 const { boot, daysFromToday } = require("./lib/env.cjs");
 
 const KEY = "bsj_bday_examples";
-const IDS = ["eg-soon", "eg-milestone"];
+const IDS = ["eg-soon", "eg-member", "eg-milestone"];   // two challengers and a member
 
 // The examples are behind a toggle and OFF by default, so almost every block here has to open
 // it first. bootShown does that; block 8 is the one that checks the default state itself.
@@ -40,6 +40,14 @@ const blockOf = (app) => {
   const end = h.indexOf('<div class="bday-month', i);      // -1 when no real birthdays follow
   return end === -1 ? h.slice(i) : h.slice(i, end);
 };
+// the "Birthdays this week" group on the onboarding Today's moves
+const todayGroup = (app) => {
+  const h = app.html("todayList");
+  const i = h.indexOf("Birthdays this week");
+  if (i === -1) return "";
+  const end = h.indexOf('<div class="board">', i);
+  return end === -1 ? h.slice(i) : h.slice(i, end);
+};
 const toggleLine = (app) => {
   const m = /<div class="bday-examples-toggle">([\s\S]*?)<\/div>/.exec(app.html("birthdayList"));
   return m ? m[1] : "";
@@ -52,7 +60,7 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
 {
   const app = bootShown({ members: [] });
   const rows = rowsOf(app);
-  assert.strictEqual(rows.length, 2, "two examples");
+  assert.strictEqual(rows.length, 3, "three examples: two challengers and a member");
   assert.ok(blockOf(app).includes("Example — for showing the team"), "under a heading that says so");
 
   // one ordinary birthday coming up…
@@ -66,7 +74,15 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
   assert.ok(/🎉 Turning 50/.test(pat), "the other is turning 50");
   assert.ok(/\bmilestone\b/.test(classesOf(pat)), "…and carries the milestone accent");
 
-  // both are unmistakably examples
+  // …and a member, which is the one that proves the SCOPING rather than the features
+  const mel = rowFor(app, "Mel Example");
+  assert.ok(mel, "there is a member example");
+  assert.ok(/bday-type member">Full member</.test(mel), "…tagged as a full member");
+  assert.ok(!/bday-type challenge/.test(mel), "…and never as a challenger");
+  assert.ok(/bday-type challenge">6-week challenge</.test(jo), "while Jo is tagged a challenger");
+  assert.ok(!/bday-type member/.test(jo));
+
+  // all three are unmistakably examples
   for (const r of rows) {
     assert.ok(/bday-example-tag">Example</.test(r), "every row is tagged as an example");
     assert.ok(/\bexample\b/.test(classesOf(r)), "…and marked on the row for the dashed edge");
@@ -80,10 +96,12 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
    the app's own rule — the treatment being shown is the treatment, not a mock-up of it. */
 {
   const app = bootShown({ members: [] });
-  const [soon, milestone] = app.ctx.birthdayExamples();
+  const all = app.ctx.birthdayExamples();
+  const byId = (id) => all.find((x) => x.id === id);
+  const soon = byId("eg-soon"), milestone = byId("eg-milestone"), mem = byId("eg-member");
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
-  for (const x of [soon, milestone]) {
+  for (const x of [soon, mem, milestone]) {
     assert.ok(app.ctx.dobParts(x.dob), x.name + " has a real date of birth: " + x.dob);
     const nb = app.ctx.nextBirthday(x);
     assert.ok(nb, "…that the app's own rule can read");
@@ -94,26 +112,32 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
   assert.strictEqual(app.ctx.birthdayMilestone(soon), null, "the ordinary one is not a milestone");
   assert.strictEqual(app.ctx.birthdayMilestone(milestone), 50,
     "…and the milestone one is 50 by the same rule a real challenger goes through");
-  assert.ok(soon.at < milestone.at, "the nearer one is listed first");
+  assert.ok(soon.at < mem.at && mem.at < milestone.at,
+    "they are ordered by date, and interleaved so the merged tab's sort is visible");
+  assert.strictEqual(app.ctx.birthdayExampleScope(mem), "retention", "one of them is a member");
+  assert.strictEqual(app.ctx.birthdayExampleScope(soon), "onboarding", "…and two are challengers");
+  assert.strictEqual(app.ctx.birthdayExampleScope(milestone), "onboarding");
 }
 
 /* ---------- 3: Ignore clears one away, and it stays cleared ---------- */
 {
   const app = bootShown({ members: [] });
   app.ctx.dismissBirthdayExample("eg-soon");
-  assert.strictEqual(rowsOf(app).length, 1, "one goes");
+  assert.strictEqual(rowsOf(app).length, 2, "one goes");
   assert.ok(!blockOf(app).includes("Jo Example"), "…the one that was ignored");
-  assert.ok(blockOf(app).includes("Pat Example"), "…and only that one");
-  assert.strictEqual(Number(/<span class="gcount">(\d+)<\/span>/.exec(blockOf(app))[1]), 1,
+  assert.ok(blockOf(app).includes("Pat Example") && blockOf(app).includes("Mel Example"),
+    "…and only that one");
+  assert.strictEqual(Number(/<span class="gcount">(\d+)<\/span>/.exec(blockOf(app))[1]), 2,
     "the block's own count comes down with it");
 
   // it is written down, so it survives the page being reloaded after the meeting
   assert.deepStrictEqual(JSON.parse(app.stored(KEY)).dismissed, ["eg-soon"], "the dismissal is stored");
   const reopened = bootShown({ members: [], stored: { [KEY]: app.stored(KEY) } });
-  assert.strictEqual(rowsOf(reopened).length, 1, "…and holds on the next load");
+  assert.strictEqual(rowsOf(reopened).length, 2, "…and holds on the next load");
   assert.ok(!blockOf(reopened).includes("Jo Example"));
 
-  // ignoring the second takes the whole block with it — heading, note and all
+  // ignoring the rest takes the whole block with it — heading, note and all
+  app.ctx.dismissBirthdayExample("eg-member");
   app.ctx.dismissBirthdayExample("eg-milestone");
   assert.strictEqual(blockOf(app), "", "the block is gone entirely, not left as an empty heading");
   assert.ok(!app.html("birthdayList").includes("for showing the team"));
@@ -121,7 +145,8 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
 
   // and dismissing twice is not an error, nor a duplicate
   app.ctx.dismissBirthdayExample("eg-milestone");
-  assert.deepStrictEqual(JSON.parse(app.stored(KEY)).dismissed, IDS, "each id recorded once");
+  assert.deepStrictEqual(JSON.parse(app.stored(KEY)).dismissed.slice().sort(), IDS.slice().sort(),
+    "each id recorded once");
 }
 
 /* ---------- 4: Actioned works on them too, so it can be demonstrated ---------- */
@@ -150,7 +175,7 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
     person("r", "Real Rita", null),
     person("y", "Real Ray", (new Date().getFullYear() - 33) + "-06-14"),
   ] });
-  assert.strictEqual(rowsOf(app).length, 2, "sanity: the examples are on screen");
+  assert.strictEqual(rowsOf(app).length, 3, "sanity: the examples are on screen");
 
   // the roster, and the blob that syncs to every other device
   assert.deepStrictEqual(app.members().map((m) => m.name), ["Real Rita", "Real Ray"], "not in the roster");
@@ -168,8 +193,9 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
   assert.ok(!app.html("convBar").includes("Example"), "not in the conversion bar");
   // the Birthdays tab is merged, so they show there from either door — tagged as the
   // challengers they are pretending to be. Block 16 is where that is nailed down.
-  assert.ok(!app.html("retTodayList").includes("Example"), "and never on the member Today's moves");
-  assert.ok(!app.html("retMemberList").includes("Example"), "…nor in the member list");
+  assert.ok(!/Jo Example|Pat Example/.test(app.html("retTodayList")),
+    "and the CHALLENGER props are never on the member Today's moves — 11b is the whole split");
+  assert.ok(!app.html("retMemberList").includes("Example"), "…and no prop is in the member list");
 
   // the counts on the tab itself
   assert.strictEqual(app.el("liveCount").textContent, "2", "the masthead counts the real two");
@@ -187,7 +213,7 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
    that would be the prop telling a coach to go and do something. */
 {
   const app = bootShown({ members: [] });
-  assert.strictEqual(rowsOf(app).length, 2, "the examples are showing");
+  assert.strictEqual(rowsOf(app).length, 3, "the examples are showing");
   assert.strictEqual(app.el("bdayDot").classList.contains("on"), false,
     "…and the tab's dot is dark, because nobody real has a birthday coming");
   assert.strictEqual(app.ctx.birthdaysSoon(app.members()), false);
@@ -197,10 +223,10 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
 {
   for (const bad of ["not json", "null", "[]", '{"dismissed":"eg-soon"}', "{}"]) {
     const app = bootShown({ members: [], stored: { [KEY]: bad } });
-    assert.strictEqual(rowsOf(app).length, 2, "a state of " + bad + " shows both rather than throwing");
+    assert.strictEqual(rowsOf(app).length, 3, "a state of " + bad + " shows all rather than throwing");
   }
   const partial = bootShown({ members: [], stored: { [KEY]: JSON.stringify({ dismissed: ["eg-soon"] }) } });
-  assert.strictEqual(rowsOf(partial).length, 1, "a state with no `actioned` key still reads its dismissals");
+  assert.strictEqual(rowsOf(partial).length, 2, "a state with no `actioned` key still reads its dismissals");
 }
 
 /* ---------- 8: they are OFF by default, and the toggle is the only way in ----------
@@ -221,7 +247,7 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
   assert.ok(/aria-expanded="false"/.test(toggleLine(app)), "…which reads as collapsed");
 
   app.ctx.toggleBirthdayExamples();
-  assert.strictEqual(rowsOf(app).length, 2, "showing brings both back");
+  assert.strictEqual(rowsOf(app).length, 3, "showing brings all three back");
   assert.ok(/>Hide examples</.test(toggleLine(app)), "…and the control offers the way out");
   assert.ok(/aria-expanded="true"/.test(toggleLine(app)), "…reading as expanded");
 
@@ -242,9 +268,10 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
   assert.ok(/bday-examples-toggle/.test(app.html("birthdayList")),
     "one example left, so the control still has something to show");
 
+  app.ctx.dismissBirthdayExample("eg-member");
   app.ctx.dismissBirthdayExample("eg-milestone");
   assert.ok(!/bday-examples-toggle/.test(app.html("birthdayList")),
-    "both cleared away for good, so the control goes too — there is nothing left to reveal");
+    "all cleared away for good, so the control goes too — there is nothing left to reveal");
   assert.ok(!app.html("birthdayList").includes("Example"), "no trace of any of it");
 
   // and it stays gone on the next load, toggle and all
@@ -289,14 +316,6 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
    tab, which puts a made-up person on the screen a coach opens every morning. So the default
    matters more than it did: off has to mean off on BOTH, and one press has to move both. */
 {
-  // the group on Today's moves, and the rows inside it
-  const todayGroup = (app) => {
-    const h = app.html("todayList");
-    const i = h.indexOf("Birthdays this week");
-    if (i === -1) return "";
-    const end = h.indexOf('<div class="board">', i);
-    return end === -1 ? h.slice(i) : h.slice(i, end);
-  };
   const real = person("r", "Real Rita", null);          // day 8, so the day has real work on it
 
   // OFF — and this is the default
@@ -305,20 +324,66 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
   assert.ok(!app.html("todayList").includes("Jo Example"), "no prop on Today's moves");
   assert.ok(!app.html("todayList").includes("Pat Example"));
   assert.ok(!app.html("todayList").includes("Example — for showing the team"));
-  assert.strictEqual(app.ctx.birthdayExampleTasks().length, 0, "…none are due as tasks");
+  assert.strictEqual(app.ctx.birthdayExampleTasks("onboarding").length, 0, "…none are due as tasks");
+  assert.strictEqual(app.ctx.birthdayExampleTasks("retention").length, 0, "…on either tracker");
+  assert.ok(!app.html("retTodayList").includes("Mel Example"), "…and no member prop either");
   assert.ok(!app.html("birthdayList").includes("Jo Example"), "…and none on the Birthdays tab");
 
   // ON — one press, and they arrive on both
   app.ctx.toggleBirthdayExamples();
   assert.ok(todayGroup(app).includes("Jo Example"), "Jo is a birthday task now");
   assert.ok(todayGroup(app).includes("Pat Example"), "…and Pat");
-  assert.strictEqual(app.ctx.birthdayExampleTasks().length, 2, "both are inside the week");
-  assert.ok(app.html("birthdayList").includes("Jo Example"), "…and both are on the tab too");
+  assert.strictEqual(app.ctx.birthdayExampleTasks("onboarding").length, 2, "both challengers");
+  assert.strictEqual(app.ctx.birthdayExampleTasks("retention").length, 1, "…and the member");
+  assert.ok(app.html("retTodayList").includes("Mel Example"), "Mel is a task on the member day");
+  assert.ok(app.html("birthdayList").includes("Jo Example"), "…and all three are on the tab");
+  assert.ok(app.html("birthdayList").includes("Mel Example"));
 
-  // OFF again — the same one press takes them off both
+  // OFF again — the same one press takes them off all three screens
   app.ctx.toggleBirthdayExamples();
   assert.ok(!app.html("todayList").includes("Jo Example"), "hiding clears Today's moves");
-  assert.ok(!app.html("birthdayList").includes("Jo Example"), "…and the tab, together");
+  assert.ok(!app.html("retTodayList").includes("Mel Example"), "…and the member's");
+  assert.ok(!app.html("birthdayList").includes("Example — for showing"), "…and the tab, together");
+}
+
+/* ---------- 11b: each prop lands on ONE tracker's day, and that is the point of Mel ----------
+   Two challenger props demonstrate the features. A member beside them demonstrates the rule
+   that cannot be pointed at with one kind of person on screen: a birthday task belongs to the
+   tracker the person is on. It is also the rule most likely to be got wrong later. */
+{
+  const app = bootShown({ members: [], retention: [] });
+
+  const onb = todayGroup(app);
+  assert.ok(onb.includes("Jo Example") && onb.includes("Pat Example"),
+    "the challenger props are onboarding work");
+  assert.ok(!onb.includes("Mel Example"),
+    "…and the member prop is NOT — a member's birthday is not a challenger coach's job");
+
+  const ret = app.html("retTodayList");
+  assert.ok(ret.includes("Mel Example"), "the member prop is retention work");
+  assert.ok(!/Jo Example|Pat Example/.test(ret), "…and the challenger props are not");
+
+  // both days mark them as props, under the same line
+  for (const h of [onb, ret]) {
+    assert.ok(/<div class="today-example-label">Example — for showing the team/.test(h),
+      "a line introduces them on both days");
+  }
+  const mel = ret.split('<div class="action').find((r) => r.includes("Mel Example")) || "";
+  assert.ok(/bday-example-tag">Example</.test(mel), "Mel's task is tagged as an example");
+  assert.ok(/^ birthday[^"]*\bexample\b/.test(mel), "…and marked on the row");
+  assert.ok(!/notes-btn/.test(mel), "…with no notes icon");
+  for (const step of [...app.ctx.__t.BIRTHDAY_STEPS]) {
+    assert.ok(mel.includes(step), "…and lists “" + step + "”");
+  }
+  assert.ok(/toggleExampleActioned\('eg-member'\)/.test(mel),
+    "its Done writes the prop's own state, never a member record");
+
+  // marking it done clears the member day and leaves the challenger day alone
+  app.ctx.toggleExampleActioned("eg-member");
+  assert.ok(!app.html("retTodayList").includes("Mel Example"), "done clears it");
+  assert.ok(todayGroup(app).includes("Jo Example"), "…and the challenger props are untouched");
+  app.ctx.toggleExampleActioned("eg-member");
+  assert.ok(app.html("retTodayList").includes("Mel Example"), "…and it comes back");
 }
 
 /* ---------- 12: on Today's moves they are unmistakably props ---------- */
@@ -362,7 +427,9 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
   const todayHas = (n) => app.html("todayList").includes(n);
   const before = {
     count: app.el("todayCount").textContent,
+    retCount: app.el("retTodayCount").textContent,
     roster: JSON.stringify(app.members()),
+    retRoster: JSON.stringify(app.retention()),
     live: app.el("liveCount").textContent,
   };
   assert.ok(todayHas("Jo Example"), "Jo is showing as a task");
@@ -376,16 +443,22 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
   assert.ok(joRow, "she is still on the Birthdays tab");
   assert.ok(/\bactioned\b/.test(classesOf(joRow)), "…showing as handled");
 
-  // nothing real moved
+  // nothing real moved — and the member prop is held to the same wall
+  app.ctx.toggleExampleActioned("eg-member");
+  app.ctx.dismissBirthdayExample("eg-member");
   assert.strictEqual(JSON.stringify(app.members()), before.roster, "no roster record changed");
+  assert.strictEqual(JSON.stringify(app.retention()), before.retRoster, "no member record changed");
   assert.strictEqual(app.el("todayCount").textContent, before.count, "the badge did not move");
+  assert.strictEqual(app.el("retTodayCount").textContent, before.retCount, "nor the member badge");
   assert.strictEqual(app.el("liveCount").textContent, before.live, "nor the masthead figure");
   for (const m of app.members()) {
     assert.strictEqual(m.birthdayActionedYear, null, m.name + "'s Actioned year is untouched");
     assert.strictEqual(m.birthdayIgnored, false, "…and their ignore flag");
   }
-  assert.deepStrictEqual(JSON.parse(app.stored(KEY)).actioned, ["eg-soon"],
-    "the prop's done-ness lives in localStorage, where it cannot reach anybody");
+  assert.deepStrictEqual(JSON.parse(app.stored(KEY)).actioned.slice().sort(),
+    ["eg-member", "eg-soon"],
+    "the props' done-ness lives in localStorage, where it cannot reach anybody");
+  assert.deepStrictEqual(JSON.parse(app.stored(KEY)).dismissed, ["eg-member"], "…and so does dismissal");
 
   // and it is reversible, like the demo needs
   app.ctx.toggleExampleActioned("eg-soon");
@@ -408,6 +481,9 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
   app.ctx.toggleBirthdayExamples();
   assert.strictEqual(app.el("todayCount").textContent, "0",
     "the badge still says 0 — a prop is not work, however visible it is");
+  assert.strictEqual(app.el("retTodayCount").textContent, "0", "…and the member badge likewise");
+  assert.ok(!app.html("retTodayList").includes("All caught up"),
+    "…while the member day does not claim to be empty with a card on it");
   assert.ok(!app.html("todayList").includes("All caught up"),
     "…but the screen does not claim to be empty while showing two cards");
   assert.ok(app.html("todayList").includes("Jo Example"), "…which is what it is showing");
@@ -429,8 +505,15 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
 
   app.ctx.dismissBirthdayExample("eg-milestone");
   assert.ok(!app.html("todayList").includes("Example — for showing the team"),
-    "with both gone the line that introduces them goes too");
+    "with both challenger props gone the line that introduces them goes too");
   assert.ok(!app.html("todayList").includes("Example"), "no trace on Today's moves");
+  assert.ok(app.html("retTodayList").includes("Mel Example"),
+    "…while the member prop is untouched: dismissal is per prop, not per batch");
+
+  app.ctx.dismissBirthdayExample("eg-member");
+  assert.ok(!app.html("retTodayList").includes("Example"), "and dismissing it clears the member day");
+  assert.ok(!app.html("birthdayList").includes("Example — for showing"),
+    "…and with all three gone the block on the tab goes too");
 }
 
 /* ---------- 16: on the merged tab they are tagged as challengers ----------
@@ -444,11 +527,19 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
 
   for (const id of ["birthdayList", "retBirthdayList"]) {
     const h = app.html(id);
-    assert.ok(h.includes("Jo Example") && h.includes("Pat Example"), "both props on #" + id);
-    const jo = h.split('<div class="bday-row').find((r) => r.includes("Jo Example")) || "";
-    assert.ok(/bday-example-tag">Example</.test(jo), "…tagged as an example");
-    assert.ok(/bday-type challenge">6-week challenge</.test(jo), "…and as a challenger");
-    assert.ok(!/bday-type member/.test(jo), "…never as a member");
+    assert.ok(h.includes("Jo Example") && h.includes("Pat Example") && h.includes("Mel Example"),
+      "all three props on #" + id);
+    const row = (n) => h.split('<div class="bday-row').find((r) => r.includes(n)) || "";
+    for (const n of ["Jo Example", "Pat Example", "Mel Example"]) {
+      assert.ok(/bday-example-tag">Example</.test(row(n)), n + " is tagged as an example");
+    }
+    assert.ok(/bday-type challenge">6-week challenge</.test(row("Jo Example")), "…Jo as a challenger");
+    assert.ok(!/bday-type member/.test(row("Jo Example")), "…never as a member");
+    assert.ok(/bday-type member">Full member</.test(row("Mel Example")), "…and Mel as a member");
+    assert.ok(!/bday-type challenge/.test(row("Mel Example")), "…never as a challenger");
+    // their lines read the way a real person of that kind reads
+    assert.ok(/bday-meta">on the journey · /.test(row("Jo Example")), "a challenger's line is a status");
+    assert.ok(/bday-meta">Coach [^<]*· /.test(row("Mel Example")), "…and a member's is their coach");
   }
   assert.strictEqual(app.html("birthdayList"), app.html("retBirthdayList"),
     "and it is the same merged screen from either tracker");

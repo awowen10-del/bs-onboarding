@@ -306,12 +306,14 @@ const cardIds = (colHtml) => (colHtml.match(/id="act-[^"]+"/g) || []).map((s) =>
   assert.ok(!board(app).includes("act-w-startclock"), "…and neither is a waiting-to-start row");
 }
 
-/* ---------- 10: the banner and the sub-view toggle are unchanged ---------- */
+/* ---------- 10: the banner is the date, and the sub-view toggle is unchanged ---------- */
 {
   const app = boot({ members: [live("a", "Sam Live", 8)] });
   assert.ok(/It’s <strong>/.test(app.html("todayBanner")), "the date banner still reads the day");
-  assert.ok(/challenger(s?) on the journey right now\./.test(app.html("todayBanner")),
-    "…and still counts who is on the journey");
+  // the headcount moved out of the banner and into the masthead corner — it is stated once
+  assert.ok(!/on the journey/.test(app.html("todayBanner")), "the banner no longer quotes a headcount");
+  assert.ok(!/challenger/.test(app.html("todayBanner")), "…nothing of the sentence is left behind");
+  assert.strictEqual(app.el("liveCount").textContent, "1", "and the corner is the one that counts");
 
   // the toggle is static markup above the board, and "Whole journey" is a different screen
   const view = /<section class="view" id="view-today"[\s\S]*?<\/section>/.exec(HTML)[0];

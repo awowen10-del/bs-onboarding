@@ -118,7 +118,10 @@
      once there is somewhere to go back to */
   .brand.is-link{cursor:pointer}
   .brand.is-link:hover h1{color:var(--orange-soft)}
-  .mast-meta{text-align:right;font-size:12px;color:var(--ink-faint);font-weight:600;flex-shrink:0}
+  /* nowrap on the label: the chip wraps to its own row on a narrow screen (that is what
+     .mast-right's row-gap is for) rather than breaking "on the journey" across two lines */
+  .mast-meta{text-align:right;font-size:12px;color:var(--ink-faint);font-weight:600;flex-shrink:0;
+    white-space:nowrap;line-height:1.3}
   .mast-meta strong{display:block;font-size:24px;font-family:var(--display);color:var(--orange-soft);font-weight:800}
 
   /* ---------- Home screen (pick a tracker) ----------
@@ -204,6 +207,35 @@
   nav.tabs button[aria-selected="false"]:hover{color:var(--ink)}
   nav.tabs button[aria-selected="true"]{background:var(--orange);color:var(--on-accent)}
   nav.tabs button[aria-selected="true"] .count{background:var(--accent-inset)}
+
+  /* ---- Tab markers ----
+     Three weights inside one segmented control, so the row says which tab is which before
+     you read it. Every rule that paints an unselected tab is pinned to [aria-selected=false]
+     on purpose: the selected pill above is the same specificity, and these sit below it, so
+     without the pin they would repaint the selected tab and lose the orange fill.
+
+     .tab-lead — Today's moves. It is where every coach lands, so it carries full ink while
+     its neighbours sit at --ink-dim: the default reads as the default, without a second
+     highlight competing with the selected pill.
+
+     .tab-core — The Playbook. The reference the rest of the platform hangs off, so it wears
+     a star in the accent. A marker inside the pill, not a badge stuck on it: the star
+     inherits the button's colour, so on the selected tab it turns white with the label and
+     the control still reads as one control. */
+  nav.tabs button.tab-lead[aria-selected="false"]{color:var(--ink)}
+  nav.tabs button.tab-core[aria-selected="false"],
+  nav.tabs button.tab-core[aria-selected="false"]:hover{color:var(--orange-soft)}
+  nav.tabs button .tab-star{display:inline-block;width:14px;height:14px;margin-right:6px;
+    vertical-align:-2px;color:inherit}
+  nav.tabs button .tab-star svg{display:block;width:100%;height:100%}
+  /* .tab-dot — Birthdays. A nudge, never a number: it appears only while somebody's birthday
+     is inside the next month (see birthdaysSoon) and is invisible the rest of the year, so
+     a lit dot always means the same one thing. Amber, not the red the to-do counts use — a
+     birthday is a thing to notice, not a queue that is running late. */
+  nav.tabs button .tab-dot{display:none}
+  nav.tabs button .tab-dot.on{display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--amber);margin-left:7px;vertical-align:middle}
+  nav.tabs button[aria-selected="true"] .tab-dot.on{background:var(--on-accent)}
   main{padding-top:22px}
   .view{display:none;animation:fade .25s ease}
   .view.active{display:block}
@@ -1016,27 +1048,31 @@
     </div>
     <div class="mast-right">
       <button type="button" class="homebtn hide" id="homeBtn" onclick="goHome()" title="Back to the home screen — pick the other tracker">← Home</button>
+      <!-- The one count of how many challengers are on the journey. It used to be quoted
+           twice — here and in the date banner on Today's moves — under two different rules,
+           so the corner said 19 while the banner said 14. There is one rule now
+           (onJourneyCount) and one place it is read: here. -->
       <div class="mast-meta" id="mastMeta">
         <strong id="liveCount">0</strong>
-        live
+        on the journey
       </div>
     </div>
   </div>
   <div class="wrap hide" id="nav-onboarding">
     <nav class="tabs" id="tabs-onboarding" data-tracker="onboarding" role="tablist">
-      <button role="tab" aria-selected="true" data-tracker="onboarding" data-view="today">Today's moves <span class="count" id="todayCount">0</span></button>
+      <button role="tab" aria-selected="true" class="tab-lead" data-tracker="onboarding" data-view="today">Today's moves <span class="count" id="todayCount">0</span></button>
       <button role="tab" aria-selected="false" data-tracker="onboarding" data-view="members">Challengers</button>
-      <button role="tab" aria-selected="false" data-tracker="onboarding" data-view="birthdays">Birthdays</button>
-      <button role="tab" aria-selected="false" data-tracker="onboarding" data-view="playbook">The Playbook</button>
+      <button role="tab" aria-selected="false" data-tracker="onboarding" data-view="birthdays">Birthdays<span class="tab-dot" id="bdayDot" role="img" aria-label="A birthday is coming up"></span></button>
+      <button role="tab" aria-selected="false" class="tab-core" data-tracker="onboarding" data-view="playbook"><span class="tab-star" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 2.6l2.95 5.98 6.6.96-4.77 4.65 1.12 6.57L12 17.66l-5.9 3.1 1.12-6.57L2.45 9.54l6.6-.96z"/></svg></span>The Playbook</button>
     </nav>
   </div>
   <div class="wrap hide" id="nav-retention">
     <!-- More tabs land here as the retention tracker grows (attendance, check-ins, …) -->
     <nav class="tabs" id="tabs-retention" data-tracker="retention" role="tablist">
-      <button role="tab" aria-selected="true" data-tracker="retention" data-view="ret-today">Today's moves <span class="count" id="retTodayCount">0</span></button>
+      <button role="tab" aria-selected="true" class="tab-lead" data-tracker="retention" data-view="ret-today">Today's moves <span class="count" id="retTodayCount">0</span></button>
       <button role="tab" aria-selected="false" data-tracker="retention" data-view="ret-members">Members <span class="count tally" id="retCount">0</span></button>
       <button role="tab" aria-selected="false" data-tracker="retention" data-view="ret-attendance">Attendance</button>
-      <button role="tab" aria-selected="false" data-tracker="retention" data-view="ret-birthdays">Birthdays</button>
+      <button role="tab" aria-selected="false" data-tracker="retention" data-view="ret-birthdays">Birthdays<span class="tab-dot" id="retBdayDot" role="img" aria-label="A birthday is coming up"></span></button>
     </nav>
   </div>
 </header>
@@ -1892,6 +1928,37 @@ function status(m){
   return 'live';
 }
 
+/* Who is on the journey right now, as ONE rule. This number used to be worked out twice —
+   the masthead counted live + paused + not-started, the date banner counted live — so the
+   corner of the screen and the top of Today's moves quoted different figures for the same
+   question. The banner's reading is the honest one and it is the one kept: on the journey
+   means their clock is running today. Not-started have not begun, paused are not moving, and
+   somebody who left is not on it whatever their day number says.
+   Everything that shows the figure reads it from here. */
+function onJourney(m){ return !!m && status(m)==='live' && !isInactive(m); }
+function onJourneyCount(list){ return (Array.isArray(list)?list:members).filter(onJourney).length; }
+
+/* Is there a birthday inside the next month? The Birthdays tab raises a dot when there is.
+   The window is counted FORWARD from today, so a birthday that has already been this month
+   does not keep the dot lit — a dot that is on always means the same one thing: somebody's
+   is coming, go and plan it. Returns a yes/no, never a count: a birthday is a thing to
+   notice, not a queue to clear. */
+const BDAY_SOON_DAYS = 30;
+function birthdaysSoon(roster){
+  const people = Array.isArray(roster) ? roster : [];
+  const now = new Date(); now.setHours(0,0,0,0);
+  return people.some(m=>{
+    const p = dobParts(m && m.dob);
+    if(!p) return false;
+    // this year's date, or next year's once this year's has gone by
+    let next = new Date(now.getFullYear(), p.m-1, p.d); next.setHours(0,0,0,0);
+    if(next.getTime() < now.getTime()){ next = new Date(now.getFullYear()+1, p.m-1, p.d); next.setHours(0,0,0,0); }
+    // round, not floor: the clocks change twice a year and the gap is not always 24h×n
+    const days = Math.round((next.getTime()-now.getTime())/86400000);
+    return days>=0 && days<=BDAY_SOON_DAYS;
+  });
+}
+
 /* A touchpoint's due-day in THIS member's journey.
    - Intro (day < 0) is pre-journey: handled separately, always before the clock.
    - Every dated touchpoint shifts by extraDays, so adding time pushes the whole
@@ -1965,9 +2032,9 @@ function startOverdue(m){
 function renderToday(){
   const banner = document.getElementById('todayBanner');
   const list = document.getElementById('todayList');
-  const live = members.filter(m=>status(m)==='live');
-  banner.innerHTML = `It’s <strong>${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</strong>. `+
-    `<strong>${live.length}</strong> challenger${live.length===1?'':'s'} on the journey right now.`;
+  // Just the date. The headcount that used to follow it lives in the masthead corner now,
+  // stated once rather than twice by two rules that disagreed.
+  banner.innerHTML = `It’s <strong>${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</strong>.`;
 
   // gather all due items across members
   let rows = [];
@@ -4074,8 +4141,17 @@ function renderAll(){
   renderRetentionToday(); renderRetentionMembers(); renderAttendance(); renderRetentionBirthdays();
   if(todayView==='table') renderMemberTable();
   if(retTodayView==='table') renderRetentionTable();
-  const live = members.filter(m=>(status(m)==='live'||status(m)==='paused'||status(m)==='notstarted') && !isInactive(m)).length;
-  document.getElementById('liveCount').textContent = live;
+  document.getElementById('liveCount').textContent = onJourneyCount();
+  // the tab markers are state, not decoration, so they are refreshed with everything else
+  setTabDot('bdayDot', birthdaysSoon(members));
+  setTabDot('retBdayDot', birthdaysSoon(retention));
+}
+
+/* The Birthdays dot, on both trackers. Present in the markup either way; .on is what makes
+   it visible, so there is nothing to build or tear down. */
+function setTabDot(id, on){
+  const el = document.getElementById(id);
+  if(el && el.classList) el.classList.toggle('on', !!on);
 }
 
 /* ---------------- Home, and which tracker you went into ----------------

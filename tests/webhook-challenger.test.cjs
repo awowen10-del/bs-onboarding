@@ -93,7 +93,9 @@ let SOPHIE = null;
     assert.ok(cards.includes("Not started"), "…as a not-started challenger");
     assert.ok(cards.includes("Coach Grace"), "…with her coach");
     assert.ok(a.html("todayList").includes("Sophie Webhook"), "her intro is on Today's moves");
-    assert.strictEqual(a.el("liveCount").textContent, "1", "she counts towards the masthead figure");
+    // the masthead figure counts who is ON the journey, and her clock has not started yet:
+    // she is waiting on a first session, which is what Today's moves is telling the coach
+    assert.strictEqual(a.el("liveCount").textContent, "0", "she is not on the journey until her clock starts");
     a.ctx.renderMemberTable();
     assert.ok(a.html("todayTable").includes("Sophie Webhook"), "…and she is in the whole-journey table");
   }

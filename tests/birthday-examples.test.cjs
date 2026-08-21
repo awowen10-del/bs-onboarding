@@ -160,9 +160,9 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
     assert.strictEqual(app.find(id), undefined, id + " is not a challenger");
   }
 
-  // every screen a challenger would appear on
+  // every screen a challenger would appear on. Today's moves is the exception and only while
+  // the toggle is on — that is what block 11 is for; everywhere else they never reach at all.
   assert.ok(!app.html("memberList").includes("Example"), "not on the Challengers tab");
-  assert.ok(!app.html("todayList").includes("Example"), "not on Today's moves");
   app.ctx.renderMemberTable();
   assert.ok(!app.html("todayTable").includes("Example"), "not in the whole-journey table");
   assert.ok(!app.html("convBar").includes("Example"), "not in the conversion bar");
@@ -278,6 +278,155 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
   app.ctx.toggleBirthdayExamples();
   assert.ok(/<div class="bday-meta">on the journey · /.test(rowFor(app, "Jo Example")),
     "an example's line is the status and its date, with no coach in front of it");
+}
+
+/* ---------- 11: one toggle, two screens — and OFF is off everywhere ----------
+   The examples now raise birthday tasks on Today's moves as well as sitting on the Birthdays
+   tab, which puts a made-up person on the screen a coach opens every morning. So the default
+   matters more than it did: off has to mean off on BOTH, and one press has to move both. */
+{
+  // the group on Today's moves, and the rows inside it
+  const todayGroup = (app) => {
+    const h = app.html("todayList");
+    const i = h.indexOf("Birthdays this week");
+    if (i === -1) return "";
+    const end = h.indexOf('<div class="board">', i);
+    return end === -1 ? h.slice(i) : h.slice(i, end);
+  };
+  const real = person("r", "Real Rita", null);          // day 8, so the day has real work on it
+
+  // OFF — and this is the default
+  const app = boot({ members: [real] });
+  assert.strictEqual(app.ctx.__t.showBirthdayExamples, false, "the default is off");
+  assert.ok(!app.html("todayList").includes("Jo Example"), "no prop on Today's moves");
+  assert.ok(!app.html("todayList").includes("Pat Example"));
+  assert.ok(!app.html("todayList").includes("Example — for showing the team"));
+  assert.strictEqual(app.ctx.birthdayExampleTasks().length, 0, "…none are due as tasks");
+  assert.ok(!app.html("birthdayList").includes("Jo Example"), "…and none on the Birthdays tab");
+
+  // ON — one press, and they arrive on both
+  app.ctx.toggleBirthdayExamples();
+  assert.ok(todayGroup(app).includes("Jo Example"), "Jo is a birthday task now");
+  assert.ok(todayGroup(app).includes("Pat Example"), "…and Pat");
+  assert.strictEqual(app.ctx.birthdayExampleTasks().length, 2, "both are inside the week");
+  assert.ok(app.html("birthdayList").includes("Jo Example"), "…and both are on the tab too");
+
+  // OFF again — the same one press takes them off both
+  app.ctx.toggleBirthdayExamples();
+  assert.ok(!app.html("todayList").includes("Jo Example"), "hiding clears Today's moves");
+  assert.ok(!app.html("birthdayList").includes("Jo Example"), "…and the tab, together");
+}
+
+/* ---------- 12: on Today's moves they are unmistakably props ---------- */
+{
+  const app = bootShown({ members: [] });
+  const h = app.html("todayList");
+  const i = h.indexOf("Birthdays this week");
+  const group = h.slice(i, h.indexOf('<div class="board">', i));
+  const rowFor = (name) => group.split('<div class="action').find((r) => r.includes(name)) || "";
+
+  assert.ok(/<div class="today-example-label">Example — for showing the team/.test(group),
+    "a line introduces them, so the cards under it are not read as the day's work");
+  for (const name of ["Jo Example", "Pat Example"]) {
+    const row = rowFor(name);
+    assert.ok(row, name + " has a card");
+    assert.ok(/bday-example-tag">Example</.test(row), "…tagged beside the name");
+    assert.ok(/^ birthday[^"]*\bexample\b/.test(row), "…and marked on the row for the dashed edge");
+    assert.ok(!/notes-btn/.test(row), "…with no notes icon: there is nobody behind it");
+  }
+
+  // …while carrying everything a real card carries, because that is what is being shown
+  const pat = rowFor("Pat Example");
+  assert.ok(/🎉 Turning 50/.test(pat), "the milestone one is flagged the same way a real one is");
+  assert.ok(/\bmilestone\b/.test(pat), "…with the same accent");
+  assert.ok(/above and beyond/.test(pat), "…and the same words");
+  for (const step of [...app.ctx.__t.BIRTHDAY_STEPS]) {
+    assert.ok(pat.includes(step), "the card lists “" + step + "”");
+  }
+  assert.ok(/Birthday — /.test(pat) && /class="day">in \d+ days</.test(pat), "…and says when");
+}
+
+/* ---------- 13: marking a prop done cannot touch anything real ----------
+   The wall. A real card's Done writes birthdayActionedYear on a roster record; a prop's Done
+   writes an id into localStorage. If those ever became the same call, this is what would
+   catch it. */
+{
+  const app = bootShown({ members: [
+    person("r", "Real Rita", null),
+    person("y", "Real Ray", (new Date().getFullYear() - 33) + "-06-14"),
+  ] });
+  const todayHas = (n) => app.html("todayList").includes(n);
+  const before = {
+    count: app.el("todayCount").textContent,
+    roster: JSON.stringify(app.members()),
+    live: app.el("liveCount").textContent,
+  };
+  assert.ok(todayHas("Jo Example"), "Jo is showing as a task");
+
+  app.ctx.toggleExampleActioned("eg-soon");             // what the prop's Done button calls
+  assert.ok(!todayHas("Jo Example"), "…and marking it done clears it from Today's moves");
+  assert.ok(todayHas("Pat Example"), "…leaving the other one alone");
+  // still on the Birthdays tab, in the handled state — done is not deleted, which is the
+  // difference between Actioned and Ignore and the point of demonstrating both
+  const joRow = rowFor(app, "Jo Example");
+  assert.ok(joRow, "she is still on the Birthdays tab");
+  assert.ok(/\bactioned\b/.test(classesOf(joRow)), "…showing as handled");
+
+  // nothing real moved
+  assert.strictEqual(JSON.stringify(app.members()), before.roster, "no roster record changed");
+  assert.strictEqual(app.el("todayCount").textContent, before.count, "the badge did not move");
+  assert.strictEqual(app.el("liveCount").textContent, before.live, "nor the masthead figure");
+  for (const m of app.members()) {
+    assert.strictEqual(m.birthdayActionedYear, null, m.name + "'s Actioned year is untouched");
+    assert.strictEqual(m.birthdayIgnored, false, "…and their ignore flag");
+  }
+  assert.deepStrictEqual(JSON.parse(app.stored(KEY)).actioned, ["eg-soon"],
+    "the prop's done-ness lives in localStorage, where it cannot reach anybody");
+
+  // and it is reversible, like the demo needs
+  app.ctx.toggleExampleActioned("eg-soon");
+  assert.ok(todayHas("Jo Example"), "un-doing brings the task back for the next run-through");
+}
+
+/* ---------- 14: the examples never inflate the day's real count ----------
+   The badge on the tab is what tells a coach they have work. A prop must never add to it,
+   even while it is on screen — and a clear day with the examples up must still show them
+   rather than "All caught up" over the top of two visible cards. */
+{
+  const quiet = Object.assign(person("q", "Quiet Quinn", null), {
+    day0: daysFromToday(-90), booked: daysFromToday(-90), outcome: "stayed", signedUp: true,
+    completed: ["intro", "d1_text", "d3_postcard", "wk2", "wk3", "wk4", "wk5", "wk6"],
+  });
+  const app = boot({ members: [quiet] });
+  assert.strictEqual(app.el("todayCount").textContent, "0", "nothing real is due");
+  assert.ok(app.html("todayList").includes("All caught up"), "…so the day reads clear");
+
+  app.ctx.toggleBirthdayExamples();
+  assert.strictEqual(app.el("todayCount").textContent, "0",
+    "the badge still says 0 — a prop is not work, however visible it is");
+  assert.ok(!app.html("todayList").includes("All caught up"),
+    "…but the screen does not claim to be empty while showing two cards");
+  assert.ok(app.html("todayList").includes("Jo Example"), "…which is what it is showing");
+
+  // the group's own count is the REAL birthdays, so it never disagrees with itself
+  const g = app.html("todayList");
+  assert.ok(/Birthdays this week<span class="gcount">0<\/span>/.test(g),
+    "no real birthdays this week, and the count says so with the props below it");
+}
+
+/* ---------- 15: dismissing takes them off both screens ---------- */
+{
+  const app = bootShown({ members: [] });
+  assert.ok(app.html("todayList").includes("Jo Example"));
+  app.ctx.dismissBirthdayExample("eg-soon");
+  assert.ok(!app.html("todayList").includes("Jo Example"), "dismissed is gone from Today's moves");
+  assert.ok(!app.html("birthdayList").includes("Jo Example"), "…and from the Birthdays tab");
+  assert.ok(app.html("todayList").includes("Pat Example"), "…and only the one that was dismissed");
+
+  app.ctx.dismissBirthdayExample("eg-milestone");
+  assert.ok(!app.html("todayList").includes("Example — for showing the team"),
+    "with both gone the line that introduces them goes too");
+  assert.ok(!app.html("todayList").includes("Example"), "no trace on Today's moves");
 }
 
 console.log("birthday-examples.test.cjs: OK");

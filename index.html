@@ -489,6 +489,13 @@
   .ch.birthday{background:rgba(var(--amber-rgb),.16);color:var(--amber)}
   .action.birthday.milestone{background:rgba(var(--amber-rgb),.06);
     border-color:rgba(var(--amber-rgb),.28);border-left-color:var(--amber)}
+  /* A demo prop on the working screen, so it gets the same dashed edge it wears on the
+     Birthdays tab plus the same tag beside the name. Two marks, not one: the tag is what you
+     read and the dashes are what you see from across the room. */
+  .action.birthday.example{border-style:dashed}
+  .today-example-label{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
+    color:var(--ink-faint);margin:14px 0 8px;display:flex;align-items:center;gap:8px}
+  .today-example-label::after{content:"";flex:1;height:1px;background:var(--line)}
 
   .action.awaiting{background:var(--card-2);border-left-color:rgba(var(--green-rgb),.45)}
   .ch.awaiting{background:rgba(var(--green-rgb),.12);color:var(--green)}
@@ -2158,6 +2165,55 @@ function birthdayDaysAway(m){
   const d = new Date(nb.year, nb.m-1, nb.d); d.setHours(0,0,0,0);
   return Math.round((d.getTime()-today0())/86400000);
 }
+/* One birthday card, drawn once, for a real challenger and for a demo prop alike. The demo
+   is worth nothing if the thing being demonstrated is a lookalike built beside the real one —
+   they drift, and what the team is shown stops being what they will use. So this takes a
+   flag, and the flag changes exactly four things:
+
+     the Example tag beside the name;
+     the dashed edge on the row;
+     the notes icon and the "Remember:" line, which need a real person behind them;
+     and WHICH state the Done button writes — toggleBirthdayActioned for a challenger, which
+     is the roster's own field, or toggleExampleActioned for a prop, which is a list of ids in
+     localStorage and cannot reach the roster at all.
+
+   That last one is the wall. A prop being marked done touches nothing a coach relies on. */
+function birthdayTaskHtml(x, isExample){
+  const nb = nextBirthday(x), days = birthdayDaysAway(x), age = birthdayMilestone(x);
+  const when = new Date(nb.year, nb.m-1, nb.d);
+  const dayName = when.toLocaleDateString('en-GB',{weekday:'long'});
+  const near = days===0 ? 'today' : days===1 ? 'tomorrow' : `in ${days} days`;
+  // the four steps, rendered as the checklist a journey touchpoint uses so they read the
+  // same. Deliberately not tickable: the one thing that resolves this task is Done, and a
+  // second, per-step state to keep would be a second answer to "has this been handled".
+  const steps = `<div class="checklist">` + BIRTHDAY_STEPS.map(t=>
+    `<div class="ci"><span class="box" aria-hidden="true"></span><span>${esc(t)}</span></div>`).join('')
+    + `</div>`;
+  const personal = (!isExample && x.personal) ? `<div style="margin-top:8px">Remember: <b>${esc(x.personal)}</b></div>` : '';
+  const done = isExample ? `toggleExampleActioned('${x.id}')` : `toggleBirthdayActioned('${x.id}')`;
+  return `<div class="action birthday${age?' milestone':''}${isExample?' example':''}" id="act-${x.id}-birthday">
+    <span class="ch birthday">${days===0?'Today 🎂':'Birthday'}</span>
+    <div class="body" onclick="toggleExpand('${x.id}','birthday')">
+      <div class="who">
+        <span class="nm">${esc(x.name)}</span>${isExample?'<span class="bday-example-tag">Example</span>':notesBtn(x)}
+        <span class="ttl">Birthday — ${dayName} ${ordinal(nb.d)}</span>
+        <span class="day">${near}</span>
+        ${age?`<span class="bday-milestone">🎉 Turning ${age}</span>`:''}
+      </div>
+      <div class="detail">
+        ${age ? `Their <b>${ordinal(age)}</b>. This is one to go above and beyond for — the card, the
+          bar and the balloons are the floor, not the plan.`
+              : `Get it ready before the day so it is waiting for them when they walk in.`}
+        ${steps}${personal}
+      </div>
+    </div>
+    <span class="chev" onclick="toggleExpand('${x.id}','birthday')">▶</span>
+    <div class="mark-btns">
+      <button class="btn sm primary mark" onclick="event.stopPropagation();${done}">Done</button>
+    </div>
+  </div>`;
+}
+
 function birthdayDue(m){
   if(!m || m.birthdayIgnored) return false;      // off the tab, so off the day too
   if(birthdayActioned(m)) return false;          // handled — the same flag the tab sets
@@ -2285,11 +2341,21 @@ function renderToday(){
   // about it. Soonest first, and today's before tomorrow's.
   const bdayRows = members.filter(birthdayDue)
     .sort((a,b)=> birthdayDaysAway(a)-birthdayDaysAway(b) || a.name.localeCompare(b.name));
+  // …and the demo props, when somebody has asked to see them. Never counted, never sorted in
+  // among the real ones: they go under their own line at the end of the group.
+  const egRows = birthdayExampleTasks();
 
+  // The tab badge is REAL work and nothing else, so the examples are missing from it on
+  // purpose — a prop must never make a coach think they have something to do.
   document.getElementById('todayCount').textContent =
     rows.length + fuRows.length + startRows.length + bdayRows.length;
 
-  if(rows.length===0 && fuRows.length===0 && startRows.length===0 && bdayRows.length===0){
+  // The empty state is a different question — it is "is there anything on this screen", not
+  // "is there anything to do". A clear day is exactly when the examples get demonstrated, so
+  // showing "All caught up" over the top of two visible cards would be the screen lying about
+  // itself. They suppress it without ever reaching the badge above.
+  if(rows.length===0 && fuRows.length===0 && startRows.length===0 && bdayRows.length===0
+     && birthdayExampleTasks().length===0){
     list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
       No touchpoints due right now. Consistency is the magic — check the Challengers tab to see where everyone sits.</div>`;
     return;
@@ -2387,42 +2453,15 @@ function renderToday(){
 
      Placed after the two other state groups and directly above the board, so the day still
      reads follow-ups, then who is waiting to start, then what is coming, then today's work. */
-  if(bdayRows.length){
+  if(bdayRows.length || egRows.length){
+    // the count is the REAL birthdays and only those. The examples sit under their own line
+    // below, so a number that says 1 with three rows under it never happens.
     html += `<div class="group-label">Birthdays this week<span class="gcount">${bdayRows.length}</span></div>`;
-    bdayRows.forEach(m=>{
-      const nb = nextBirthday(m), days = birthdayDaysAway(m), age = birthdayMilestone(m);
-      const when = new Date(nb.year, nb.m-1, nb.d);
-      const dayName = when.toLocaleDateString('en-GB',{weekday:'long'});
-      const near = days===0 ? 'today' : days===1 ? 'tomorrow' : `in ${days} days`;
-      // the four steps, rendered as the checklist a journey touchpoint uses so they read the
-      // same. Deliberately not tickable: the one thing that resolves this task is Done, and a
-      // second, per-step state to keep would be a second answer to "has this been handled".
-      const steps = `<div class="checklist">` + BIRTHDAY_STEPS.map(t=>
-        `<div class="ci"><span class="box" aria-hidden="true"></span><span>${esc(t)}</span></div>`).join('')
-        + `</div>`;
-      const personal = m.personal ? `<div style="margin-top:8px">Remember: <b>${esc(m.personal)}</b></div>` : '';
-      html += `<div class="action birthday${age?' milestone':''}" id="act-${m.id}-birthday">
-        <span class="ch birthday">${days===0?'Today 🎂':'Birthday'}</span>
-        <div class="body" onclick="toggleExpand('${m.id}','birthday')">
-          <div class="who">
-            <span class="nm">${esc(m.name)}</span>${notesBtn(m)}
-            <span class="ttl">Birthday — ${dayName} ${ordinal(nb.d)}</span>
-            <span class="day">${near}</span>
-            ${age?`<span class="bday-milestone">🎉 Turning ${age}</span>`:''}
-          </div>
-          <div class="detail">
-            ${age ? `Their <b>${ordinal(age)}</b>. This is one to go above and beyond for — the card, the
-              bar and the balloons are the floor, not the plan.`
-                  : `Get it ready before the day so it is waiting for them when they walk in.`}
-            ${steps}${personal}
-          </div>
-        </div>
-        <span class="chev" onclick="toggleExpand('${m.id}','birthday')">▶</span>
-        <div class="mark-btns">
-          <button class="btn sm primary mark" onclick="event.stopPropagation();toggleBirthdayActioned('${m.id}')">Done</button>
-        </div>
-      </div>`;
-    });
+    html += bdayRows.map(m=>birthdayTaskHtml(m,false)).join('');
+    if(egRows.length){
+      html += `<div class="today-example-label">Example — for showing the team</div>`;
+      html += egRows.map(x=>birthdayTaskHtml(x,true)).join('');
+    }
   }
 
   /* The board itself. Each column renders its own heading, its own count and its own stack of
@@ -3689,8 +3728,10 @@ function birthdayExamples(){
     return (d.getFullYear()-age)+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
   };
   return [
-    {id:'eg-soon',      name:'Jo Example',  dob:dob(6,34),  at:addDays(today0(),6)},
-    {id:'eg-milestone', name:'Pat Example', dob:dob(13,50), at:addDays(today0(),13)}
+    // both inside BIRTHDAY_LEAD_DAYS, because they have to raise a task on Today's moves as
+    // well as sit on the tab — the demo is the whole flow, nudge to done, not one screen of it
+    {id:'eg-soon',      name:'Jo Example',  dob:dob(3,34), at:addDays(today0(),3)},
+    {id:'eg-milestone', name:'Pat Example', dob:dob(6,50), at:addDays(today0(),6)}
   ];
 }
 function readBdayExampleState(){
@@ -3708,13 +3749,13 @@ function writeBdayExampleState(st){
 function dismissBirthdayExample(id){
   const st = readBdayExampleState();
   if(st.dismissed.indexOf(id)===-1) st.dismissed.push(id);
-  writeBdayExampleState(st); renderBirthdays();
+  writeBdayExampleState(st); renderExampleScreens();
 }
 function toggleExampleActioned(id){
   const st = readBdayExampleState();
   const i = st.actioned.indexOf(id);
   if(i===-1) st.actioned.push(id); else st.actioned.splice(i,1);
-  writeBdayExampleState(st); renderBirthdays();
+  writeBdayExampleState(st); renderExampleScreens();
 }
 /* Off by default. They earn their place during a team meeting and nowhere else, and a
    permanent pair of made-up people at the top of a working screen is a small tax paid every
@@ -3722,7 +3763,27 @@ function toggleExampleActioned(id){
    looking at" state here: the tab opens on the real months, and closing the app forgets you
    ever asked. Dismissal is the separate, permanent thing — see BDAY_EXAMPLE_KEY. */
 let showBirthdayExamples = false;
-function toggleBirthdayExamples(){ showBirthdayExamples = !showBirthdayExamples; renderBirthdays(); }
+function toggleBirthdayExamples(){ showBirthdayExamples = !showBirthdayExamples; renderExampleScreens(); }
+/* One toggle, two screens. The examples are on the Birthdays tab AND on Today's moves, and a
+   coach demonstrating the flow walks between the two, so anything that changes them has to
+   redraw both or the second screen is showing the state before the click. Not renderAll():
+   nothing about a prop concerns the roster, the conversion bar or the retention tracker. */
+function renderExampleScreens(){ renderBirthdays(); renderToday(); }
+
+/* The examples that raise a task on Today's moves. Three gates, and they are the SAME three
+   the real rule uses, read off the example's own per-device state instead of the roster's
+   fields: showing at all, not dismissed, not already actioned. The window check is here too
+   rather than assumed, so BIRTHDAY_LEAD_DAYS stays the one place the week is defined. */
+function birthdayExampleTasks(){
+  if(!showBirthdayExamples) return [];
+  const st = readBdayExampleState();
+  return birthdayExamples().filter(x=>{
+    if(st.dismissed.indexOf(x.id)!==-1) return false;
+    if(st.actioned.indexOf(x.id)!==-1) return false;
+    const days = birthdayDaysAway(x);
+    return days!==null && days>=0 && days<=BIRTHDAY_LEAD_DAYS;
+  });
+}
 
 /* Their own block above the months, not rows smuggled into August. Two reasons: no month
    group's count has to lie to accommodate them, and a heading that says "example" sits over

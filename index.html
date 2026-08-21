@@ -2573,32 +2573,45 @@ function setTodayView(v){
    breakdown, and a breakdown whose parts overlap or leave someone out is worse than no
    breakdown at all. Somebody who is in none of them is invisible on this screen.
 
-   It partitions on OUTCOME first, which is what makes it airtight: outcome is null, 'stayed'
-   or 'left' and nothing else, so the three branches below are exhaustive by construction.
+   CURRENTLY ACTIVE IS THE MASTHEAD'S RULE — onJourney, the same function object, not a second
+   rule written to agree with it. The number on this tab and the number in the corner of the
+   screen are the same claim about the same people, and two rules that agree today are two
+   rules that can drift apart tomorrow. Sharing the function makes them identical by
+   construction. Everything else here follows from that one decision.
 
-     null      → still an open case. Split by whether their clock is stopped:
-                 Paused if it is, Currently Active if it is not.
+   onJourney means their clock is running TODAY: started, not finished, not paused, not left.
+   It is deliberately narrower than "an open case", which is why NOT ON THE CLOCK exists —
+   without it, a challenger who has not started yet and one who has finished the six weeks
+   with no outcome recorded would match none of the tabs at all and be unreachable from this
+   screen. That would take the whole not-started card with them: its "Go to the intro" button,
+   its start-the-clock prompt, its notes icon. Anyone the Ontraport webhook creates lands in
+   that state and stays there until somebody runs their intro, so it is not an edge case.
+
+   The other four split on OUTCOME, which is null, 'stayed' or 'left' and nothing else:
+
+     null      → Paused if their clock is stopped, otherwise Currently Active or Not on the
+                 clock depending on whether it is running.
      'stayed'  → Stayed On.
      'left'    → split by whether there is a follow-up booked in:
                  Left & Needs Followup if there is, Left if there is not.
 
-   Two things about that are worth stating, because both are choices:
-
-   Paused is NOT inside Currently Active. The old dropdown's "Active (live + paused)" put it
-   there, but paused has a tab of its own now, and a challenger who showed up in both would
-   make the counts add to more than the roster.
-
-   Currently Active holds three shapes of open case, not one: not started yet, running, and
-   finished the six weeks with no outcome recorded. The last is the arguable one — they are
-   not on the journey any more — but they are the roster's most actionable people (they are
-   waiting on you to say whether they stayed), and every other home for them is a tab that
-   claims something untrue about them. An open case is an open case. */
+   So every challenger is on at least one tab. Five of the six are mutually exclusive; the one
+   place two of them overlap is the price of sharing the masthead's rule, and it is small and
+   self-clearing: onJourney ignores 'stayed' (it only excludes people who LEFT), so somebody
+   marked Stayed on with days still to run is on Currently Active AND Stayed On until their
+   42 days are up, after which they are on Stayed On alone. Nobody has to do anything. */
 /* `label` is trusted markup, not text — it holds an entity (&amp;) and goes into the row
    without esc(), which would double-encode it. These five are constants in this file; nothing
    a coach types ever reaches them. */
 const MEMBER_FILTERS = [
+  // the masthead's function itself, deliberately — see above
   {id:'active', label:'Currently Active',
-   match:m=> !m.outcome && status(m)!=='paused'},
+   match:onJourney},
+  // the rest of the open cases: no decision recorded, and the clock is not running. Sits
+  // beside Currently Active because it is the other half of the same question — these are
+  // people you still have work to do about, they are just not counting days yet.
+  {id:'notonclock', label:'Not on the clock',
+   match:m=> !!m && !m.outcome && !onJourney(m) && status(m)!=='paused'},
   {id:'stayed', label:'Stayed On',
    match:m=> m.outcome==='stayed'},
   {id:'paused', label:'Paused',

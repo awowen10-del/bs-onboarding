@@ -173,10 +173,14 @@ const hasStartTask = (app) => /id="act-c1-startclock"/.test(app.html("todayList"
 
 /* ---------- 10: the Challengers tab points at whichever card is actually showing ---------- */
 {
+  // a challenger whose clock has not started is on Not on the clock — Currently Active is the
+  // masthead's on-the-journey rule and does not reach them, which is what that tab is for
   const before = boot({ members: [fresh()] });
+  before.ctx.setMemberFilter("notonclock");
   assert.ok(/Go to the intro on Today/.test(before.html("memberList")),
     "intro outstanding: the card sends you to the intro");
   const after = boot({ members: [introDone()] });
+  after.ctx.setMemberFilter("notonclock");
   const cards = after.html("memberList");
   assert.ok(/Go to their start-the-clock task/.test(cards),
     "intro done: the card sends you to the start-the-clock task instead");

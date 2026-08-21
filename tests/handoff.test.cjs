@@ -82,8 +82,12 @@ const SAM = () => challenger("sam", "Sam Doyle", {
   app.ctx.setMemberFilter("stayed");
   assert.ok(app.html("memberList").includes("Sam Doyle"), "they still render on a challenger card");
   assert.ok(app.html("memberList").includes("Stayed ✓"), "…still marked as stayed");
+  // Currently Active is the masthead's on-the-journey rule now, and that rule does not care
+  // about a decision having been recorded — only about the clock. Sam converted with days
+  // still to run, so he is on both tabs until his 42 days are up.
   app.ctx.setMemberFilter("active");
-  assert.ok(!app.html("memberList").includes("Sam Doyle"), "…and are no longer an open case");
+  assert.ok(app.html("memberList").includes("Sam Doyle"),
+    "…and their clock is still running, so they are still on Currently Active too");
 
   // the conversion bar reads exactly what it would have without a retention tracker at all
   before.ctx.setOutcome("sam", "stayed");

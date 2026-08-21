@@ -88,6 +88,7 @@ let SOPHIE = null;
   {
     // raw: no migration at all, so this is the record EXACTLY as Supabase holds it
     const a = boot({ members: [JSON.parse(JSON.stringify(SOPHIE))], raw: true });
+    a.ctx.setMemberFilter("notonclock");     // booked in, clock not started — that is her tab
     const cards = a.html("memberList");
     assert.ok(cards.includes("Sophie Webhook"), "she renders on the Challengers tab");
     assert.ok(cards.includes("Not started"), "…as a not-started challenger");
@@ -103,17 +104,21 @@ let SOPHIE = null;
   /* ---------- 3: no filter or default view hides her ---------- */
   {
     const a = boot({ members: [JSON.parse(JSON.stringify(SOPHIE))], raw: true });
-    // she is booked in with no outcome recorded, so she is an open case: Currently Active,
-    // which is also the tab the screen opens on. A challenger the webhook just created must
-    // never land on a screen that is filtered past her.
+    // She is booked in with no outcome and no clock running, which is Not on the clock. The
+    // screen opens on Currently Active — the masthead's on-the-journey rule — so she is one
+    // tap away rather than straight in front of you. What must never happen is her being on
+    // NO tab: a challenger the webhook just created has to be reachable from this screen.
     assert.strictEqual(a.ctx.__t.memberFilter, "active", "the screen opens on Currently Active");
-    assert.ok(a.html("memberList").includes("Sophie Webhook"), "…and she is on it, with no tap");
+    const on = [...a.ctx.__t.MEMBER_FILTERS].filter((f) => f.match(a.find(SOPHIE.id))).map((f) => f.id);
+    assert.deepStrictEqual(on, ["notonclock"], "she is on exactly one tab, and it is that one");
 
-    // and every other tab legitimately excludes her — she is in exactly one of the five
-    for (const f of ["stayed", "paused", "leftfu", "left"]) {
+    // …and every other tab legitimately excludes her
+    for (const f of ["active", "stayed", "paused", "leftfu", "left"]) {
       a.ctx.setMemberFilter(f);
       assert.ok(!a.html("memberList").includes("Sophie Webhook"), "tab '" + f + "' correctly excludes her");
     }
+    a.ctx.setMemberFilter("notonclock");
+    assert.ok(a.html("memberList").includes("Sophie Webhook"), "…and hers shows her");
   }
 
   /* ---------- 4: the real cloud boot path shows her ---------- */
@@ -128,11 +133,17 @@ let SOPHIE = null;
     await a.ctx.bootData();
     assert.deepStrictEqual(a.members().map((m) => m.name), ["Existing Ellie", "Sophie Webhook"],
       "both load, in row order");
-    const cards = a.html("memberList");
-    assert.ok(cards.includes("Sophie Webhook"));
-    // the cards are sorted by start date, so a not-started challenger leads the list
-    assert.ok(cards.indexOf("Sophie Webhook") < cards.indexOf("Existing Ellie"),
-      "the not-started challenger sorts to the top of the cards");
+    // they are on different tabs now — Ellie's clock is running, Sophie's has not started —
+    // so each is checked on the one that holds them
+    a.ctx.setMemberFilter("notonclock");
+    assert.ok(a.html("memberList").includes("Sophie Webhook"), "she is on Not on the clock");
+    a.ctx.setMemberFilter("active");
+    assert.ok(a.html("memberList").includes("Existing Ellie"), "…and Ellie on Currently Active");
+    // the sort is still by start date, which the whole-journey table shows on one list
+    a.ctx.renderMemberTable();
+    const table = a.html("todayTable");
+    assert.ok(table.indexOf("Sophie Webhook") < table.indexOf("Existing Ellie"),
+      "the not-started challenger sorts to the top");
   }
 
   /* ---------- 5: THE REGRESSION — a stale tab must not delete her ---------- */
@@ -159,7 +170,8 @@ let SOPHIE = null;
 
     // …and the coach can now actually see her, without reloading
     assert.ok(a.members().some((m) => m.name === "Sophie Webhook"), "she is folded into the open tab");
-    assert.ok(a.html("memberList").includes("Sophie Webhook"), "…and rendered");
+    a.ctx.setMemberFilter("notonclock");
+    assert.ok(a.html("memberList").includes("Sophie Webhook"), "…and rendered, on her tab");
     // the edit that triggered all this is still intact
     assert.ok(a.find("m1").completed.includes("d1_text"), "the coach's tick survived the merge");
   }
@@ -180,6 +192,7 @@ let SOPHIE = null;
   {
     const a = boot({ cloud: { rows: { roster: [ELLIE], seeded: true } }, render: false });
     await a.ctx.bootData();
+    a.ctx.setMemberFilter("notonclock");     // watching the tab she will arrive on
     a.cloud.table.set("roster", [ELLIE, SOPHIE]);
     assert.ok(!a.html("memberList").includes("Sophie Webhook"), "not there yet");
     await a.ctx.refreshFromCloud();          // what the poll / tab-focus handler calls

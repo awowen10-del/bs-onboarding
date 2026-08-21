@@ -96,8 +96,10 @@ function type(app, id, html) {
     const nedChunk = h.slice(Math.max(0, h.indexOf("Ned New") - 400), h.indexOf("Ned New") + 400);
     if (h.includes("Ned New")) assert.ok(!nedChunk.includes("notes-btn has"), name + ": Ned's icon stays muted");
   }
-  // the title tells you which it is, for screen readers and hover
+  // the title tells you which it is, for screen readers and hover. Sam is mid-journey and Ned
+  // has not started, so their cards are on different tabs — the icon is on both all the same.
   assert.ok(app.html("memberList").includes("Notes — Sam Live"));
+  app.ctx.setMemberFilter("notonclock");
   assert.ok(app.html("memberList").includes("Add notes — Ned New"));
 }
 

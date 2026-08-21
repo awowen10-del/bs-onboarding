@@ -28,28 +28,42 @@ const base = (id, name, extra) => Object.assign({
   followUpOn: null, followUpStatus: null, notes: "",
 }, extra || {});
 
-// one of every shape, and which tab each of them belongs to
+// One of every shape a challenger record comes in, and the tabs each of them is on. A LIST,
+// not a single tab, because Currently Active is onJourney and onJourney is not a slice of the
+// outcome partition the others are — so one of these is on two tabs at once. Everybody is on
+// at least one; that is the property the sixth tab exists to keep, and it is asserted below
+// by name rather than glossed over.
 const ROSTER = [
-  ["active", base("new", "Ned NotStarted", { firstSessionDone: false, day0: null, booked: daysFromToday(3) })],
-  ["active", base("run", "Ruby Running")],
-  ["active", base("fin", "Fay Finished", { day0: daysFromToday(-60), booked: daysFromToday(-60) })],
-  ["stayed", base("sty", "Sam Stayed", { outcome: "stayed", signedUp: true })],
-  ["paused", base("pau", "Pat Paused", { pausedAt: daysFromToday(-2) })],
-  ["leftfu", base("lfu", "Lyn LeftPending", { outcome: "left",
+  // ── open cases the journey is not currently running for ──
+  [["notonclock"], base("new", "Ned NotStarted", { firstSessionDone: false, day0: null,
+    booked: daysFromToday(3), completed: [] })],   // intro still to run, so his card offers it
+  [["notonclock"], base("fin", "Fay Finished", { day0: daysFromToday(-60), booked: daysFromToday(-60) })],
+  // ── plainly on the journey ──
+  [["active"], base("run", "Ruby Running")],
+  // ── the overlap: marked Stayed on with days still left to run ──
+  [["active", "stayed"], base("sty", "Sam Stayed", { outcome: "stayed", signedUp: true })],
+  // …and the same decision once their clock has run out, which is on one tab again
+  [["stayed"], base("sty2", "Sue Stayed-Done", { outcome: "stayed", signedUp: true,
+    day0: daysFromToday(-60), booked: daysFromToday(-60) })],
+  [["paused"], base("pau", "Pat Paused", { pausedAt: daysFromToday(-2) })],
+  [["leftfu"], base("lfu", "Lyn LeftPending", { outcome: "left",
     followUpOn: daysFromToday(20), followUpStatus: "pending" })],
-  ["left", base("lef", "Lee Left", { outcome: "left" })],
+  [["left"], base("lef", "Lee Left", { outcome: "left" })],
   // a Left whose follow-up has been DONE is closed again — the date stays as a record, and a
   // record of something finished is not a job on anybody's desk
-  ["left", base("ldn", "Dot Done", { outcome: "left",
+  [["left"], base("ldn", "Dot Done", { outcome: "left",
     followUpOn: daysFromToday(-20), followUpStatus: "done" })],
   // the awkward ones: a decision recorded on somebody whose clock was left stopped
-  ["stayed", base("sp", "Stan Paused-Stayed", { outcome: "stayed", pausedAt: daysFromToday(-5) })],
-  ["left", base("lp", "Lou Paused-Left", { outcome: "left", pausedAt: daysFromToday(-5) })],
+  [["stayed"], base("sp", "Stan Paused-Stayed", { outcome: "stayed", pausedAt: daysFromToday(-5) })],
+  [["left"], base("lp", "Lou Paused-Left", { outcome: "left", pausedAt: daysFromToday(-5) })],
 ];
 const members = () => ROSTER.map(([, m]) => JSON.parse(JSON.stringify(m)));
-const expectedTab = (id) => (ROSTER.find(([, m]) => m.id === id) || [])[0];
+const expectedTabs = (id) => (ROSTER.find(([, m]) => m.id === id) || [, {}])[0] || [];
+// everybody the fixture says belongs on a given tab
+const expectedOn = (tab) => ROSTER.filter(([t]) => t.includes(tab)).map(([, m]) => m.name).sort();
 
 // the filter row as the app renders it, split into one string per tab
+const ALL = ["active", "notonclock", "stayed", "paused", "leftfu", "left"];
 const tabs = (app) => app.html("memberFilters").split("<button").slice(1);
 const tabFor = (app, id) => tabs(app).find((t) => t.includes('data-filter="' + id + '"')) || "";
 const badge = (t) => {
@@ -84,10 +98,11 @@ const names = (app) => ROSTER.map(([, m]) => m.name).filter((n) => app.html("mem
 {
   const app = boot({ members: members() });
   const row = tabs(app);
-  assert.strictEqual(row.length, 5, "five tabs, no more and no fewer");
-  assert.deepStrictEqual(row.map((t) => /data-filter="([^"]+)"/.exec(t)[1]),
-    ["active", "stayed", "paused", "leftfu", "left"], "in the order they were asked for");
-  const labels = ["Currently Active", "Stayed On", "Paused", "Left &amp; Needs Followup", "Left"];
+  assert.strictEqual(row.length, 6, "six tabs, no more and no fewer");
+  assert.deepStrictEqual(row.map((t) => /data-filter="([^"]+)"/.exec(t)[1]), ALL,
+    "in order, with Not on the clock beside Currently Active — the two halves of an open case");
+  const labels = ["Currently Active", "Not on the clock", "Stayed On", "Paused",
+    "Left &amp; Needs Followup", "Left"];
   row.forEach((t, i) => assert.ok(t.includes(labels[i]), "tab " + i + " reads “" + labels[i] + "”"));
 
   // separate buttons in a row, wearing the same surface as the nav tabs above them
@@ -121,22 +136,20 @@ const names = (app) => ROSTER.map(([, m]) => m.name).filter((n) => app.html("mem
   assert.strictEqual(app.ctx.__t.memberFilter, "active", "Currently Active is the default");
   assert.ok(/data-filter="active"/.test(tabFor(app, "active")));
   assert.ok(/aria-selected="true"/.test(tabFor(app, "active")), "…and it is the one marked selected");
-  for (const id of ["stayed", "paused", "leftfu", "left"]) {
+  for (const id of ALL.filter((x) => x !== "active")) {
     assert.ok(/aria-selected="false"/.test(tabFor(app, id)), id + " is not selected");
   }
-  // and it is showing the open cases, with nobody's decision already recorded among them
-  assert.deepStrictEqual(names(app).sort(), ["Fay Finished", "Ned NotStarted", "Ruby Running"]);
+  // and it is showing the people whose 42 days are actually running today
+  assert.deepStrictEqual(names(app).sort(), expectedOn("active"));
 }
 
 /* ---------- 4: each tab shows its own group and nobody else's ---------- */
 {
   const app = boot({ members: members() });
-  const expected = {};
-  ROSTER.forEach(([tab, m]) => (expected[tab] = (expected[tab] || []).concat(m.name)));
 
-  for (const id of ["active", "stayed", "paused", "leftfu", "left"]) {
+  for (const id of ALL) {
     assert.strictEqual(app.ctx.setMemberFilter(id), id, "selecting " + id + " sticks");
-    assert.deepStrictEqual(names(app).sort(), expected[id].slice().sort(),
+    assert.deepStrictEqual(names(app).sort(), expectedOn(id),
       "the " + id + " tab lists exactly its own group");
     assert.ok(/aria-selected="true"/.test(tabFor(app, id)), "…and is highlighted while it does");
     assert.strictEqual(tabs(app).filter((t) => /aria-selected="true"/.test(t)).length, 1,
@@ -149,37 +162,120 @@ const names = (app) => ROSTER.map(([, m]) => m.name).filter((n) => app.html("mem
   assert.strictEqual(app.html("memberList"), before, "…and the list does not move");
 }
 
-/* ---------- 5: the five are a partition — exactly one tab each, and everybody in one ----------
-   Stated twice on purpose. Once against the rules themselves, which is the property that has
-   to survive an edit to MEMBER_FILTERS; and once against the counts the row puts on screen,
-   because a breakdown whose parts do not add up to the whole is worse than no breakdown. */
+/* ---------- 5: Currently Active IS the masthead's figure, not a rule that agrees with it ----
+   The requirement is that these two numbers can never disagree, which is stronger than their
+   being equal on any roster you happen to test. So it is asserted three ways: the tab's rule
+   is the same function object the masthead uses, the tab's badge equals the number in the
+   corner, and — the part a coach would actually notice — nobody paused and nobody who left is
+   on it. */
 {
   const app = boot({ members: members() });
   const FILTERS = [...app.ctx.__t.MEMBER_FILTERS];
-  assert.strictEqual(FILTERS.length, 5);
+  assert.strictEqual(FILTERS.length, 6);
+
+  const active = FILTERS.find((f) => f.id === "active");
+  assert.strictEqual(active.match, app.ctx.onJourney,
+    "Currently Active is onJourney itself — sharing the function is what makes the two "
+    + "numbers identical by construction rather than by two rules happening to agree");
+
+  // the same population, member by member
+  for (const m of app.members()) {
+    assert.strictEqual(active.match(m), app.ctx.onJourney(m), m.name + ": tab and masthead agree");
+  }
+  // …and the same number, on screen
+  assert.strictEqual(badge(tabFor(app, "active")), Number(app.el("liveCount").textContent),
+    "the badge on Currently Active is the figure in the corner");
+  assert.strictEqual(badge(tabFor(app, "active")), app.ctx.onJourneyCount(), "…and both are the rule");
+
+  // what the tightening was for: neither of these is on it any more
+  app.ctx.setMemberFilter("active");
+  for (const m of app.members()) {
+    if (app.ctx.status(m) === "paused") {
+      assert.ok(!app.html("memberList").includes(m.name),
+        m.name + " is paused, so Currently Active must not show them");
+    }
+    if (m.outcome === "left") {
+      assert.ok(!app.html("memberList").includes(m.name),
+        m.name + " has left, so Currently Active must not show them");
+    }
+  }
+  assert.ok(expectedOn("paused").length && expectedOn("left").length, "sanity: the fixture has both");
+
+  // The other five are unchanged, and this is what unchanged means: no challenger is ever on
+  // two of them. They do not cover everybody between them — somebody plainly on their journey
+  // belongs to Currently Active and to nothing else — but they never disagree with each other,
+  // and the only person they are allowed to leave out is exactly that.
+  const OTHERS = FILTERS.filter((f) => f.id !== "active");
+  for (const m of app.members()) {
+    const hits = OTHERS.filter((f) => f.match(m)).map((f) => f.id);
+    assert.ok(hits.length <= 1,
+      m.name + " is on at most one of the other five, not " + hits.join(" + "));
+    if (hits.length === 0) {
+      assert.strictEqual(app.ctx.onJourney(m), true,
+        m.name + " is on none of the other five, which is only allowed while the journey runs");
+    }
+  }
+}
+
+/* ---------- 5b: nobody falls through, and the one overlap is the price of the shared rule ----
+   Currently Active is not a slice of the outcome partition, so the six do not simply add up.
+   What must hold is weaker but far more important: NOBODY IS ON NO TAB. Losing that is not a
+   cosmetic bug — the not-started card is where the intro button, the start-the-clock prompt
+   and the notes icon live, so a challenger who matches nothing is a challenger with no card
+   and no way to reach any of it. That is what "Not on the clock" is for, and this block is
+   its reason for existing written down as an assertion. */
+{
+  const app = boot({ members: members() });
+  const FILTERS = [...app.ctx.__t.MEMBER_FILTERS];
+  const tabsFor = (m) => FILTERS.filter((f) => f.match(m)).map((f) => f.id).sort();
 
   for (const m of app.members()) {
-    const hits = FILTERS.filter((f) => f.match(m)).map((f) => f.id);
-    assert.strictEqual(hits.length, 1,
-      m.name + " must be in exactly one tab, and is in " + (hits.length ? hits.join(" + ") : "none"));
-    assert.strictEqual(hits[0], expectedTab(m.id), m.name + " is on the tab their state says");
+    assert.deepStrictEqual(tabsFor(m), expectedTabs(m.id).slice().sort(),
+      m.name + " is on the tabs their state says, and only those");
   }
 
+  // NOBODY FALLS THROUGH
+  const lost = app.members().filter((m) => tabsFor(m).length === 0).map((m) => m.name);
+  assert.deepStrictEqual(lost, [], "every challenger is on at least one tab");
+
+  // and the ones onJourney lets go of are on the tab that exists to catch them, card and all
+  assert.deepStrictEqual(expectedOn("notonclock"), ["Fay Finished", "Ned NotStarted"],
+    "not started yet, and finished with no outcome recorded");
+  app.ctx.setMemberFilter("notonclock");
+  const held = app.html("memberList");
+  assert.ok(/Go to the intro on Today/.test(held),
+    "…and the not-started card's intro button renders somewhere, which is the whole point");
+  assert.ok(held.includes("Add notes — Ned NotStarted"), "…as does their notes icon");
+  for (const m of app.members().filter((x) => tabsFor(x).includes("notonclock"))) {
+    assert.strictEqual(m.outcome, null, "everybody on it is an open case, not a settled one");
+    assert.notStrictEqual(app.ctx.status(m), "paused", "…and none of them is paused");
+    assert.strictEqual(app.ctx.onJourney(m), false, "…and none is on the journey");
+  }
+
+  // THE OVERLAP — marked Stayed on with days still to run is on two tabs until the clock ends
+  const both = app.members().filter((m) => tabsFor(m).length > 1).map((m) => m.name);
+  assert.deepStrictEqual(both, ["Sam Stayed"], "only an early conversion sits on two tabs");
+  assert.deepStrictEqual(tabsFor(app.find("sty")), ["active", "stayed"]);
+  assert.deepStrictEqual(tabsFor(app.find("sty2")), ["stayed"],
+    "…and it ends when their 42 days do, without anybody doing anything");
+
+  // so the badges come to the roster plus exactly the overlap, and nothing is missing from them
   const counts = tabs(app).map(badge);
-  assert.ok(counts.every((n) => n !== null), "every tab carries a count badge");
-  assert.strictEqual(counts.reduce((a, b) => a + b, 0), app.members().length,
-    "the badges add up to the roster exactly — no double counting, nobody dropped");
+  assert.ok(counts.every((n) => n !== null), "every tab still carries a count badge");
+  assert.strictEqual(counts.reduce((a, b) => a + b, 0), app.members().length + both.length,
+    "the badges are the whole roster, plus the one person counted twice, and nobody dropped");
 }
 
 /* ---------- 6: the badges are the group sizes, and they follow the search ---------- */
 {
   const app = boot({ members: members() });
   const counted = (id) => badge(tabFor(app, id));
-  assert.strictEqual(counted("active"), 3);
-  assert.strictEqual(counted("stayed"), 2);
-  assert.strictEqual(counted("paused"), 1);
-  assert.strictEqual(counted("leftfu"), 1);
-  assert.strictEqual(counted("left"), 3);
+  // read off the fixture rather than written out again — the roster above is the one place
+  // that says who is on what, and a second copy of it here would only ever drift from it
+  for (const id of ALL) {
+    assert.strictEqual(counted(id), expectedOn(id).length, "the " + id + " badge is its group size");
+  }
+  assert.strictEqual(counted("active"), 2, "sanity: the badges are real numbers, not all zero");
 
   // typing a name turns the row into "where is this person" — the useful answer mid-search
   app.el("search").value = "Lyn";
@@ -190,7 +286,7 @@ const names = (app) => ROSTER.map(([, m]) => m.name).filter((n) => app.html("mem
   }
 
   // the badges never disagree with the list underneath them
-  for (const id of ["active", "stayed", "paused", "leftfu", "left"]) {
+  for (const id of ALL) {
     app.ctx.setMemberFilter(id);
     assert.strictEqual(counted(id), names(app).length,
       "the " + id + " badge is the number of cards it shows");

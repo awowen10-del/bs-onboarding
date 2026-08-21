@@ -194,44 +194,67 @@
     .home-card .hgo{grid-column:2;margin-top:9px}
   }
 
-  /* ---------- Tabs (matches .viewtoggle) ---------- */
-  nav.tabs{display:inline-flex;gap:4px;background:var(--navy-2);border:1px solid var(--line);
-    border-radius:12px;padding:4px;margin-bottom:8px;flex-wrap:wrap}
-  nav.tabs button{appearance:none;background:transparent;border:none;color:var(--ink-dim);
-    font-family:inherit;font-size:13px;font-weight:700;padding:9px 16px;border-radius:8px;cursor:pointer;
-    transition:background .15s ease,color .15s ease}
+  /* ---------- Tabs (matches .viewtoggle) ----------
+     FOUR THINGS IN A ROW, not four labels in one bar. They used to be a segmented control:
+     one recessed track with the buttons transparent inside it, so the row read as a single
+     object and the unselected tabs had no edges of their own — on a phone there was nothing
+     to tell you where one tap target stopped and the next began.
+
+     Each tab is its own surface now, and it is the .btn surface: --card on the page's --navy,
+     a --line hairline, the same radius family. That is deliberate — the design system already
+     has one way of saying "a separate thing you can press", and a tab is one of those, so the
+     row inherits it rather than inventing a second look. The selected tab is .btn.primary's
+     fill for the same reason.
+
+     The container keeps nothing but the gap. No background, no border, no padding: the space
+     between the tabs is the only thing holding them together, which is what makes them read
+     as separate. flex-wrap, so a narrow screen drops them onto a second row rather than
+     squeezing four tap targets into 320px or hiding any of them off the edge. */
+  nav.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  nav.tabs button{appearance:none;background:var(--card);border:1px solid var(--line);
+    color:var(--ink-dim);font-family:inherit;font-size:13px;font-weight:700;padding:10px 16px;
+    border-radius:12px;cursor:pointer;
+    transition:background .15s ease,color .15s ease,border-color .15s ease,transform .08s ease}
   nav.tabs button .count{font-size:11px;color:var(--on-accent);background:var(--red);border-radius:20px;padding:1px 7px;margin-left:6px;font-weight:700;vertical-align:middle}
-  /* a plain headcount, not a to-do count — red would read as "something is wrong" */
-  nav.tabs button .count.tally{color:var(--ink-dim);background:var(--card);border:1px solid var(--line)}
+  /* a plain headcount, not a to-do count — red would read as "something is wrong".
+     --navy-2 rather than --card: the tab itself is --card now, and a pill the same colour as
+     the thing it sits on is not a pill. */
+  nav.tabs button .count.tally{color:var(--ink-dim);background:var(--navy-2);border:1px solid var(--line)}
   nav.tabs button[aria-selected="true"] .count.tally{color:var(--on-accent);background:var(--accent-inset);border-color:transparent}
-  nav.tabs button[aria-selected="false"]:hover{color:var(--ink)}
-  nav.tabs button[aria-selected="true"]{background:var(--orange);color:var(--on-accent)}
+  nav.tabs button[aria-selected="false"]:hover{color:var(--ink);border-color:var(--ink-faint)}
+  nav.tabs button:active{transform:translateY(1px)}
+  nav.tabs button[aria-selected="true"]{background:var(--orange);border-color:var(--orange);color:var(--on-accent)}
   nav.tabs button[aria-selected="true"] .count{background:var(--accent-inset)}
 
   /* ---- Tab markers ----
-     Three weights inside one segmented control, so the row says which tab is which before
-     you read it. Every rule that paints an unselected tab is pinned to [aria-selected=false]
-     on purpose: the selected pill above is the same specificity, and these sit below it, so
-     without the pin they would repaint the selected tab and lose the orange fill.
+     Three weights across the four tabs, so the row says which one is which before you read
+     it. Every rule that paints an unselected tab is pinned to [aria-selected=false] on
+     purpose: the selected-tab rule above is the same specificity and these sit below it in
+     the sheet, so without the pin they would repaint the selected tab and lose its fill.
 
      .tab-lead — Today's moves. It is where every coach lands, so it carries full ink while
      its neighbours sit at --ink-dim: the default reads as the default, without a second
-     highlight competing with the selected pill.
+     highlight competing with the selected tab.
 
-     .tab-core — The Playbook. The reference the rest of the platform hangs off, so it wears
-     a star in the accent. A marker inside the pill, not a badge stuck on it: the star
-     inherits the button's colour, so on the selected tab it turns white with the label and
-     the control still reads as one control. */
+     .tab-core — The Playbook. The reference the rest of the platform hangs off, so it keeps
+     a tint of the accent in its own surface and wears a star. Now that every tab has its own
+     border there is somewhere to put that: the tint is what makes it the flagship at a
+     glance, and the star is what says which kind of flagship. The star takes no colour of its
+     own — it inherits the button's, so on the selected tab it turns white with the label. */
   nav.tabs button.tab-lead[aria-selected="false"]{color:var(--ink)}
-  nav.tabs button.tab-core[aria-selected="false"],
-  nav.tabs button.tab-core[aria-selected="false"]:hover{color:var(--orange-soft)}
+  nav.tabs button.tab-core[aria-selected="false"]{color:var(--orange-soft);
+    border-color:rgba(var(--orange-rgb),.4);background:rgba(var(--orange-rgb),.05)}
+  /* its own hover, or the generic one above would grey it back down on the way to a click */
+  nav.tabs button.tab-core[aria-selected="false"]:hover{color:var(--orange-soft);
+    border-color:var(--orange);background:rgba(var(--orange-rgb),.1)}
   nav.tabs button .tab-star{display:inline-block;width:14px;height:14px;margin-right:6px;
     vertical-align:-2px;color:inherit}
   nav.tabs button .tab-star svg{display:block;width:100%;height:100%}
   /* .tab-dot — Birthdays. A nudge, never a number: it appears only while somebody's birthday
-     is inside the next month (see birthdaysSoon) and is invisible the rest of the year, so
-     a lit dot always means the same one thing. Amber, not the red the to-do counts use — a
-     birthday is a thing to notice, not a queue that is running late. */
+     is still to come THIS MONTH (see birthdaysSoon) and is dark the rest of the time, so a
+     lit dot always means the same one thing — and the same thing the tab shows when you open
+     it. Amber, not the red the to-do counts use: a birthday is a thing to notice, not a queue
+     that is running late. */
   nav.tabs button .tab-dot{display:none}
   nav.tabs button .tab-dot.on{display:inline-block;width:6px;height:6px;border-radius:50%;
     background:var(--amber);margin-left:7px;vertical-align:middle}
@@ -728,10 +751,19 @@
   .pbx-footnote p{max-width:74ch;font-size:13px;line-height:1.7;color:var(--ink-dim);overflow-wrap:break-word}
   .pbx-footnote b{color:var(--ink);font-weight:700}
 
-  /* ---------- Cards/Table toggle (matches dashboard .viewtoggle) ---------- */
-  .viewtoggle{display:inline-flex;gap:4px;background:var(--navy-2);border:1px solid var(--line);border-radius:10px;padding:4px}
-  .viewtoggle .vt{background:transparent;border:none;color:var(--ink-dim);font-family:inherit;font-size:13px;font-weight:700;padding:8px 16px;border-radius:7px;cursor:pointer}
-  .viewtoggle .vt.active{background:var(--orange);color:var(--on-accent)}
+  /* ---------- Today's moves / Whole journey toggle ----------
+     The tab row's little brother, and it follows it: two separate pressable things with a gap
+     between them, not two labels sharing a track. Slightly smaller than a tab, because it
+     switches a view WITHIN the screen the tabs above it chose — the size difference is what
+     keeps the two rows from reading as one four-deep pile of tabs. */
+  .viewtoggle{display:flex;flex-wrap:wrap;gap:8px}
+  .viewtoggle .vt{background:var(--card);border:1px solid var(--line);color:var(--ink-dim);
+    font-family:inherit;font-size:13px;font-weight:700;padding:9px 15px;border-radius:10px;cursor:pointer;
+    transition:background .15s ease,color .15s ease,border-color .15s ease,transform .08s ease}
+  .viewtoggle .vt:hover{color:var(--ink);border-color:var(--ink-faint)}
+  .viewtoggle .vt:active{transform:translateY(1px)}
+  .viewtoggle .vt.active{background:var(--orange);border-color:var(--orange);color:var(--on-accent)}
+  .viewtoggle .vt.active:hover{color:var(--on-accent);border-color:var(--orange)}
 
   /* ---------- Member table (mirrors the sheet) ---------- */
   .tbl-scroll{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -942,6 +974,12 @@
 
   @media (max-width:640px){
     .mast-meta{text-align:left}
+    /* The tabs wrap rather than scroll, so every one of them is on screen without a swipe.
+       Tightened a little so four of them make two tidy rows instead of three ragged ones. */
+    nav.tabs{gap:6px}
+    nav.tabs button{padding:9px 13px;font-size:12.5px;border-radius:10px}
+    .viewtoggle{gap:6px}
+    .viewtoggle .vt{padding:9px 13px;font-size:12.5px}
     .action{flex-wrap:wrap}
     .action .body{flex-basis:calc(100% - 130px)}
     /* The board stacks on a phone: one full-width column above the next, each keeping its
@@ -1938,24 +1976,29 @@ function status(m){
 function onJourney(m){ return !!m && status(m)==='live' && !isInactive(m); }
 function onJourneyCount(list){ return (Array.isArray(list)?list:members).filter(onJourney).length; }
 
-/* Is there a birthday inside the next month? The Birthdays tab raises a dot when there is.
-   The window is counted FORWARD from today, so a birthday that has already been this month
-   does not keep the dot lit — a dot that is on always means the same one thing: somebody's
-   is coming, go and plan it. Returns a yes/no, never a count: a birthday is a thing to
-   notice, not a queue to clear. */
-const BDAY_SOON_DAYS = 30;
+/* Is there a birthday still to come this month? The Birthdays tab raises a dot when there is.
+
+   The window is THIS CALENDAR MONTH, from today onward, and that is the whole of the rule.
+   It was a rolling 30 days first, which was wrong in a way that only showed up in use: on
+   21 August, with nothing at all in August, the dot was lit off a 5 September birthday. A
+   coach taps through to a Birthdays tab whose leading group says "August · This month" and
+   is empty, and the dot has told them a lie about the screen it points at. The dot and that
+   group have to be answering the same question, so now they do: lit means there is somebody
+   in the month the tab opens on.
+
+   The cost is deliberate and it is the last day or two of a month — on 31 August a birthday
+   on 2 September raises nothing, and the dot appears on the 1st instead. A dot that can be
+   trusted on the other 29 days is worth more than one that is early and vague.
+
+   Nothing is subtracted or compared as timestamps: it is month equal, day not yet passed.
+   No year to roll over, no clock change to round off, nothing to get wrong. And it returns a
+   yes/no, never a count — a birthday is a thing to notice, not a queue to clear. */
 function birthdaysSoon(roster){
   const people = Array.isArray(roster) ? roster : [];
-  const now = new Date(); now.setHours(0,0,0,0);
+  const now = new Date(), curM = now.getMonth()+1, curD = now.getDate();
   return people.some(m=>{
-    const p = dobParts(m && m.dob);
-    if(!p) return false;
-    // this year's date, or next year's once this year's has gone by
-    let next = new Date(now.getFullYear(), p.m-1, p.d); next.setHours(0,0,0,0);
-    if(next.getTime() < now.getTime()){ next = new Date(now.getFullYear()+1, p.m-1, p.d); next.setHours(0,0,0,0); }
-    // round, not floor: the clocks change twice a year and the gap is not always 24h×n
-    const days = Math.round((next.getTime()-now.getTime())/86400000);
-    return days>=0 && days<=BDAY_SOON_DAYS;
+    const p = dobParts(m && m.dob);      // null for no dob, and for anything malformed
+    return !!p && p.m===curM && p.d>=curD;
   });
 }
 

@@ -131,7 +131,8 @@ function person(id, name, dob, extra) {
 
   // nobody without a dob leaks in, but we are told they are missing
   assert.ok(!h.includes("Eve NoDob"), "a challenger with no dob is not listed");
-  assert.ok(/1 challenger has no date of birth yet/.test(h), "…but is counted as missing");
+  // "person", not "challenger": the tab is merged now and counts everybody on it
+  assert.ok(/1 person has no date of birth yet/.test(h), "…but is counted as missing");
 
   // the notes icon travels with the name here too
   assert.ok(h.includes("notes-btn"), "the notes icon is on the birthdays tab");

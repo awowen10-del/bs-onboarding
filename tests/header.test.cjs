@@ -181,15 +181,17 @@ const lit = (isoDob) => boot({ members: [live("a", "A", 8, { dob: isoDob })] })
     "the dot is an empty span — a marker, with nothing to fill with a number");
 }
 
-/* ---------- 7: the two trackers keep their own dots ---------- */
+/* ---------- 7: both dots point at the same merged tab, so both read everybody ----------
+   The Birthdays tab is one merged screen shown from either tracker. A dot that lit only for
+   its own list would be pointing at a tab that has the other list on it too. */
 {
   const app = boot({
     members: [live("a", "Sam Live", 8, { dob: dob(CUR_M, CUR_D) })],
     retention: [],
   });
-  assert.ok(app.el("bdayDot").classList.contains("on"), "the challenger's birthday lights onboarding");
-  assert.ok(!app.el("retBdayDot").classList.contains("on"),
-    "…and not retention, whose roster is empty");
+  assert.ok(app.el("bdayDot").classList.contains("on"), "the challenger's birthday lights the dot");
+  assert.ok(app.el("retBdayDot").classList.contains("on"),
+    "…on both, because both open the same tab and that tab has them on it");
   assert.ok(/id="retBdayDot"/.test(nav("retention")), "the retention dot is on its Birthdays tab");
 
   const both = boot({
@@ -197,8 +199,9 @@ const lit = (isoDob) => boot({ members: [live("a", "A", 8, { dob: isoDob })] })
     retention: [{ id: "r1", name: "Mo Member", coach: "Dan", dob: dob(CUR_M, CUR_D),
       joined: daysFromToday(-90) }],
   });
-  assert.ok(both.el("retBdayDot").classList.contains("on"), "a member's birthday lights retention");
-  assert.ok(!both.el("bdayDot").classList.contains("on"), "…and not onboarding");
+  assert.ok(both.el("retBdayDot").classList.contains("on"), "a member's birthday lights the dot");
+  assert.ok(both.el("bdayDot").classList.contains("on"),
+    "…on both, for the same reason: the tab they point at is the same merged tab");
 }
 
 /* ---------- 8: a dob it cannot read is no dot, never a lit one ---------- */

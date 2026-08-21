@@ -940,6 +940,19 @@
     border-radius:10px;padding:12px 15px;margin-bottom:8px}
   .bday-missing{font-size:12px;color:var(--ink-faint);font-weight:600;margin-top:18px;text-align:center}
 
+  /* ---- Which list they are on ----
+     The merged tab is mostly the whole gym with a handful of challengers scattered through it,
+     so this tag is how a coach finds the few among the many — it has to be readable at a
+     glance and quiet enough to sit on every single row. The colours are the ones the home
+     screen already uses for the two trackers: the brand accent for Onboarding, green for
+     Retention. Same thing, same colour, everywhere in the app. */
+  .bday-type{flex:0 0 auto;font-size:9px;font-weight:800;text-transform:uppercase;
+    letter-spacing:.5px;border-radius:5px;padding:2px 7px;margin-left:8px;white-space:nowrap}
+  .bday-type.challenge{color:var(--orange-soft);background:rgba(var(--orange-rgb),.12);
+    border:1px solid rgba(var(--orange-rgb),.28)}
+  .bday-type.member{color:var(--green);background:rgba(var(--green-rgb),.11);
+    border:1px solid rgba(var(--green-rgb),.26)}
+
   /* ---- Milestone: 18, 21, 30, 40, 50, 60, 65, 70, 80 ----
      The tab shows a day and a name and never an age, so without this the one birthday of the
      year worth going above and beyond for looks exactly like the other fifty. Amber, and it
@@ -3684,17 +3697,13 @@ function runImport(input){
 function birthdayRoster(which){ return which==='retention' ? retention : members; }
 function birthdaySave(which){ return which==='retention' ? saveRetention() : save(); }
 
-/* Ignored people are off their tab by default and the toggle at the bottom brings them back
-   into view. Per tracker, not one flag for both: peeking at the challengers you have ignored
-   is not a request to see the members you have. In-memory and per-visit, like every other
-   "what am I looking at" state in this app. */
-const showIgnoredBirthdays = { onboarding:false, retention:false };
-function ignoredKey(which){ return which==='retention' ? 'retention' : 'onboarding'; }
-function toggleIgnoredBirthdays(which){
-  const k = ignoredKey(which);
-  showIgnoredBirthdays[k] = !showIgnoredBirthdays[k];
-  return which==='retention' ? renderRetentionBirthdays() : renderBirthdays();
-}
+/* Ignored people are off the tab by default and the toggle at the bottom brings them back
+   into view. ONE flag, not one per tracker: the Birthdays tab is a single merged view shown
+   in two places, so a peek has to be the same peek from either side or the same list reads
+   differently depending on which door you came through. In-memory and per-visit, like every
+   other "what am I looking at" state in this app. */
+let showIgnoredBirthdays = false;
+function toggleIgnoredBirthdays(){ showIgnoredBirthdays = !showIgnoredBirthdays; renderBirthdays(); }
 
 /* Hide somebody from their Birthdays tab for good — they have gone and we will not be sending
    them anything. Reversible from the toggle at the bottom, which is why it does not ask. */
@@ -3802,7 +3811,7 @@ function toggleBirthdayExamples(){ showBirthdayExamples = !showBirthdayExamples;
    coach demonstrating the flow walks between the two, so anything that changes them has to
    redraw both or the second screen is showing the state before the click. Not renderAll():
    nothing about a prop concerns the roster, the conversion bar or the retention tracker. */
-function renderExampleScreens(){ renderBirthdays(); renderToday(); }
+function renderExampleScreens(){ renderBirthdays(); renderToday(); }   // renderBirthdays paints both tabs
 
 /* The examples that raise a task on Today's moves. Three gates, and they are the SAME three
    the real rule uses, read off the example's own per-device state instead of the roster's
@@ -3848,6 +3857,7 @@ function birthdayExamplesHtml(){
         <span class="bday-day">${ordinal(nb.d)}</span>
         <div class="bday-who">
           <div class="bday-name">${esc(x.name)}<span class="bday-example-tag">Example</span>${
+            birthdayTypeTag('onboarding')}${
             age?`<span class="bday-milestone">🎉 Turning ${age}</span>`:''}</div>
           <div class="bday-meta">on the journey · ${fmt(x.at)}</div>
         </div>
@@ -3862,29 +3872,65 @@ function birthdayExamplesHtml(){
     }).join('') + `</div>`;
 }
 
-function renderBirthdays(){
-  const host=document.getElementById('birthdayList'); if(!host) return;
+/* ---------------- The Birthdays tab, merged ----------------
+   ONE tab, everybody on it, and the same tab from either tracker. A birthday does not belong
+   to Onboarding or to Retention — it belongs to a person, and the question a coach is asking
+   when they open this tab ("whose is coming, and what have we done about it") does not change
+   because somebody finished their six weeks. Splitting it meant checking two screens and
+   holding the answer in your head.
+
+   The tag on each card is what keeps it readable, and it has to be: the member list is the
+   whole gym, bulk-maintained from CSV uploads, and the challenger list is a handful of people
+   on trial. So most of this tab is members, and the few challengers on it have to be findable
+   at a glance rather than by reading a status line.
+
+   Which list somebody came from is answered by OBJECT IDENTITY, not by id. The two rosters
+   are separate blobs and nothing stops the same id existing on both — the tests put one there
+   deliberately — so an id lookup could answer for the wrong person and write an Ignore to the
+   wrong record. The index is built once per render because with the whole gym on one list an
+   indexOf per row is quadratic. */
+const BDAY_TYPE = {
+  onboarding:{ cls:'challenge', label:'6-week challenge' },
+  retention: { cls:'member',    label:'Full member' }
+};
+function birthdayTypeTag(which){
+  const t = BDAY_TYPE[which] || BDAY_TYPE.onboarding;
+  return `<span class="bday-type ${t.cls}">${t.label}</span>`;
+}
+function birthdayEveryone(){ return members.concat(retention); }
+function birthdayScopeIndex(){
+  const ix = new Map();
+  members.forEach(m=> ix.set(m,'onboarding'));
+  retention.forEach(m=> ix.set(m,'retention'));
+  return ix;
+}
+
+function birthdaysMergedHtml(){
+  const ix = birthdayScopeIndex();
+  const scope = m => ix.get(m) || 'onboarding';
+  const everyone = birthdayEveryone();
   // counted off people with a dob: somebody with no date of birth is not on this tab to hide
-  const ignored = members.filter(m=>m.birthdayIgnored && dobParts(m.dob)).length;
-  host.innerHTML = birthdayExamplesHtml() + birthdaysHtml(members, {
-    noun:'challenger',
+  const ignored = everyone.filter(m=>m.birthdayIgnored && dobParts(m.dob)).length;
+  return birthdayExamplesHtml() + birthdaysHtml(everyone, {
+    noun:'person', nounPlural:'people',
     empty:`<div class="empty"><div class="big">No birthdays on file yet.</div>
-      Add a date of birth from <b>Edit</b> on a challenger's card — or let the Ontraport zap fill them in.</div>`,
-    /* Where a challenger is up to in their 42 days, and nothing else. The coach's name used
-       to lead this line and it was the wrong thing in the strongest position: this tab is
-       read to decide who gets a card and who gets ignored, and whose client they are does
-       not bear on that. Whether they have LEFT does — that is the whole Ignore decision —
-       so the status stays and now has the line to itself. */
+      Add a date of birth from <b>Edit</b> on somebody's card, import them from a CSV — or let
+      the Ontraport zap fill them in.</div>`,
+    /* What is useful about somebody, which differs by type because their situations do. A
+       challenger's is their journey status: it is how you spot the ones who have left, and
+       that is the whole Ignore decision. A member has no 42-day clock to report, so theirs is
+       their coach. Neither line repeats the type — the tag beside the name has said it. */
     meta:m=>{
-      const s=status(m);
+      if(scope(m)==='retention') return 'Coach '+esc(m.coach||'—');
+      const st=status(m);
       return isInactive(m) ? 'left'
-           : s==='notstarted' ? 'not started yet'
-           : s==='done' ? 'finished the 6 weeks'
-           : s==='paused' ? 'paused'
+           : st==='notstarted' ? 'not started yet'
+           : st==='done' ? 'finished the 6 weeks'
+           : st==='paused' ? 'paused'
            : 'on the journey';
     },
     // ignored people are out of the groups AND out of their counts, not greyed out in place
-    hidden:m=> !!m.birthdayIgnored && !showIgnoredBirthdays.onboarding,
+    hidden:m=> !!m.birthdayIgnored && !showIgnoredBirthdays,
     rowClass:m=>{
       const cls=[];
       if(birthdayMilestone(m)) cls.push('milestone');
@@ -3892,54 +3938,31 @@ function renderBirthdays(){
       if(m.birthdayIgnored) cls.push('ignored');
       return cls.join(' ');
     },
-    // the milestone rides beside the name, where the person is, rather than out at the end
-    // with the buttons: it is a fact about them, not something you can do
+    // type first, then the milestone: which list they are on is how you find them, and what
+    // they are turning is what you do about it
     nameExtra:m=>{
       const age = birthdayMilestone(m);
-      return age ? `<span class="bday-milestone">🎉 Turning ${age}</span>` : '';
+      return birthdayTypeTag(scope(m))
+        + (age ? `<span class="bday-milestone">🎉 Turning ${age}</span>` : '');
     },
-    rowExtra:m=>birthdayActionsHtml(m,'onboarding'),
+    // the scope goes into the onclick, so a row always writes back to its own record
+    rowExtra:m=>birthdayActionsHtml(m, scope(m)),
     footer: ignored ? `<div class="bday-ignored-note">${ignored} ignored — `
-      + `<button type="button" onclick="toggleIgnoredBirthdays()">${showIgnoredBirthdays.onboarding?'hide':'show'}</button></div>` : ''
+      + `<button type="button" onclick="toggleIgnoredBirthdays()">${showIgnoredBirthdays?'hide':'show'}</button></div>` : ''
   });
 }
 
-/* The Retention tracker's Birthdays tab: the same tab, the same rules, reading the member list
-   instead of the roster — and now the same three features, from the same functions. Ignore,
-   the milestone badge and Actioned all come from birthdayActionsHtml, birthdayMilestone and
-   birthdayActioned, given 'retention' so their writes land in the member list.
-
-   Two things stay different, and both because a member is not a challenger. Their meta line
-   is "Coach X · member" rather than a journey status: there is no 42-day clock to report on,
-   so the coach is the useful context here where it was noise on a challenger's card. And the
-   demo examples are NOT here — they are two made-up CHALLENGERS, and the "Show examples"
-   toggle deliberately does nothing on this side. */
-function renderRetentionBirthdays(){
-  const host=document.getElementById('retBirthdayList'); if(!host) return;
-  const ignored = retention.filter(m=>m.birthdayIgnored && dobParts(m.dob)).length;
-  host.innerHTML = birthdaysHtml(retention, {
-    noun:'member',
-    empty:`<div class="empty"><div class="big">No birthdays on file yet.</div>
-      ${retention.length ? 'Add a date of birth from <b>Edit</b> on a member\'s card, or import them from a CSV.'
-                         : 'No members yet — birthdays will appear here as the member list fills up.'}</div>`,
-    meta:m=>'Coach '+esc(m.coach||'—')+' · member',
-    hidden:m=> !!m.birthdayIgnored && !showIgnoredBirthdays.retention,
-    rowClass:m=>{
-      const cls=[];
-      if(birthdayMilestone(m)) cls.push('milestone');
-      if(birthdayActioned(m)) cls.push('actioned');
-      if(m.birthdayIgnored) cls.push('ignored');
-      return cls.join(' ');
-    },
-    nameExtra:m=>{
-      const age = birthdayMilestone(m);
-      return age ? `<span class="bday-milestone">🎉 Turning ${age}</span>` : '';
-    },
-    rowExtra:m=>birthdayActionsHtml(m,'retention'),
-    footer: ignored ? `<div class="bday-ignored-note">${ignored} ignored — `
-      + `<button type="button" onclick="toggleIgnoredBirthdays('retention')">${showIgnoredBirthdays.retention?'hide':'show'}</button></div>` : ''
-  });
+/* Built once and painted into both trackers' tabs. Two hosts, one string: whichever tracker
+   you are inside, Birthdays is the same screen, and building it twice per render would be a
+   full pass over the whole gym for nothing. */
+function renderBirthdays(){
+  const html = birthdaysMergedHtml();
+  const a=document.getElementById('birthdayList');    if(a) a.innerHTML = html;
+  const b=document.getElementById('retBirthdayList'); if(b) b.innerHTML = html;
 }
+/* Kept as a name because the retention tracker's tab is a real thing with a real id — but the
+   tab is merged, so painting it IS painting both. renderAll calls renderBirthdays only. */
+function renderRetentionBirthdays(){ return renderBirthdays(); }
 
 /* The tab itself, for any list of people who have a dob. */
 /* The optional hooks are all no-ops by default, which is how the retention tab gets the tab
@@ -3953,6 +3976,8 @@ function renderRetentionBirthdays(){
 function birthdaysHtml(roster, opts){
   const o = opts||{};
   const noun = o.noun || 'challenger';
+  const nounPlural = o.nounPlural || (noun+'s');   // "people", not "persons"
+
   const people = Array.isArray(roster) ? roster : [];
 
   const all = people.map(m=>({m:m, p:dobParts(m.dob)})).filter(x=>x.p);
@@ -3998,7 +4023,7 @@ function birthdaysHtml(roster, opts){
   // who we still can't plan for
   const missing = people.length - all.length;
   if(missing>0){
-    html += `<div class="bday-missing">${missing} ${noun}${missing===1?'':'s'} `
+    html += `<div class="bday-missing">${missing} ${missing===1?noun:nounPlural} `
       + `${missing===1?'has':'have'} no date of birth yet — add one from Edit on their card.</div>`;
   }
   return html + (o.footer||'');
@@ -4815,13 +4840,17 @@ function stripTags(s){ return (s==null?'':String(s)).replace(/<[^>]*>/g,''); }
 
 function renderAll(){
   renderConvBar(); renderToday(); renderMembers(); renderBirthdays(); renderPlaybook();
-  renderRetentionToday(); renderRetentionMembers(); renderAttendance(); renderRetentionBirthdays();
+  renderRetentionToday(); renderRetentionMembers(); renderAttendance();
   if(todayView==='table') renderMemberTable();
   if(retTodayView==='table') renderRetentionTable();
   document.getElementById('liveCount').textContent = onJourneyCount();
   // the tab markers are state, not decoration, so they are refreshed with everything else
-  setTabDot('bdayDot', birthdaysSoon(members));
-  setTabDot('retBdayDot', birthdaysSoon(retention));
+  // Both dots point at the same merged tab, so both read the same combined list. A member's
+  // birthday lighting the dot inside Onboarding is not a leak: the tab it points at has them
+  // on it. Ignored people are already excluded inside birthdaysSoon.
+  const bdaySoon = birthdaysSoon(birthdayEveryone());
+  setTabDot('bdayDot', bdaySoon);
+  setTabDot('retBdayDot', bdaySoon);
 }
 
 /* The Birthdays dot, on both trackers. Present in the markup either way; .on is what makes

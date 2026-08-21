@@ -296,13 +296,19 @@ const onTab = (app, name) => app.html("birthdayList").includes(name);
   assert.ok(/bday-acts/.test(ret), "with the same Ignore and Actioned buttons a challenger has");
   assert.ok(/🎉 Turning 50/.test(ret), "…and the same milestone badge");
 
-  // …and the two things that are NOT mirrored.
-  // A member's line is their coach, not a journey status: there is no 42-day clock to report
-  // on, so the coach is the useful context here where it was noise on a challenger's card.
-  assert.ok(/Coach Dan · member/.test(ret), "a member's line still reads their coach");
-  assert.ok(!/on the journey|not started yet|finished the 6 weeks/.test(ret),
+  // …and the tab is MERGED, so the challenger is on it too, told apart by the tag
+  assert.ok(ret.includes("Cal Challenger"), "the challenger is on the same tab");
+  const moRow = ret.split('<div class="bday-row').find((r) => r.includes("Mo Member")) || "";
+  const calRow = ret.split('<div class="bday-row').find((r) => r.includes("Cal Challenger")) || "";
+  assert.ok(/bday-type member">Full member</.test(moRow), "the member is tagged as one");
+  assert.ok(/bday-type challenge">6-week challenge</.test(calRow), "…and the challenger as one");
+
+  // a member's line is their coach — there is no 42-day clock to report on — and only a
+  // challenger's carries a journey status
+  assert.ok(/<div class="bday-meta">Coach Dan<\/div>/.test(moRow), "a member's line is their coach");
+  assert.ok(!/on the journey|not started yet|finished the 6 weeks/.test(moRow),
     "…and carries no challenger-only status");
-  assert.ok(!/Example/.test(ret), "the examples are not on the member side");
+  assert.ok(/<div class="bday-meta">on the journey<\/div>/.test(calRow), "the challenger's is their status");
 
   // the challenger tab beside it is unchanged by any of the mirroring
   assert.ok(/bday-acts/.test(app.html("birthdayList")) && /🎉 Turning 50/.test(app.html("birthdayList")),
@@ -314,10 +320,13 @@ const onTab = (app, name) => app.html("birthdayList").includes(name);
   const demo = boot({ retention: [{ id: "r1", name: "Mo Member", coach: "Dan", dob: turning(50),
     email: "", personal: "", notes: "", joined: daysFromToday(-90) }] });
   demo.ctx.toggleBirthdayExamples();
+  // the Birthdays tab is merged, so they appear on it from either side — tagged as the
+  // challengers they are pretending to be. What they must never do is raise member WORK.
   assert.ok(/Example/.test(demo.html("birthdayList")), "sanity: the toggle did reveal them");
-  assert.ok(!/Example/.test(demo.html("retBirthdayList")),
-    "…and revealed nothing on the member tab, which is the point of that gate");
-  assert.ok(!/Example/.test(demo.html("retTodayList")), "…nor on the member Today's moves");
+  assert.ok(/Example/.test(demo.html("retBirthdayList")), "…on the same merged tab from either side");
+  assert.ok(!/Example/.test(demo.html("retTodayList")),
+    "…and never on the member Today's moves, which is that tracker's own work");
+  assert.ok(!/Example/.test(demo.html("retMemberList")), "…nor in the member list");
 }
 
 console.log("birthday-actions.test.cjs: OK");

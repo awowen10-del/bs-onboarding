@@ -127,13 +127,13 @@ const onRetToday = (app, name) => todayGroup(app).includes(name);
   // the way back, counted and reversible
   const note = /<div class="bday-ignored-note">([\s\S]*?)<\/div>/.exec(app.html("retBirthdayList"));
   assert.ok(note && /1 ignored/.test(note[1]), "an ignored line says how many");
-  assert.ok(/toggleIgnoredBirthdays\('retention'\)/.test(note[1]), "…and its toggle names this tracker");
+  assert.ok(/toggleIgnoredBirthdays\(\)/.test(note[1]), "…and offers to show them");
 
-  app.ctx.toggleIgnoredBirthdays("retention");
+  app.ctx.toggleIgnoredBirthdays();
   assert.ok(app.html("retBirthdayList").includes("Ivy Ignore"), "showing brings her into view");
   assert.ok(/Un-ignore/.test(tabRow(app, "Ivy Ignore")), "…with the undo on her row");
   app.ctx.setBirthdayIgnored("i", false, "retention");
-  app.ctx.toggleIgnoredBirthdays("retention");
+  app.ctx.toggleIgnoredBirthdays();
   assert.strictEqual(monthCount(), 2, "un-ignoring returns her to the count");
 
   // ignoring everybody puts the dot out
@@ -143,7 +143,10 @@ const onRetToday = (app, name) => todayGroup(app).includes(name);
     "an ignored member cannot nudge from a tab they are not on");
 }
 
-/* ---------- 5: the two trackers' "show ignored" peeks are separate ---------- */
+/* ---------- 5: one merged tab, one "show ignored" peek ----------
+   The tab is a single screen shown from two doors, so the peek has to be the same peek from
+   either — one flag, revealing everybody who has been ignored on either list at once. Two
+   flags would mean the same list reading differently depending on which door you came in by. */
 {
   const app = boot({
     members: [challenger("c", "Chris Challenger", at(3, 30), { birthdayIgnored: true })],
@@ -151,14 +154,18 @@ const onRetToday = (app, name) => todayGroup(app).includes(name);
   });
   assert.ok(!app.html("birthdayList").includes("Chris Challenger"), "both start hidden");
   assert.ok(!app.html("retBirthdayList").includes("Mo Member"));
-
-  app.ctx.toggleIgnoredBirthdays("retention");
-  assert.ok(app.html("retBirthdayList").includes("Mo Member"), "the member tab reveals its own");
-  assert.ok(!app.html("birthdayList").includes("Chris Challenger"),
-    "…and not the challengers' — asking to see one list is not asking to see the other");
+  assert.ok(/2 ignored/.test(app.html("birthdayList")), "…and the line counts across both lists");
 
   app.ctx.toggleIgnoredBirthdays();
-  assert.ok(app.html("birthdayList").includes("Chris Challenger"), "…and the reverse holds");
+  for (const id of ["birthdayList", "retBirthdayList"]) {
+    assert.ok(app.html(id).includes("Chris Challenger"), "#" + id + " reveals the challenger");
+    assert.ok(app.html(id).includes("Mo Member"), "…and the member, together");
+  }
+  assert.strictEqual(app.html("birthdayList"), app.html("retBirthdayList"),
+    "and the two doors show the same screen");
+
+  app.ctx.toggleIgnoredBirthdays();
+  assert.ok(!app.html("retBirthdayList").includes("Mo Member"), "…and hiding puts both away");
 }
 
 /* ---------- 6: Actioned on a member stores the year and expires by itself ---------- */
@@ -275,19 +282,27 @@ const onRetToday = (app, name) => todayGroup(app).includes(name);
   assert.ok(!onTodayMoves.includes("Mo Member"), "…and no member on the challengers'");
 }
 
-/* ---------- 10: the demo props stay challengers-only ---------- */
+/* ---------- 10: the demo props are challengers, and stay challengers ----------
+   The Birthdays tab is merged, so they appear on it from either door — carrying the CHALLENGE
+   tag, because that is what they are pretending to be. What they must never do is become
+   member work: no member task, no member record, no member count. */
 {
   const app = boot({ retention: [member("r", "Mo Member", at(3, 30))] });
   app.ctx.toggleBirthdayExamples();
   assert.ok(app.html("birthdayList").includes("Jo Example"), "sanity: the toggle reveals them");
+  assert.ok(app.html("retBirthdayList").includes("Jo Example"), "…on the same merged tab either way");
 
-  for (const id of ["retBirthdayList", "retTodayList", "retMemberList"]) {
+  const jo = app.html("retBirthdayList").split('<div class="bday-row').find((r) => r.includes("Jo Example"));
+  assert.ok(/bday-type challenge">6-week challenge</.test(jo), "tagged as a challenger, not a member");
+  assert.ok(/bday-example-tag">Example</.test(jo), "…and as an example");
+
+  // …and nowhere near the member side's own work or data
+  for (const id of ["retTodayList", "retMemberList"]) {
     assert.ok(!app.html(id).includes("Example"), "no example reaches #" + id);
   }
-  assert.ok(!app.html("retTodayList").includes("Example — for showing the team"),
-    "…nor the line that introduces them");
   assert.strictEqual(app.retention().length, 1, "and no prop was added to the member list");
   assert.ok(onRetToday(app, "Mo Member"), "the real member's task is unaffected");
+  assert.strictEqual(app.el("retTodayCount").textContent, "1", "…and the badge counts only them");
 }
 
 /* ---------- 11: the member journey and the rest of the tracker are untouched ---------- */

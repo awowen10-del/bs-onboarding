@@ -299,7 +299,9 @@ function member(id, name, extra) {
   const app = boot({ members: [challenger("c1", "Chris Challenger", { dob: `1990-${pad(OTHER_M)}-03` })] });
   assert.strictEqual(app.retention().length, 0, "no member list is an empty member list, not an error");
   assert.ok(app.html("retMemberList").includes("No members yet"), "the Members tab says so");
-  assert.ok(app.html("retBirthdayList").includes("No birthdays on file yet"));
+  // the Birthdays tab is merged, so with one challenger and no members it shows the challenger
+  assert.ok(app.html("retBirthdayList").includes("Chris Challenger"),
+    "the merged Birthdays tab shows them from the retention side too");
   // …and the onboarding side is entirely normal
   assert.ok(app.html("memberList").includes("Chris Challenger"));
   assert.ok(app.html("birthdayList").includes("Chris Challenger"));
@@ -395,10 +397,12 @@ function member(id, name, extra) {
   const ret = app.html("retBirthdayList");
   const onb = app.html("birthdayList");
 
-  assert.ok(ret.includes("Mo Member") && ret.includes("Zoe Later"), "members appear on the retention tab");
-  assert.ok(!ret.includes("Chris Challenger"), "a challenger never leaks onto the member birthdays");
-  assert.ok(!onb.includes("Mo Member"), "…and a member never leaks onto the challenger birthdays");
-  assert.ok(onb.includes("Chris Challenger"), "the onboarding tab is exactly as it was");
+  // The Birthdays tab is MERGED: everybody, from either tracker, on one screen. What used to
+  // be "a challenger never leaks onto the member birthdays" is now the opposite claim — both
+  // are there, and the tag beside the name is what tells them apart. See birthday-merged.
+  assert.ok(ret.includes("Mo Member") && ret.includes("Zoe Later"), "members appear on the tab");
+  assert.ok(ret.includes("Chris Challenger"), "…alongside the challengers");
+  assert.strictEqual(ret, onb, "and it is the same screen from either tracker");
 
   // same grouping rules as the onboarding tab: month groups, day order, ordinals, this month
   assert.ok(ret.indexOf("Mo Member") < ret.indexOf("Zoe Later"), "1st before 20th");
@@ -406,14 +410,17 @@ function member(id, name, extra) {
   assert.ok(ret.includes(MONTHS[OTHER_M - 1]), "grouped under the birth month");
   assert.ok(ret.includes("This month") && ret.includes("bday-month now"), "the current month leads and is marked");
 
-  // the meta line is a member's, not a challenger's — there is no 42-day clock to report
-  assert.ok(/Coach [^<]*· member/.test(ret), "a member reads as a member");
-  assert.ok(!/on the journey|finished the 6 weeks|not started yet/.test(ret),
+  // a member's line is their coach — there is no 42-day clock to report on — and the tag
+  // beside their name is what says which list they are on
+  const moRow = ret.split('<div class="bday-row').find((r) => r.includes("Mo Member")) || "";
+  assert.ok(/<div class="bday-meta">Coach [^<]*<\/div>/.test(moRow), "a member's line is their coach");
+  assert.ok(!/on the journey|finished the 6 weeks|not started yet/.test(moRow),
     "…and never borrows the journey's wording");
+  assert.ok(/bday-type member">Full member</.test(moRow), "…and they are tagged as a member");
   assert.ok(/on the journey/.test(onb), "while the onboarding tab still reports the journey");
 
   // whoever we still cannot plan for is counted, in the right noun
-  assert.ok(/1 member has no date of birth yet/.test(ret));
+  assert.ok(/1 person has no date of birth yet/.test(ret));
   assert.ok(!/challenger/.test(ret.slice(ret.indexOf("bday-missing"))), "counted as members, not challengers");
 
   // the notes icon opens THAT person's notes
@@ -525,10 +532,18 @@ function member(id, name, extra) {
   ] });
   beside.ctx.renderMemberTable();
 
-  for (const id of ["todayList", "memberList", "birthdayList", "playbookList", "todayTable", "convBar"]) {
+  // birthdayList is deliberately NOT in this list: the Birthdays tab is the one screen that
+  // is MEANT to change when members exist beside a roster, because it is merged. Everything
+  // else on the onboarding side must be blind to them, which is what this asserts.
+  for (const id of ["todayList", "memberList", "playbookList", "todayTable", "convBar"]) {
     assert.strictEqual(beside.html(id), alone.html(id),
       "#" + id + " renders exactly the same with a member list beside it");
   }
+  // …and the merged tab is the exception, stated rather than left out
+  assert.ok(beside.html("birthdayList").includes("Mo Member"),
+    "the Birthdays tab does pick the member up — it is merged, and that is the point");
+  assert.ok(!alone.html("birthdayList").includes("Mo Member"), "…and has nobody to pick up without one");
+
   assert.strictEqual(beside.el("todayCount").textContent, alone.el("todayCount").textContent);
   assert.strictEqual(beside.el("liveCount").textContent, alone.el("liveCount").textContent,
     "the live count counts challengers only");

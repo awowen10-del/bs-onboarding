@@ -166,7 +166,10 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
   app.ctx.renderMemberTable();
   assert.ok(!app.html("todayTable").includes("Example"), "not in the whole-journey table");
   assert.ok(!app.html("convBar").includes("Example"), "not in the conversion bar");
-  assert.ok(!app.html("retBirthdayList").includes("Example"), "and not on the members' Birthdays tab");
+  // the Birthdays tab is merged, so they show there from either door — tagged as the
+  // challengers they are pretending to be. Block 16 is where that is nailed down.
+  assert.ok(!app.html("retTodayList").includes("Example"), "and never on the member Today's moves");
+  assert.ok(!app.html("retMemberList").includes("Example"), "…nor in the member list");
 
   // the counts on the tab itself
   assert.strictEqual(app.el("liveCount").textContent, "2", "the masthead counts the real two");
@@ -174,7 +177,8 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
   assert.ok(!months.includes("Example"), "no month group has one smuggled into it");
 
   // "1 challenger has no date of birth yet" is about Rita, and only Rita
-  assert.ok(/1 challenger has no date of birth yet/.test(app.html("birthdayList")),
+  // "person" now the tab is merged, and still ONE: Rita has no dob, the props are not counted
+  assert.ok(/1 person has no date of birth yet/.test(app.html("birthdayList")),
     "the missing-dob line counts real people only");
 }
 
@@ -427,6 +431,32 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
   assert.ok(!app.html("todayList").includes("Example — for showing the team"),
     "with both gone the line that introduces them goes too");
   assert.ok(!app.html("todayList").includes("Example"), "no trace on Today's moves");
+}
+
+/* ---------- 16: on the merged tab they are tagged as challengers ----------
+   The Birthdays tab shows both lists now, so a prop on it has to say which kind of person it
+   is pretending to be as well as that it is a prop. Two tags, and they answer different
+   questions: Example says "not real", 6-week challenge says "and not a member either". */
+{
+  const app = bootShown({ retention: [{ id: "r1", name: "Mo Member", coach: "Dan",
+    dob: (new Date().getFullYear() - 33) + "-06-14", email: "", personal: "", notes: "",
+    joined: daysFromToday(-90) }] });
+
+  for (const id of ["birthdayList", "retBirthdayList"]) {
+    const h = app.html(id);
+    assert.ok(h.includes("Jo Example") && h.includes("Pat Example"), "both props on #" + id);
+    const jo = h.split('<div class="bday-row').find((r) => r.includes("Jo Example")) || "";
+    assert.ok(/bday-example-tag">Example</.test(jo), "…tagged as an example");
+    assert.ok(/bday-type challenge">6-week challenge</.test(jo), "…and as a challenger");
+    assert.ok(!/bday-type member/.test(jo), "…never as a member");
+  }
+  assert.strictEqual(app.html("birthdayList"), app.html("retBirthdayList"),
+    "and it is the same merged screen from either tracker");
+
+  // the real member beside them is tagged the other way, which is the whole point of the tags
+  const mo = app.html("birthdayList").split('<div class="bday-row').find((r) => r.includes("Mo Member")) || "";
+  assert.ok(/bday-type member">Full member</.test(mo), "the real member is tagged as one");
+  assert.ok(!/bday-example-tag/.test(mo), "…and carries no Example tag");
 }
 
 console.log("birthday-examples.test.cjs: OK");

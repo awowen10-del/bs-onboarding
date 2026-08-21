@@ -214,6 +214,8 @@ function boot(opts = {}) {
   get memberFilter(){ return memberFilter; },
   get MEMBER_FILTERS(){ return MEMBER_FILTERS; },
   get BIRTHDAY_MILESTONES(){ return BIRTHDAY_MILESTONES; },
+  get BIRTHDAY_STEPS(){ return BIRTHDAY_STEPS; },
+  get BIRTHDAY_LEAD_DAYS(){ return BIRTHDAY_LEAD_DAYS; },
   get showIgnoredBirthdays(){ return showIgnoredBirthdays; },
   get showBirthdayExamples(){ return showBirthdayExamples; },
   get notesTarget(){ return notesTarget; },

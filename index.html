@@ -479,6 +479,17 @@
      panel is what made this heavy enough to bury the day's real work beneath three of them,
      and the chevron would put a tap between the coach and the one action that clears the task.
      So the row stays one line high and the button sits on it. */
+  /* ---- Birthday rows on Today's moves ----
+     Amber, and amber on purpose: a birthday is not a channel, so it does not borrow one of the
+     three channel colours off the board — it takes the same amber the milestone chip and the
+     dot on the Birthdays tab already use, so the same thing is the same colour everywhere.
+     A milestone then takes a wash of that amber across the whole row, because "go above and
+     beyond for this one" has to be legible from across the gym floor, not just readable. */
+  .action.birthday{border-left-color:var(--amber)}
+  .ch.birthday{background:rgba(var(--amber-rgb),.16);color:var(--amber)}
+  .action.birthday.milestone{background:rgba(var(--amber-rgb),.06);
+    border-color:rgba(var(--amber-rgb),.28);border-left-color:var(--amber)}
+
   .action.awaiting{background:var(--card-2);border-left-color:rgba(var(--green-rgb),.45)}
   .ch.awaiting{background:rgba(var(--green-rgb),.12);color:var(--green)}
   .action.awaiting .body{cursor:default}
@@ -2117,6 +2128,43 @@ function birthdayMilestone(m){
   const nb = nextBirthday(m);
   return nb && BIRTHDAY_MILESTONES.indexOf(nb.age)!==-1 ? nb.age : null;
 }
+/* ---------------- Birthdays as work, on Today's moves ----------------
+   The Birthdays tab is for planning — twelve months, read when you go looking. Today's moves
+   is what a coach opens every morning, so a birthday has to arrive there or it arrives on the
+   day itself with nothing bought and nothing written.
+
+   Seven days is the lead time: long enough to write a card and get the balloons in, short
+   enough that the row still means "this week" rather than "eventually". Inclusive at both
+   ends — the day itself is very much a day you have work to do.
+
+   The three gates are the whole rule, and TWO OF THEM ARE THE BIRTHDAYS TAB'S OWN FLAGS read
+   exactly as that tab reads them. Ignored never surfaces. Actioned-for-this-year never
+   surfaces, and "this year" means the year of the birthday being asked about, so last year's
+   tick does not suppress this year's task. There is no separate notion of a birthday task
+   being done: pressing Done here IS pressing Actioned there. */
+const BIRTHDAY_LEAD_DAYS = 7;
+/* What the team actually does, in the order it happens: two to prepare, two on the day.
+   Listed on the task so the routine does not live in somebody's head. */
+const BIRTHDAY_STEPS = [
+  'Write birthday card',
+  'Give birthday card',
+  'Protein bar with ribbon',
+  'Balloons in their station'
+];
+/* Days until the birthday this card is about — 0 on the day itself. Rounded, because the
+   clocks change twice a year and the gap between two midnights is not always 24h. */
+function birthdayDaysAway(m){
+  const nb = nextBirthday(m); if(!nb) return null;
+  const d = new Date(nb.year, nb.m-1, nb.d); d.setHours(0,0,0,0);
+  return Math.round((d.getTime()-today0())/86400000);
+}
+function birthdayDue(m){
+  if(!m || m.birthdayIgnored) return false;      // off the tab, so off the day too
+  if(birthdayActioned(m)) return false;          // handled — the same flag the tab sets
+  const days = birthdayDaysAway(m);
+  return days!==null && days>=0 && days<=BIRTHDAY_LEAD_DAYS;
+}
+
 /* Handled for THIS birthday, and only this one. The stored year has to match the year of the
    birthday now being asked about, so the moment the next one rolls round the stored year is
    last year's and the card is outstanding again. Nothing resets it; it expires. */
@@ -2232,9 +2280,16 @@ function renderToday(){
   const startRows = members.filter(awaitingStart)
     .sort((a,b)=> (a.booked||FAR) - (b.booked||FAR));
 
-  document.getElementById('todayCount').textContent = rows.length + fuRows.length + startRows.length;
+  // Birthdays inside the next week. Gathered here for the same reason as the two above: this
+  // is a DATE in the calendar, not a day in anybody's 42, so dueToday() has nothing to say
+  // about it. Soonest first, and today's before tomorrow's.
+  const bdayRows = members.filter(birthdayDue)
+    .sort((a,b)=> birthdayDaysAway(a)-birthdayDaysAway(b) || a.name.localeCompare(b.name));
 
-  if(rows.length===0 && fuRows.length===0 && startRows.length===0){
+  document.getElementById('todayCount').textContent =
+    rows.length + fuRows.length + startRows.length + bdayRows.length;
+
+  if(rows.length===0 && fuRows.length===0 && startRows.length===0 && bdayRows.length===0){
     list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
       No touchpoints due right now. Consistency is the magic — check the Challengers tab to see where everyone sits.</div>`;
     return;
@@ -2318,6 +2373,53 @@ function renderToday(){
           <input type="date" class="await-date" value="${dateVal}" aria-label="First session date for ${esc(m.name)}"
             onchange="setBookedDate('${m.id}', this.value)">
           <button class="btn sm start-btn" onclick="markFirstSession('${m.id}',true)">✓ First session attended — start clock</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  /* Birthdays this week. Their own group rather than a fourth column: the board's columns are
+     the three CHANNELS a touchpoint goes out through, and a birthday is not sent through any
+     of them — it is a card written by hand and balloons tied to a squat rack. Dropping it into
+     the board would mean either a column that is not a channel or a birthday filed under
+     "Postcards", and both make the board harder to read every other day of the week. Stacked
+     rows also need no help to stack on a phone.
+
+     Placed after the two other state groups and directly above the board, so the day still
+     reads follow-ups, then who is waiting to start, then what is coming, then today's work. */
+  if(bdayRows.length){
+    html += `<div class="group-label">Birthdays this week<span class="gcount">${bdayRows.length}</span></div>`;
+    bdayRows.forEach(m=>{
+      const nb = nextBirthday(m), days = birthdayDaysAway(m), age = birthdayMilestone(m);
+      const when = new Date(nb.year, nb.m-1, nb.d);
+      const dayName = when.toLocaleDateString('en-GB',{weekday:'long'});
+      const near = days===0 ? 'today' : days===1 ? 'tomorrow' : `in ${days} days`;
+      // the four steps, rendered as the checklist a journey touchpoint uses so they read the
+      // same. Deliberately not tickable: the one thing that resolves this task is Done, and a
+      // second, per-step state to keep would be a second answer to "has this been handled".
+      const steps = `<div class="checklist">` + BIRTHDAY_STEPS.map(t=>
+        `<div class="ci"><span class="box" aria-hidden="true"></span><span>${esc(t)}</span></div>`).join('')
+        + `</div>`;
+      const personal = m.personal ? `<div style="margin-top:8px">Remember: <b>${esc(m.personal)}</b></div>` : '';
+      html += `<div class="action birthday${age?' milestone':''}" id="act-${m.id}-birthday">
+        <span class="ch birthday">${days===0?'Today 🎂':'Birthday'}</span>
+        <div class="body" onclick="toggleExpand('${m.id}','birthday')">
+          <div class="who">
+            <span class="nm">${esc(m.name)}</span>${notesBtn(m)}
+            <span class="ttl">Birthday — ${dayName} ${ordinal(nb.d)}</span>
+            <span class="day">${near}</span>
+            ${age?`<span class="bday-milestone">🎉 Turning ${age}</span>`:''}
+          </div>
+          <div class="detail">
+            ${age ? `Their <b>${ordinal(age)}</b>. This is one to go above and beyond for — the card, the
+              bar and the balloons are the floor, not the plan.`
+                  : `Get it ready before the day so it is waiting for them when they walk in.`}
+            ${steps}${personal}
+          </div>
+        </div>
+        <span class="chev" onclick="toggleExpand('${m.id}','birthday')">▶</span>
+        <div class="mark-btns">
+          <button class="btn sm primary mark" onclick="event.stopPropagation();toggleBirthdayActioned('${m.id}')">Done</button>
         </div>
       </div>`;
     });

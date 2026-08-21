@@ -215,6 +215,7 @@ function boot(opts = {}) {
   get MEMBER_FILTERS(){ return MEMBER_FILTERS; },
   get BIRTHDAY_MILESTONES(){ return BIRTHDAY_MILESTONES; },
   get showIgnoredBirthdays(){ return showIgnoredBirthdays; },
+  get showBirthdayExamples(){ return showBirthdayExamples; },
   get notesTarget(){ return notesTarget; },
   get fuTarget(){ return fuTarget; },
   get CACHE(){ return CACHE; },

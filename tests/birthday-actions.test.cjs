@@ -148,9 +148,11 @@ const onTab = (app, name) => app.html("birthdayList").includes(name);
   assert.ok(!/\bmilestone\b/.test(classesOf(ollie)), "…with no accent on the row");
 
   // the rest of the card is untouched by any of this
-  assert.ok(/bday-day/.test(meg) && /Coach Dan/.test(meg), "the ordinal and coach line stay");
+  assert.ok(/bday-day/.test(meg), "the ordinal stays");
   assert.ok(/notes-btn/.test(meg), "…and the notes icon");
-  assert.ok(/on the journey/.test(meg), "…and the status line");
+  assert.ok(/bday-meta">on the journey<\/div>/.test(meg),
+    "…and the meta line, which is the status ALONE now — no coach in front of it");
+  assert.ok(!/Coach/.test(meg), "the coach's name is off the card entirely");
 }
 
 /* ---------- 5: Ignore hides them from the groups AND the counts, and is reversible ------- */
@@ -298,6 +300,8 @@ const onTab = (app, name) => app.html("birthdayList").includes(name);
   // …while the challenger tab beside it has all of it
   assert.ok(/bday-acts/.test(app.html("birthdayList")) && /🎉 Turning 50/.test(app.html("birthdayList")),
     "sanity: the onboarding tab does have them");
+  // and the status line on a member is untouched — the coach only came off the challengers'
+  assert.ok(/Coach Dan · member/.test(app.html("retBirthdayList")), "a member still reads their coach");
 }
 
 console.log("birthday-actions.test.cjs: OK");

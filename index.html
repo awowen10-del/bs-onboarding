@@ -964,6 +964,13 @@
      a heading over the block and a tag beside the name, which is enough to be unmistakable
      without making them look like a different component. No notes icon: there is nobody
      behind these to keep notes on. */
+  /* The toggle is the only trace of the examples on an ordinary day, so it is as quiet as a
+     control can be and still be findable: right-aligned, faint, and the size of a footnote. */
+  .bday-examples-toggle{display:flex;justify-content:flex-end;margin-bottom:10px}
+  .bday-examples-toggle button{appearance:none;background:none;border:none;padding:0;font:inherit;
+    font-size:11.5px;font-weight:700;color:var(--ink-faint);cursor:pointer;text-decoration:underline;
+    text-underline-offset:2px}
+  .bday-examples-toggle button:hover{color:var(--orange-soft)}
   .bday-examples{margin-bottom:20px}
   .bday-example-note{font-size:12px;color:var(--ink-faint);font-weight:600;line-height:1.55;
     margin:-2px 0 10px;max-width:64ch}
@@ -3580,8 +3587,8 @@ function birthdayExamples(){
     return (d.getFullYear()-age)+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
   };
   return [
-    {id:'eg-soon',      name:'Jo Example',  coach:'Dan', dob:dob(6,34),  at:addDays(today0(),6)},
-    {id:'eg-milestone', name:'Pat Example', coach:'Dan', dob:dob(13,50), at:addDays(today0(),13)}
+    {id:'eg-soon',      name:'Jo Example',  dob:dob(6,34),  at:addDays(today0(),6)},
+    {id:'eg-milestone', name:'Pat Example', dob:dob(13,50), at:addDays(today0(),13)}
   ];
 }
 function readBdayExampleState(){
@@ -3607,14 +3614,32 @@ function toggleExampleActioned(id){
   if(i===-1) st.actioned.push(id); else st.actioned.splice(i,1);
   writeBdayExampleState(st); renderBirthdays();
 }
+/* Off by default. They earn their place during a team meeting and nowhere else, and a
+   permanent pair of made-up people at the top of a working screen is a small tax paid every
+   day for something used twice a year. In-memory and per-visit, like every other "what am I
+   looking at" state here: the tab opens on the real months, and closing the app forgets you
+   ever asked. Dismissal is the separate, permanent thing — see BDAY_EXAMPLE_KEY. */
+let showBirthdayExamples = false;
+function toggleBirthdayExamples(){ showBirthdayExamples = !showBirthdayExamples; renderBirthdays(); }
+
 /* Their own block above the months, not rows smuggled into August. Two reasons: no month
    group's count has to lie to accommodate them, and a heading that says "example" sits over
-   the thing being demonstrated instead of a chip having to carry that alone. */
+   the thing being demonstrated instead of a chip having to carry that alone.
+
+   The toggle sits at the top with them rather than down in the footer beside the ignored
+   line, so the thing you press and the thing it reveals are next to each other — a control
+   at the bottom of a twelve-month list that opens something above the fold is a control that
+   looks broken. It disappears entirely once both examples have been dismissed: that is
+   permanent, so there is nothing left for it to show. */
 function birthdayExamplesHtml(){
   const st = readBdayExampleState();
   const rows = birthdayExamples().filter(x=> st.dismissed.indexOf(x.id)===-1);
   if(!rows.length) return '';
-  return `<div class="bday-examples">
+  const toggle = `<div class="bday-examples-toggle"><button type="button" onclick="toggleBirthdayExamples()"
+    aria-expanded="${showBirthdayExamples?'true':'false'}" aria-controls="bdayExamples"
+    >${showBirthdayExamples?'Hide examples':'Show examples'}</button></div>`;
+  if(!showBirthdayExamples) return toggle;
+  return toggle + `<div class="bday-examples" id="bdayExamples">
     <div class="group-label">Example — for showing the team<span class="gcount">${rows.length}</span></div>
     <div class="bday-example-note">Two people who do not exist, so a card can be pointed at rather
       than described. They are not on the roster, they count towards nothing, and they never light
@@ -3627,7 +3652,7 @@ function birthdayExamplesHtml(){
         <div class="bday-who">
           <div class="bday-name">${esc(x.name)}<span class="bday-example-tag">Example</span>${
             age?`<span class="bday-milestone">🎉 Turning ${age}</span>`:''}</div>
-          <div class="bday-meta">Coach ${esc(x.coach)} · on the journey · ${fmt(x.at)}</div>
+          <div class="bday-meta">on the journey · ${fmt(x.at)}</div>
         </div>
         <div class="bday-acts">
           <button type="button" class="bday-act${done?' done':''}" onclick="toggleExampleActioned('${x.id}')"
@@ -3648,15 +3673,18 @@ function renderBirthdays(){
     noun:'challenger',
     empty:`<div class="empty"><div class="big">No birthdays on file yet.</div>
       Add a date of birth from <b>Edit</b> on a challenger's card — or let the Ontraport zap fill them in.</div>`,
-    // where a challenger is up to in their 42 days
+    /* Where a challenger is up to in their 42 days, and nothing else. The coach's name used
+       to lead this line and it was the wrong thing in the strongest position: this tab is
+       read to decide who gets a card and who gets ignored, and whose client they are does
+       not bear on that. Whether they have LEFT does — that is the whole Ignore decision —
+       so the status stays and now has the line to itself. */
     meta:m=>{
       const s=status(m);
-      const state = isInactive(m) ? 'left'
-                  : s==='notstarted' ? 'not started yet'
-                  : s==='done' ? 'finished the 6 weeks'
-                  : s==='paused' ? 'paused'
-                  : 'on the journey';
-      return `Coach ${esc(m.coach)} · ${state}`;
+      return isInactive(m) ? 'left'
+           : s==='notstarted' ? 'not started yet'
+           : s==='done' ? 'finished the 6 weeks'
+           : s==='paused' ? 'paused'
+           : 'on the journey';
     },
     // ignored people are out of the groups AND out of their counts, not greyed out in place
     hidden:m=> !!m.birthdayIgnored && !showIgnoredBirthdays,

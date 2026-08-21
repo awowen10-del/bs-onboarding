@@ -15,7 +15,14 @@ const { boot, daysFromToday } = require("./lib/env.cjs");
 
 const KEY = "bsj_bday_examples";
 const IDS = ["eg-soon", "eg-milestone"];
-const seed = (state) => ({ stored: { [KEY]: JSON.stringify(state) } });
+
+// The examples are behind a toggle and OFF by default, so almost every block here has to open
+// it first. bootShown does that; block 8 is the one that checks the default state itself.
+const bootShown = (opts) => {
+  const app = boot(opts);
+  app.ctx.toggleBirthdayExamples();
+  return app;
+};
 
 const person = (id, name, dob) => ({
   id, name, coach: "Dan", dob, personal: "",
@@ -28,8 +35,14 @@ const person = (id, name, dob) => ({
 // the examples block, and the rows inside it
 const blockOf = (app) => {
   const h = app.html("birthdayList");
-  const i = h.indexOf('<div class="bday-examples">');
-  return i === -1 ? "" : h.slice(i, h.indexOf('<div class="bday-month'));
+  const i = h.indexOf('<div class="bday-examples"');
+  if (i === -1) return "";
+  const end = h.indexOf('<div class="bday-month', i);      // -1 when no real birthdays follow
+  return end === -1 ? h.slice(i) : h.slice(i, end);
+};
+const toggleLine = (app) => {
+  const m = /<div class="bday-examples-toggle">([\s\S]*?)<\/div>/.exec(app.html("birthdayList"));
+  return m ? m[1] : "";
 };
 const rowsOf = (app) => blockOf(app).split('<div class="bday-row').slice(1);
 const rowFor = (app, name) => rowsOf(app).find((r) => r.includes(name)) || "";
@@ -37,7 +50,7 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
 
 /* ---------- 1: both examples are on the tab, and they are the two that were asked for ---- */
 {
-  const app = boot({ members: [] });
+  const app = bootShown({ members: [] });
   const rows = rowsOf(app);
   assert.strictEqual(rows.length, 2, "two examples");
   assert.ok(blockOf(app).includes("Example — for showing the team"), "under a heading that says so");
@@ -66,7 +79,7 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
    birthday in March as well as it does in August. The milestone one really is a milestone by
    the app's own rule — the treatment being shown is the treatment, not a mock-up of it. */
 {
-  const app = boot({ members: [] });
+  const app = bootShown({ members: [] });
   const [soon, milestone] = app.ctx.birthdayExamples();
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
@@ -86,7 +99,7 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
 
 /* ---------- 3: Ignore clears one away, and it stays cleared ---------- */
 {
-  const app = boot({ members: [] });
+  const app = bootShown({ members: [] });
   app.ctx.dismissBirthdayExample("eg-soon");
   assert.strictEqual(rowsOf(app).length, 1, "one goes");
   assert.ok(!blockOf(app).includes("Jo Example"), "…the one that was ignored");
@@ -96,7 +109,7 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
 
   // it is written down, so it survives the page being reloaded after the meeting
   assert.deepStrictEqual(JSON.parse(app.stored(KEY)).dismissed, ["eg-soon"], "the dismissal is stored");
-  const reopened = boot({ members: [], stored: { [KEY]: app.stored(KEY) } });
+  const reopened = bootShown({ members: [], stored: { [KEY]: app.stored(KEY) } });
   assert.strictEqual(rowsOf(reopened).length, 1, "…and holds on the next load");
   assert.ok(!blockOf(reopened).includes("Jo Example"));
 
@@ -113,7 +126,7 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
 
 /* ---------- 4: Actioned works on them too, so it can be demonstrated ---------- */
 {
-  const app = boot({ members: [] });
+  const app = bootShown({ members: [] });
   assert.ok(!/\bactioned\b/.test(classesOf(rowFor(app, "Pat Example"))), "nothing starts handled");
 
   app.ctx.toggleExampleActioned("eg-milestone");
@@ -133,7 +146,7 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
 {
   // one real person with a date of birth and one without, so every count on the tab has
   // something real to be about and the examples have somewhere to go wrong
-  const app = boot({ members: [
+  const app = bootShown({ members: [
     person("r", "Real Rita", null),
     person("y", "Real Ray", (new Date().getFullYear() - 33) + "-06-14"),
   ] });
@@ -169,7 +182,7 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
    The dot is a nudge about a real person, so a made-up one must not be able to raise it —
    that would be the prop telling a coach to go and do something. */
 {
-  const app = boot({ members: [] });
+  const app = bootShown({ members: [] });
   assert.strictEqual(rowsOf(app).length, 2, "the examples are showing");
   assert.strictEqual(app.el("bdayDot").classList.contains("on"), false,
     "…and the tab's dot is dark, because nobody real has a birthday coming");
@@ -179,11 +192,92 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
 /* ---------- 7: a broken or missing stored state is just "show both" ---------- */
 {
   for (const bad of ["not json", "null", "[]", '{"dismissed":"eg-soon"}', "{}"]) {
-    const app = boot({ members: [], stored: { [KEY]: bad } });
+    const app = bootShown({ members: [], stored: { [KEY]: bad } });
     assert.strictEqual(rowsOf(app).length, 2, "a state of " + bad + " shows both rather than throwing");
   }
-  const partial = boot({ members: [], stored: { [KEY]: JSON.stringify({ dismissed: ["eg-soon"] }) } });
+  const partial = bootShown({ members: [], stored: { [KEY]: JSON.stringify({ dismissed: ["eg-soon"] }) } });
   assert.strictEqual(rowsOf(partial).length, 1, "a state with no `actioned` key still reads its dismissals");
+}
+
+/* ---------- 8: they are OFF by default, and the toggle is the only way in ----------
+   The tab is read every week to decide who gets a card; the examples are for a team meeting
+   twice a year. So the default has to be the real months, with the prop reachable rather than
+   present — and the one trace of it on an ordinary day is a footnote-sized link. */
+{
+  const app = boot({ members: [person("r", "Real Rita", (new Date().getFullYear() - 33) + "-06-14")] });
+  assert.strictEqual(app.ctx.__t.showBirthdayExamples, false, "the tab opens with them hidden");
+  assert.strictEqual(blockOf(app), "", "…so there is no example block on screen");
+  assert.ok(!app.html("birthdayList").includes("Jo Example"), "…and neither of them is rendered");
+  assert.ok(!app.html("birthdayList").includes("for showing the team"), "…nor the heading");
+  assert.ok(app.html("birthdayList").includes("Real Rita"), "the real months are what you land on");
+
+  // the way in: one quiet control, and it says which way it goes
+  assert.ok(/>Show examples</.test(toggleLine(app)), "there is a Show examples control");
+  assert.ok(/toggleBirthdayExamples\(\)/.test(toggleLine(app)), "…wired to the toggle");
+  assert.ok(/aria-expanded="false"/.test(toggleLine(app)), "…which reads as collapsed");
+
+  app.ctx.toggleBirthdayExamples();
+  assert.strictEqual(rowsOf(app).length, 2, "showing brings both back");
+  assert.ok(/>Hide examples</.test(toggleLine(app)), "…and the control offers the way out");
+  assert.ok(/aria-expanded="true"/.test(toggleLine(app)), "…reading as expanded");
+
+  app.ctx.toggleBirthdayExamples();
+  assert.strictEqual(blockOf(app), "", "and hiding puts them away again");
+  assert.ok(/>Show examples</.test(toggleLine(app)));
+
+  // the control sits with the thing it reveals, not down in the footer under twelve months
+  const h = app.html("birthdayList");
+  assert.ok(h.indexOf("bday-examples-toggle") < h.indexOf("bday-month"),
+    "the toggle is at the top of the tab, above the month groups");
+}
+
+/* ---------- 9: dismissal outranks the toggle, because dismissal is the permanent one ---- */
+{
+  const app = bootShown({ members: [] });
+  app.ctx.dismissBirthdayExample("eg-soon");
+  assert.ok(/bday-examples-toggle/.test(app.html("birthdayList")),
+    "one example left, so the control still has something to show");
+
+  app.ctx.dismissBirthdayExample("eg-milestone");
+  assert.ok(!/bday-examples-toggle/.test(app.html("birthdayList")),
+    "both cleared away for good, so the control goes too — there is nothing left to reveal");
+  assert.ok(!app.html("birthdayList").includes("Example"), "no trace of any of it");
+
+  // and it stays gone on the next load, toggle and all
+  const reopened = boot({ members: [], stored: { [KEY]: app.stored(KEY) } });
+  assert.ok(!/bday-examples-toggle/.test(reopened.html("birthdayList")), "…on a fresh load too");
+  reopened.ctx.toggleBirthdayExamples();
+  assert.strictEqual(blockOf(reopened), "", "…and asking to show them reveals nothing");
+}
+
+/* ---------- 10: the coach is off the challengers' cards, the status is not ----------
+   The status is what the Ignore decision is made on — somebody who has left is somebody we
+   are not sending a card to — so it has to survive the coach coming off the line. */
+{
+  const Y = new Date().getFullYear();
+  const app = boot({ members: [
+    person("a", "Ada Active", (Y - 30) + "-06-14"),
+    Object.assign(person("l", "Lee Left", (Y - 30) + "-06-15"), { outcome: "left" }),
+    Object.assign(person("p", "Pam Paused", (Y - 30) + "-06-16"), { pausedAt: daysFromToday(-3) }),
+    Object.assign(person("f", "Fay Finished", (Y - 30) + "-06-17"),
+      { day0: daysFromToday(-60), booked: daysFromToday(-60) }),
+  ] });
+  const h = app.html("birthdayList");
+  assert.ok(!/Coach/.test(h), "no coach's name anywhere on the tab");
+
+  const metaFor = (name) => {
+    const row = h.split('<div class="bday-row').find((r) => r.includes(name)) || "";
+    return (/<div class="bday-meta">([\s\S]*?)<\/div>/.exec(row) || [, ""])[1];
+  };
+  assert.strictEqual(metaFor("Ada Active"), "on the journey");
+  assert.strictEqual(metaFor("Lee Left"), "left", "the one the Ignore decision turns on");
+  assert.strictEqual(metaFor("Pam Paused"), "paused");
+  assert.strictEqual(metaFor("Fay Finished"), "finished the 6 weeks");
+
+  // the example cards read the same way, so the demo shows what the tab actually does
+  app.ctx.toggleBirthdayExamples();
+  assert.ok(/<div class="bday-meta">on the journey · /.test(rowFor(app, "Jo Example")),
+    "an example's line is the status and its date, with no coach in front of it");
 }
 
 console.log("birthday-examples.test.cjs: OK");

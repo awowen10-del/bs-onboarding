@@ -176,12 +176,11 @@ const rulesFor = (sel) => RULES.filter((r) => r.sel.split(",").map((s) => s.trim
   assert.ok(!rulesFor("footer").length, "no orphaned footer styling left behind");
   assert.ok(/<title>Bodysculpt - Client Journey<\/title>/.test(HTML),
     "the browser tab reads exactly 'Bodysculpt - Client Journey'");
-  // the guard is that a tracker's own name never becomes the browser tab's. Two of them can
-  // be that name now — "The Power of Moments" on the gate and the masthead, "The First 42
-  // Days" still on the home card — and the tab has stayed 'Bodysculpt - Client Journey'
-  // through the rename that split them
-  assert.ok(!/The Power of Moments<\/title>/.test(HTML), "…and not the tracker's own title");
-  assert.ok(!/The First 42 Days<\/title>/.test(HTML), "…nor the name the home card still uses");
+  // the guard is that a name the app puts on a screen never becomes the browser tab's. There
+  // are two of those: "The Power of Moments" on the password gate, and "The First 42 Days"
+  // everywhere else the tracker names itself. The tab is neither, and has not moved.
+  assert.ok(!/The Power of Moments<\/title>/.test(HTML), "…and not the gate's title");
+  assert.ok(!/The First 42 Days<\/title>/.test(HTML), "…nor the tracker's own");
 }
 
 /* ---------- 9: BOTH Today's moves screens open straight onto the work ----------

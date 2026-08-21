@@ -94,7 +94,7 @@ function member(id, name, extra) {
   assert.strictEqual(app.el("nav-retention").classList.contains("hide"), true, "…and only its own");
   assert.strictEqual(app.el("view-today").classList.contains("active"), true, "landing on Today's moves");
   assert.strictEqual(app.el("brandTitle").textContent, "Onboarding", "the masthead says where you are");
-  assert.strictEqual(app.el("brandSub").textContent, "The Power of Moments · Warrington");
+  assert.strictEqual(app.el("brandSub").textContent, "The First 42 Days · Warrington");
   assert.strictEqual(app.el("mastMeta").classList.contains("hide"), false, "the live count belongs here");
   assert.strictEqual(app.el("homeBtn").classList.contains("hide"), false, "and there is a way back");
   assert.strictEqual(app.el("brandHome").classList.contains("is-link"), true, "the brand is the other way back");

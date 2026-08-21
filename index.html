@@ -2362,7 +2362,14 @@ function renderToday(){
   // Birthdays inside the next week. Gathered here for the same reason as the two above: this
   // is a DATE in the calendar, not a day in anybody's 42, so dueToday() has nothing to say
   // about it. Soonest first, and today's before tomorrow's.
-  const bdayRows = members.filter(birthdayDue)
+  // Birthdays inside the next week — and a challenger who has ALREADY converted does not
+  // raise one here. Their member record raises it on the retention Today's moves instead, and
+  // the card, the bar and the balloons happen once. Two tasks on two screens for one birthday
+  // is worse than none: marking one done leaves the other standing, because they are separate
+  // records, so each coach can reasonably assume the other has it. Same rule as the merged
+  // tab, same function — current status wins.
+  const superseded = birthdaySupersededChallengers();
+  const bdayRows = members.filter(m=> !superseded.has(m) && birthdayDue(m))
     .sort((a,b)=> birthdayDaysAway(a)-birthdayDaysAway(b) || a.name.localeCompare(b.name));
   // …and the demo props, when somebody has asked to see them. Never counted, never sorted in
   // among the real ones: they go under their own line at the end of the group.
@@ -3897,18 +3904,67 @@ function birthdayTypeTag(which){
   const t = BDAY_TYPE[which] || BDAY_TYPE.onboarding;
   return `<span class="bday-type ${t.cls}">${t.label}</span>`;
 }
-function birthdayEveryone(){ return members.concat(retention); }
-function birthdayScopeIndex(){
-  const ix = new Map();
-  members.forEach(m=> ix.set(m,'onboarding'));
-  retention.forEach(m=> ix.set(m,'retention'));
-  return ix;
+/* ---- The same person, on both lists ----
+   Somebody who converts is not moved, they are COPIED: the challenger record stays where it
+   is, still counted by the conversion bar, still on their card, and a member record is
+   created beside it. That is deliberate and it is right — a person who finished the 42 days
+   and joined exists in both places. It is also why the merged tab showed them twice, once
+   tagged 6-week challenge and once Full member.
+
+   The member wins, because current status wins: they ARE a full member now, and the card
+   that goes out goes to a member. So the challenger's row is dropped from the merged view.
+
+   Two ways of recognising it, in this order:
+
+     fromChallenger — the handoff writes it, so it is an exact statement that these two
+     records are one person. Nothing else is needed when it is there.
+
+     email — the fallback, for a pair that predates the handoff or was created by hand on
+     each side. Only when BOTH records have one, compared through normName, which is the
+     same trim-and-lowercase every other email comparison in this file uses.
+
+   NEVER by name. Two members called Sarah Jones is an ordinary thing for a gym to have, and
+   merging them would hide a real person's birthday and put another person's Ignore on their
+   record. A rare duplicate row is a much cheaper mistake than that, so where there is no link
+   and no usable email on both sides they stay two people.
+
+   This is a DISPLAY dedup and nothing else. Neither record is touched, moved or deleted; the
+   challenger is still on the Challengers tab and still has their journey. They are simply not
+   shown twice on one list. */
+function birthdaySupersededChallengers(){
+  const out = new Set();
+  if(!members.length || !retention.length) return out;
+  const linked = new Set();          // challenger ids a member says they came from
+  const emails = new Set();          // members' emails, normalised
+  retention.forEach(r=>{
+    if(r.fromChallenger) linked.add(r.fromChallenger);
+    const e = r.email ? normName(r.email) : '';
+    if(e) emails.add(e);
+  });
+  members.forEach(c=>{
+    if(c.id && linked.has(c.id)){ out.add(c); return; }    // the link wins outright
+    const e = c.email ? normName(c.email) : '';
+    if(e && emails.has(e)) out.add(c);
+  });
+  return out;
 }
 
+/* The merged list and the "which roster" lookup, built together in one pass because they have
+   to agree with each other and because both are wanted on every render. */
+function birthdayMergedList(){
+  const superseded = birthdaySupersededChallengers();
+  const ix = new Map();
+  const people = [];
+  members.forEach(m=>{ if(superseded.has(m)) return; ix.set(m,'onboarding'); people.push(m); });
+  retention.forEach(m=>{ ix.set(m,'retention'); people.push(m); });
+  return { people:people, scope:m=> ix.get(m) || 'onboarding', superseded:superseded };
+}
+function birthdayEveryone(){ return birthdayMergedList().people; }
+
 function birthdaysMergedHtml(){
-  const ix = birthdayScopeIndex();
-  const scope = m => ix.get(m) || 'onboarding';
-  const everyone = birthdayEveryone();
+  const merged = birthdayMergedList();
+  const scope = merged.scope;
+  const everyone = merged.people;
   // counted off people with a dob: somebody with no date of birth is not on this tab to hide
   const ignored = everyone.filter(m=>m.birthdayIgnored && dobParts(m.dob)).length;
   return birthdayExamplesHtml() + birthdaysHtml(everyone, {

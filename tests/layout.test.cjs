@@ -234,8 +234,14 @@ const rulesFor = (sel) => RULES.filter((r) => r.sel.split(",").map((s) => s.trim
     "…in the toolbar, above the list, beside the search and filter");
   assert.ok(members.indexOf("openAdd()") < members.indexOf('id="memberList"'),
     "…and still ahead of the list it adds to");
-  // the search and filter it now sits with are untouched
-  assert.ok(/id="search"/.test(members) && /id="filter"/.test(members), "search and filter stay");
+  // the search it now sits with is untouched, and the filter it used to sit with has become
+  // a row of tabs of its own — above the toolbar, between the conversion bar and the search
+  assert.ok(/id="search"/.test(members), "the search box stays in the toolbar");
+  assert.ok(!/<select id="filter"/.test(members), "the filter dropdown is gone, not hidden");
+  assert.ok(/id="memberFilters"/.test(members), "…replaced by the filter row");
+  assert.ok(members.indexOf('id="convBar"') < members.indexOf('id="memberFilters"')
+    && members.indexOf('id="memberFilters"') < members.indexOf('id="search"'),
+    "…which sits between the conversion stats and the search box");
 }
 
 /* ---------- 10: the Today's moves board survives a narrow screen ----------

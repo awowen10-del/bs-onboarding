@@ -103,16 +103,16 @@ let SOPHIE = null;
   /* ---------- 3: no filter or default view hides her ---------- */
   {
     const a = boot({ members: [JSON.parse(JSON.stringify(SOPHIE))], raw: true });
-    for (const f of ["all", "active", "notstarted"]) {
-      a.el("filter").value = f;
-      a.ctx.renderMembers();
-      assert.ok(a.html("memberList").includes("Sophie Webhook"), "filter '" + f + "' shows her");
-    }
-    // and the ones that should legitimately exclude her still do
-    for (const f of ["stayed", "inactive", "done"]) {
-      a.el("filter").value = f;
-      a.ctx.renderMembers();
-      assert.ok(!a.html("memberList").includes("Sophie Webhook"), "filter '" + f + "' correctly excludes her");
+    // she is booked in with no outcome recorded, so she is an open case: Currently Active,
+    // which is also the tab the screen opens on. A challenger the webhook just created must
+    // never land on a screen that is filtered past her.
+    assert.strictEqual(a.ctx.__t.memberFilter, "active", "the screen opens on Currently Active");
+    assert.ok(a.html("memberList").includes("Sophie Webhook"), "…and she is on it, with no tap");
+
+    // and every other tab legitimately excludes her — she is in exactly one of the five
+    for (const f of ["stayed", "paused", "leftfu", "left"]) {
+      a.ctx.setMemberFilter(f);
+      assert.ok(!a.html("memberList").includes("Sophie Webhook"), "tab '" + f + "' correctly excludes her");
     }
   }
 

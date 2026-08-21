@@ -210,21 +210,30 @@
      between the tabs is the only thing holding them together, which is what makes them read
      as separate. flex-wrap, so a narrow screen drops them onto a second row rather than
      squeezing four tap targets into 320px or hiding any of them off the edge. */
-  nav.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
-  nav.tabs button{appearance:none;background:var(--card);border:1px solid var(--line);
+  nav.tabs,.filterbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  /* the Challengers filter row wears the same clothes as the tab row above it — same
+     surface, same gap, same fill when selected. It is the same gesture (pick one of these,
+     see that), so it would be strange for it to look like a different kind of control.
+     Its own top margin holds it off the conversion bar; the toolbar under it keeps its. */
+  .filterbar{margin:16px 0 0}
+  nav.tabs button,.filterbar button{appearance:none;background:var(--card);border:1px solid var(--line);
     color:var(--ink-dim);font-family:inherit;font-size:13px;font-weight:700;padding:10px 16px;
     border-radius:12px;cursor:pointer;
     transition:background .15s ease,color .15s ease,border-color .15s ease,transform .08s ease}
-  nav.tabs button .count{font-size:11px;color:var(--on-accent);background:var(--red);border-radius:20px;padding:1px 7px;margin-left:6px;font-weight:700;vertical-align:middle}
+  nav.tabs button .count,.filterbar button .count{font-size:11px;color:var(--on-accent);background:var(--red);border-radius:20px;padding:1px 7px;margin-left:6px;font-weight:700;vertical-align:middle}
   /* a plain headcount, not a to-do count — red would read as "something is wrong".
      --navy-2 rather than --card: the tab itself is --card now, and a pill the same colour as
      the thing it sits on is not a pill. */
-  nav.tabs button .count.tally{color:var(--ink-dim);background:var(--navy-2);border:1px solid var(--line)}
-  nav.tabs button[aria-selected="true"] .count.tally{color:var(--on-accent);background:var(--accent-inset);border-color:transparent}
-  nav.tabs button[aria-selected="false"]:hover{color:var(--ink);border-color:var(--ink-faint)}
-  nav.tabs button:active{transform:translateY(1px)}
-  nav.tabs button[aria-selected="true"]{background:var(--orange);border-color:var(--orange);color:var(--on-accent)}
-  nav.tabs button[aria-selected="true"] .count{background:var(--accent-inset)}
+  nav.tabs button .count.tally,.filterbar button .count.tally{color:var(--ink-dim);background:var(--navy-2);border:1px solid var(--line)}
+  nav.tabs button[aria-selected="true"] .count.tally,
+  .filterbar button[aria-selected="true"] .count.tally{color:var(--on-accent);background:var(--accent-inset);border-color:transparent}
+  nav.tabs button[aria-selected="false"]:hover,
+  .filterbar button[aria-selected="false"]:hover{color:var(--ink);border-color:var(--ink-faint)}
+  nav.tabs button:active,.filterbar button:active{transform:translateY(1px)}
+  nav.tabs button[aria-selected="true"],
+  .filterbar button[aria-selected="true"]{background:var(--orange);border-color:var(--orange);color:var(--on-accent)}
+  nav.tabs button[aria-selected="true"] .count,
+  .filterbar button[aria-selected="true"] .count{background:var(--accent-inset)}
 
   /* ---- Tab markers ----
      Three weights across the four tabs, so the row says which one is which before you read
@@ -522,7 +531,6 @@
     border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
   .toolbar input::placeholder{color:var(--ink-faint)}
   .toolbar input:focus{outline:none;border-color:var(--orange)}
-  .toolbar select{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 13px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer}
   /* "+ Add challenger", which used to sit in the section heading. It keeps its full label
      rather than shrinking to fit — it is the one thing on this screen that creates something,
      and the row wraps before it squashes. */
@@ -976,8 +984,8 @@
     .mast-meta{text-align:left}
     /* The tabs wrap rather than scroll, so every one of them is on screen without a swipe.
        Tightened a little so four of them make two tidy rows instead of three ragged ones. */
-    nav.tabs{gap:6px}
-    nav.tabs button{padding:9px 13px;font-size:12.5px;border-radius:10px}
+    nav.tabs,.filterbar{gap:6px}
+    nav.tabs button,.filterbar button{padding:9px 13px;font-size:12.5px;border-radius:10px}
     .viewtoggle{gap:6px}
     .viewtoggle .vt{padding:9px 13px;font-size:12.5px}
     .action{flex-wrap:wrap}
@@ -1187,19 +1195,20 @@
        it belongs with rather than stranded on a row of its own. -->
   <section class="view" id="view-members" data-tracker="onboarding">
     <div id="convBar"></div>
+    <!-- The five states a challenger can be in, as five tabs rather than a dropdown. A select
+         hides four of its five answers behind a tap and tells you nothing about the roster
+         until you go looking; a row of tabs with counts on them IS a reading of the roster —
+         how many are running, how many stayed, how many are waiting on a follow-up — before
+         you have filtered anything. Rendered from MEMBER_FILTERS by renderMemberFilters() so
+         the counts stay live; see that array for why the five are a partition and not a
+         handful of overlapping views. Between the conversion bar and the search on purpose:
+         the tab picks the group, the search looks inside it. -->
+    <div class="filterbar" id="memberFilters" role="tablist" aria-label="Filter challengers"></div>
     <div class="toolbar" style="margin-top:14px">
       <input type="search" id="search" placeholder="Search by name…" oninput="renderMembers()">
-      <select id="filter" class="btn" onchange="renderMembers()" style="font-weight:500">
-        <option value="all">Everyone</option>
-        <option value="active">Active (live + paused)</option>
-        <option value="stayed">Stayed on</option>
-        <option value="inactive">Left / inactive</option>
-        <option value="paused">Paused only</option>
-        <option value="done">Finished 6 weeks</option>
-      </select>
       <button class="btn primary toolbar-add" onclick="openAdd()">+ Add challenger</button>
     </div>
-    <div id="memberList"></div>
+    <div id="memberList" role="tabpanel"></div>
     <div class="admin-strip">
       <button class="btn sm ghost" onclick="openImport()">⇪ Import DOBs from CSV</button>
       <span class="admin-hint">One-off backfill from a GoTeamUp export. Fills in dates of birth for challengers already in here — it never adds anyone.</span>
@@ -2556,20 +2565,85 @@ function setTodayView(v){
 }
 
 /* ---------------- MEMBERS view (cards only now) ---------------- */
+/* ---------------- The Challengers filters ----------------
+   Five tabs, and they are a PARTITION of the roster: every challenger matches exactly one,
+   and every challenger matches at least one. That is the property to protect if these are
+   ever edited — a dropdown could afford overlapping views ("Everyone", "Active", "Finished")
+   because you only ever saw one at a time, but a ROW of tabs with counts on them is read as a
+   breakdown, and a breakdown whose parts overlap or leave someone out is worse than no
+   breakdown at all. Somebody who is in none of them is invisible on this screen.
+
+   It partitions on OUTCOME first, which is what makes it airtight: outcome is null, 'stayed'
+   or 'left' and nothing else, so the three branches below are exhaustive by construction.
+
+     null      → still an open case. Split by whether their clock is stopped:
+                 Paused if it is, Currently Active if it is not.
+     'stayed'  → Stayed On.
+     'left'    → split by whether there is a follow-up booked in:
+                 Left & Needs Followup if there is, Left if there is not.
+
+   Two things about that are worth stating, because both are choices:
+
+   Paused is NOT inside Currently Active. The old dropdown's "Active (live + paused)" put it
+   there, but paused has a tab of its own now, and a challenger who showed up in both would
+   make the counts add to more than the roster.
+
+   Currently Active holds three shapes of open case, not one: not started yet, running, and
+   finished the six weeks with no outcome recorded. The last is the arguable one — they are
+   not on the journey any more — but they are the roster's most actionable people (they are
+   waiting on you to say whether they stayed), and every other home for them is a tab that
+   claims something untrue about them. An open case is an open case. */
+/* `label` is trusted markup, not text — it holds an entity (&amp;) and goes into the row
+   without esc(), which would double-encode it. These five are constants in this file; nothing
+   a coach types ever reaches them. */
+const MEMBER_FILTERS = [
+  {id:'active', label:'Currently Active',
+   match:m=> !m.outcome && status(m)!=='paused'},
+  {id:'stayed', label:'Stayed On',
+   match:m=> m.outcome==='stayed'},
+  {id:'paused', label:'Paused',
+   match:m=> !m.outcome && status(m)==='paused'},
+  {id:'leftfu', label:'Left &amp; Needs Followup',
+   match:m=> m.outcome==='left' && followUpPending(m)},
+  {id:'left',   label:'Left',
+   match:m=> m.outcome==='left' && !followUpPending(m)}
+];
+/* Which tab is showing. In-memory and per-visit, like the tracker's own tab state: it is
+   where you happen to be looking, not a preference worth remembering. */
+let memberFilter = MEMBER_FILTERS[0].id;
+function memberFilterMatch(id){
+  const f = MEMBER_FILTERS.find(x=>x.id===id) || MEMBER_FILTERS[0];
+  return f.match;
+}
+function setMemberFilter(id){
+  if(!MEMBER_FILTERS.some(f=>f.id===id)) return memberFilter;   // an unknown tab changes nothing
+  memberFilter = id;
+  renderMembers();
+  return memberFilter;
+}
+/* The counts respect the search box as well as the tab. With the search empty — which is
+   nearly always — they are simply how many are in each group. With something typed they
+   become "where is this person", which is the more useful answer at the moment you are
+   typing: a badge on Left is how you find out that is where Sam went. */
+function renderMemberFilters(){
+  const host = document.getElementById('memberFilters'); if(!host) return;
+  const q = (document.getElementById('search').value||'').toLowerCase();
+  const searched = members.filter(m=>m.name.toLowerCase().includes(q));
+  host.innerHTML = MEMBER_FILTERS.map(f=>{
+    const on = f.id===memberFilter;
+    return `<button type="button" role="tab" aria-selected="${on?'true':'false'}" data-filter="${f.id}"
+      aria-controls="memberList" onclick="setMemberFilter('${f.id}')">${f.label} <span class="count tally">${searched.filter(f.match).length}</span></button>`;
+  }).join('');
+}
+
+/* Oldest clock first, so the roster reads in the order people joined it. */
+function byStart(arr){ return arr.slice().sort((a,b)=> (a.day0||a.booked||0) - (b.day0||b.booked||0)); }
+
+/* What the Challengers screen is showing: the selected tab, narrowed by the search box. */
 function filteredMembers(){
   const q = (document.getElementById('search').value||'').toLowerCase();
-  const f = document.getElementById('filter').value;
-  let arr = members.filter(m=>m.name.toLowerCase().includes(q));
-  arr = arr.filter(m=>{
-    const s=status(m);
-    if(f==='all') return true;
-    if(f==='active') return (s==='live'||s==='paused'||s==='notstarted') && !isInactive(m);
-    if(f==='inactive') return isInactive(m);
-    if(f==='stayed') return m.outcome==='stayed';
-    return s===f;
-  });
-  arr.sort((a,b)=> (a.day0||a.booked||0) - (b.day0||b.booked||0));
-  return arr;
+  const match = memberFilterMatch(memberFilter);
+  return byStart(members.filter(m=> m.name.toLowerCase().includes(q) && match(m)));
 }
 
 function renderConvBar(){
@@ -2595,11 +2669,12 @@ function renderConvBar(){
 
 function renderMembers(){
   const list = document.getElementById('memberList');
+  renderMemberFilters();            // the tabs are part of this screen's render, counts and all
   let arr = filteredMembers();
 
   if(!arr.length){
     list.innerHTML = `<div class="empty"><div class="big">No challengers here yet.</div>
-      ${members.length?'Try a different filter.':'Add your first challenger to start their 42-day journey.'}</div>`;
+      ${members.length?'Nobody on this tab — the counts above say where everyone is.':'Add your first challenger to start their 42-day journey.'}</div>`;
     return;
   }
   list.innerHTML = arr.map(m=>{
@@ -2704,12 +2779,19 @@ function cellStatus(m,it){
   return 'overdue';                   // missed
 }
 
+/* The whole roster, not filteredMembers(). This table is the Whole journey half of TODAY'S
+   MOVES — a different screen, with no filter row and no search box on it — and it was quietly
+   reading both of the Challengers screen's controls. That was invisible while the dropdown
+   defaulted to "Everyone": you saw the whole roster unless you had gone and changed a control
+   on another tab. There is no "Everyone" tab any more, so the same wiring would now open this
+   table already filtered to Currently Active, with nothing on screen to say why or to undo
+   it. A screen is filtered by its own controls or by none. */
 function renderMemberTable(){
   const host = document.getElementById('todayTable');
-  const arr = filteredMembers();
+  const arr = byStart(members);
   if(!arr.length){
     host.innerHTML = `<div class="empty"><div class="big">No challengers here yet.</div>
-      ${members.length?'Try a different filter.':'Add your first challenger to get started.'}</div>`;
+      Add your first challenger to get started.</div>`;
     return;
   }
   const cols = TABLE_COLS.map(id=>JOURNEY.find(j=>j.id===id));

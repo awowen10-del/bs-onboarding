@@ -77,8 +77,13 @@ const SAM = () => challenger("sam", "Sam Doyle", {
   assert.strictEqual(sam.signedUp, true, "…which still unlocks the welcome card and month follow-ups");
   assert.strictEqual(sam.day0, SAM().day0, "their clock is untouched");
   assert.strictEqual(sam.notes, SAM().notes, "…and so are their notes");
+  // they are on the Stayed On tab now rather than Currently Active — converting is what
+  // moves them there, and it is the same card either way
+  app.ctx.setMemberFilter("stayed");
   assert.ok(app.html("memberList").includes("Sam Doyle"), "they still render on a challenger card");
   assert.ok(app.html("memberList").includes("Stayed ✓"), "…still marked as stayed");
+  app.ctx.setMemberFilter("active");
+  assert.ok(!app.html("memberList").includes("Sam Doyle"), "…and are no longer an open case");
 
   // the conversion bar reads exactly what it would have without a retention tracker at all
   before.ctx.setOutcome("sam", "stayed");
@@ -153,11 +158,14 @@ const SAM = () => challenger("sam", "Sam Doyle", {
   assert.ok(!app.html("memberList").includes("→ Member"), "no badge before they convert");
 
   app.ctx.setOutcome("sam", "stayed");
+  app.ctx.setMemberFilter("stayed");             // follow them to the tab converting moved them to
   assert.ok(app.html("memberList").includes("→ Member"), "the badge appears on their card");
   assert.ok(app.html("memberList").includes("Stayed ✓"), "…alongside the outcome tag, not instead of it");
 
-  // it tracks the member, not the outcome: undoing the decision leaves both in place
+  // it tracks the member, not the outcome: undoing the decision leaves both in place. Undoing
+  // it puts them back among the open cases, so the tab follows them back too.
   app.ctx.setOutcome("sam", null);
+  app.ctx.setMemberFilter("active");
   assert.ok(app.html("memberList").includes("→ Member"),
     "they are still a member, so the badge stays");
 

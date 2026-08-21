@@ -211,6 +211,8 @@ function boot(opts = {}) {
   get retention(){ return retention; }, set retention(v){ retention = v; },
   get tracker(){ return tracker; },
   get activeTab(){ return activeTab; },
+  get memberFilter(){ return memberFilter; },
+  get MEMBER_FILTERS(){ return MEMBER_FILTERS; },
   get notesTarget(){ return notesTarget; },
   get fuTarget(){ return fuTarget; },
   get CACHE(){ return CACHE; },
@@ -227,9 +229,11 @@ function boot(opts = {}) {
 
   vm.runInContext(src, ctx, { filename: "index.html<script>" });
 
-  // The Challengers list is filtered by two live controls; give them the values a freshly
-  // loaded page has ("Everyone", empty search) so renderMembers isn't filtering to nothing.
-  doc.getElementById("filter").value = "all";
+  // The Challengers list is filtered by two live controls. The search box gets the value a
+  // freshly loaded page has; the filter is a row of tabs now rather than a dropdown, and it
+  // defaults to Currently Active in the app itself, so a test that wants another group asks
+  // for it by name: app.ctx.setMemberFilter("left"). There is no "everyone" to fall back to —
+  // the five tabs are a partition, so seeing everybody at once is not a state the screen has.
   doc.getElementById("search").value = "";
 
   const seed = opts.members || [];

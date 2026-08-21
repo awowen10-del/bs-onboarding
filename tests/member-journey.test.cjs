@@ -229,6 +229,7 @@ const dueIds = (app, m) => [...app.ctx.memberDueToday(m)].map((it) => it.id);
     "the onboarding journey ends at week 6");
   assert.deepStrictEqual([...app.ctx.__t.TABLE_COLS], ONBOARDING,
     "…and the whole-journey table has a column for each and nothing more");
+  app.ctx.setMemberFilter("stayed");            // they stayed on, so that is their tab
   assert.ok(app.html("memberList").includes("Sam Doyle"), "and the challenger still renders");
   assert.ok(app.html("memberList").includes("Stayed ✓"));
 }
@@ -271,6 +272,7 @@ const dueIds = (app, m) => [...app.ctx.memberDueToday(m)].map((it) => it.id);
   assert.strictEqual(late.el("todayCount").textContent, "0");
   // and the conversion flow they went through is untouched
   assert.strictEqual(late.find("late").signedUp, true, "signedUp still records the decision");
+  late.ctx.setMemberFilter("stayed");
   assert.ok(late.html("memberList").includes("Stayed ✓"), "…and still reads as stayed");
   assert.ok(late.html("memberList").includes("8 of 8 touchpoints done"),
     "the touchpoint count is the 42 days, all eight of them");

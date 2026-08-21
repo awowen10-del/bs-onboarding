@@ -79,11 +79,21 @@ function setFollowUp(app, id, ts) {
   assert.ok(plain.html("convBar").includes("50%"), "sanity: 1 of 2 decided stayed");
   // the live count in the masthead treats them the same too
   assert.strictEqual(parked.el("liveCount").textContent, plain.el("liveCount").textContent);
-  // and so does the Left/inactive filter on the Challengers tab
-  parked.el("filter").value = "inactive"; parked.ctx.renderMembers();
-  plain.el("filter").value = "inactive"; plain.ctx.renderMembers();
-  assert.ok(parked.html("memberList").includes("Kelly Finished"));
-  assert.ok(plain.html("memberList").includes("Kelly Finished"));
+
+  // The Challengers tabs are the one place the two are deliberately NOT the same, and that is
+  // the point of splitting Left in two: a Left with a follow-up booked is a job still on
+  // somebody's desk, a Left without one is closed. Same person, same outcome, different tab.
+  parked.ctx.setMemberFilter("leftfu");
+  assert.ok(parked.html("memberList").includes("Kelly Finished"),
+    "a Left with a follow-up is on Left & Needs Followup");
+  parked.ctx.setMemberFilter("left");
+  assert.ok(!parked.html("memberList").includes("Kelly Finished"), "…and only there");
+
+  plain.ctx.setMemberFilter("left");
+  assert.ok(plain.html("memberList").includes("Kelly Finished"),
+    "a Left with nothing booked is on Left");
+  plain.ctx.setMemberFilter("leftfu");
+  assert.ok(!plain.html("memberList").includes("Kelly Finished"), "…and only there");
 }
 
 /* ---------- 4: silent until its date ---------- */
@@ -95,7 +105,9 @@ function setFollowUp(app, id, ts) {
   assert.strictEqual(app.ctx.followUpDue(app.find("fin")), false, "not due for another three days");
   assert.ok(!app.html("todayList").includes("Follow-ups to make"), "nothing on Today yet");
   assert.strictEqual(app.el("todayCount").textContent, "0", "and it is not counted");
-  // it is visible on their card, though, so we know it is booked in
+  // it is visible on their card, though, so we know it is booked in — and the card is on
+  // Left & Needs Followup, which is the tab that exists to hold exactly this state
+  app.ctx.setMemberFilter("leftfu");
   assert.ok(app.html("memberList").includes("Follow-up "), "the card shows the scheduled follow-up");
 }
 

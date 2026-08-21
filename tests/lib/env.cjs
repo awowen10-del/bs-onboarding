@@ -213,6 +213,8 @@ function boot(opts = {}) {
   get activeTab(){ return activeTab; },
   get memberFilter(){ return memberFilter; },
   get MEMBER_FILTERS(){ return MEMBER_FILTERS; },
+  get BIRTHDAY_MILESTONES(){ return BIRTHDAY_MILESTONES; },
+  get showIgnoredBirthdays(){ return showIgnoredBirthdays; },
   get notesTarget(){ return notesTarget; },
   get fuTarget(){ return fuTarget; },
   get CACHE(){ return CACHE; },

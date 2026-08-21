@@ -901,9 +901,14 @@
   .bday-month.now .group-label::after{background:rgba(var(--orange-rgb),.35)}
   .bday-now{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;
     color:var(--on-accent);background:var(--orange);border-radius:5px;padding:2px 7px;letter-spacing:.4px}
-  .bday-row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
-    border-left:4px solid var(--line);border-radius:12px;padding:11px 15px;margin-bottom:8px}
-  .bday-month.now .bday-row{border-left-color:var(--orange)}
+  /* The left edge is the row's one piece of state, so it is a variable rather than four rules
+     fighting over border-left-color: the current month tints it, a milestone overrides that,
+     and handled overrides both. The overrides are written at the same specificity as the
+     month rule and after it, so the cascade order below IS the priority order. */
+  .bday-row{--bd-accent:var(--line);
+    display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
+    border-left:4px solid var(--bd-accent);border-radius:12px;padding:11px 15px;margin-bottom:8px}
+  .bday-month.now .bday-row{--bd-accent:var(--orange)}
   .bday-day{flex:0 0 auto;min-width:52px;text-align:center;font-size:14px;font-weight:800;
     color:var(--ink);background:var(--navy-2);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
   .bday-month.now .bday-day{color:var(--orange-soft);border-color:rgba(var(--orange-rgb),.34);
@@ -916,6 +921,62 @@
   .bday-none{font-size:13px;color:var(--ink-faint);background:var(--navy-2);border:1px dashed var(--line);
     border-radius:10px;padding:12px 15px;margin-bottom:8px}
   .bday-missing{font-size:12px;color:var(--ink-faint);font-weight:600;margin-top:18px;text-align:center}
+
+  /* ---- Milestone: 18, 21, 30, 40, 50, 60, 65, 70, 80 ----
+     The tab shows a day and a name and never an age, so without this the one birthday of the
+     year worth going above and beyond for looks exactly like the other fifty. Amber, and it
+     says the number: "🎉 Turning 50" needs no arithmetic doing to it on a Tuesday morning. */
+  .bday-milestone{flex:0 0 auto;font-size:10px;font-weight:800;letter-spacing:.03em;
+    color:var(--amber);background:rgba(var(--amber-rgb),.13);border:1px solid rgba(var(--amber-rgb),.32);
+    border-radius:6px;padding:2px 8px;margin-left:8px;white-space:nowrap}
+  .bday-month .bday-row.milestone,.bday-examples .bday-row.milestone{--bd-accent:var(--amber)}
+
+  /* ---- Actioned: handled for this year's birthday ----
+     Muted, never hidden. The whole use of this tab is scanning the current month for "it is
+     their birthday and we still have not done anything", and that reading needs the handled
+     ones present and plainly quieter — a list you have to remember the length of is no good.
+     The buttons keep their own colour so the row is still workable while it is parked. */
+  .bday-month .bday-row.actioned,.bday-examples .bday-row.actioned{--bd-accent:var(--green)}
+  .bday-row.actioned{background:var(--card-2)}
+  .bday-row.actioned .bday-name{color:var(--ink-dim);font-weight:600}
+  .bday-row.actioned .bday-day{color:var(--ink-faint);background:var(--navy-2);border-color:var(--line)}
+
+  /* ---- Ignored: off the tab entirely, and only on screen at all while "show" is on ---- */
+  .bday-month .bday-row.ignored{--bd-accent:var(--ink-faint);border-style:dashed}
+  .bday-row.ignored .bday-name,.bday-row.ignored .bday-day{color:var(--ink-faint);font-weight:600}
+
+  /* ---- The two actions ----
+     Quiet chips at the far end: they are the least important thing on the row right up until
+     the moment you want one, so they sit after the name, the coach line and the Today badge
+     rather than competing with them. */
+  .bday-acts{flex:0 0 auto;display:flex;align-items:center;gap:6px}
+  .bday-act{appearance:none;font-family:inherit;font-size:11px;font-weight:800;cursor:pointer;
+    border:1px solid var(--line);background:var(--card);color:var(--ink-dim);
+    border-radius:8px;padding:5px 10px;white-space:nowrap;
+    transition:background .15s ease,color .15s ease,border-color .15s ease}
+  .bday-act:hover{color:var(--ink);border-color:var(--ink-faint)}
+  .bday-act.ghost{background:transparent}
+  .bday-act.done{background:var(--green);border-color:var(--green);color:var(--on-accent)}
+  .bday-act.done:hover{color:var(--on-accent);border-color:var(--green)}
+  /* ---- The demo cards at the top of the tab ----
+     They wear the real row exactly — same surface, same milestone amber, same chips — because
+     a mock-up of a card teaches nothing about the card. What separates them is a dashed edge,
+     a heading over the block and a tag beside the name, which is enough to be unmistakable
+     without making them look like a different component. No notes icon: there is nobody
+     behind these to keep notes on. */
+  .bday-examples{margin-bottom:20px}
+  .bday-example-note{font-size:12px;color:var(--ink-faint);font-weight:600;line-height:1.55;
+    margin:-2px 0 10px;max-width:64ch}
+  .bday-row.example{border-style:dashed}
+  .bday-example-tag{flex:0 0 auto;font-size:9px;font-weight:800;text-transform:uppercase;
+    letter-spacing:.5px;color:var(--ink-dim);background:var(--navy-2);border:1px solid var(--line);
+    border-radius:5px;padding:2px 7px;margin-left:8px}
+
+  /* the undo for Ignore, and the only place ignored people are counted */
+  .bday-ignored-note{font-size:12px;color:var(--ink-faint);font-weight:600;margin-top:18px;text-align:center}
+  .bday-ignored-note button{appearance:none;background:none;border:none;padding:0;font:inherit;
+    color:var(--orange-soft);font-weight:800;cursor:pointer;text-decoration:underline}
+  .bday-ignored-note button:hover{color:var(--orange)}
 
   /* ---------- Shared notes (one document per client, whole team) ---------- */
   .notes-btn{appearance:none;background:transparent;border:1px solid transparent;color:var(--ink-faint);
@@ -982,6 +1043,11 @@
 
   @media (max-width:640px){
     .mast-meta{text-align:left}
+    /* A birthday row is a day, a name, a milestone, a Today badge and two chips. That is too
+       much for 320px on one line, and squeezing it wraps the NAME, which is the one part that
+       has to stay readable. The chips take a row of their own instead. */
+    .bday-row{flex-wrap:wrap}
+    .bday-acts{width:100%;justify-content:flex-end}
     /* The tabs wrap rather than scroll, so every one of them is on screen without a swipe.
        Tightened a little so four of them make two tidy rows instead of three ragged ones. */
     nav.tabs,.filterbar{gap:6px}
@@ -1617,6 +1683,13 @@ function migrateList(arr){
     // Date of birth, "YYYY-MM-DD" or null. Typed in by a coach or pushed in from Ontraport
     // via the set-dob function. Absent on everyone created before this existed.
     if(m.dob===undefined) m.dob = null;
+    // Birthdays housekeeping, and the two are deliberately different SHAPES because they mean
+    // different things. Ignored is a boolean and it is forever — somebody we are not sending
+    // anything to, ever. Actioned is a YEAR, not a boolean, because it settles one birthday
+    // and one only: store the year of the birthday it settles and next year's comes round
+    // unhandled by itself, with nothing to reset and no January job to remember.
+    if(m.birthdayIgnored===undefined) m.birthdayIgnored = false;
+    if(m.birthdayActionedYear===undefined) m.birthdayActionedYear = null;
   });
   return arr;
 }
@@ -2006,9 +2079,43 @@ function birthdaysSoon(roster){
   const people = Array.isArray(roster) ? roster : [];
   const now = new Date(), curM = now.getMonth()+1, curD = now.getDate();
   return people.some(m=>{
-    const p = dobParts(m && m.dob);      // null for no dob, and for anything malformed
+    if(m && m.birthdayIgnored) return false;   // hidden from the tab, so it cannot nudge either
+    const p = dobParts(m && m.dob);            // null for no dob, and for anything malformed
     return !!p && p.m===curM && p.d>=curD;
   });
+}
+
+/* ---------------- The birthday a card is ABOUT ----------------
+   Every one of the three features below turns on the same question — which birthday is this
+   row talking about — so it is answered once, here, and they all read the answer.
+
+   It is the NEXT one due: this year's until it has been, next year's after. The day itself
+   counts as due, not gone, because that is the day you are meant to be doing something.
+
+   Returns the year it falls in and the age they turn on it. The age is what the milestone
+   check reads; the year is what "actioned" is stored against, and storing the year rather
+   than a boolean is what makes the parking expire on its own. */
+const BIRTHDAY_MILESTONES = [18,21,30,40,50,60,65,70,80];
+function nextBirthday(m){
+  const p = dobParts(m && m.dob);
+  if(!p) return null;
+  const now = new Date(), curY = now.getFullYear(), curM = now.getMonth()+1, curD = now.getDate();
+  const gone = p.m < curM || (p.m===curM && p.d < curD);
+  const year = gone ? curY+1 : curY;
+  return { year:year, age:year-p.y, m:p.m, d:p.d };
+}
+/* The age they are turning, if it is one worth going above and beyond for — otherwise null.
+   Exact ages only: 51 is not a milestone because 50 was. */
+function birthdayMilestone(m){
+  const nb = nextBirthday(m);
+  return nb && BIRTHDAY_MILESTONES.indexOf(nb.age)!==-1 ? nb.age : null;
+}
+/* Handled for THIS birthday, and only this one. The stored year has to match the year of the
+   birthday now being asked about, so the moment the next one rolls round the stored year is
+   last year's and the card is outstanding again. Nothing resets it; it expires. */
+function birthdayActioned(m){
+  const nb = nextBirthday(m);
+  return !!nb && !!m && m.birthdayActionedYear===nb.year;
 }
 
 /* A touchpoint's due-day in THIS member's journey.
@@ -3402,9 +3509,142 @@ function runImport(input){
    on from it and wraps — in December you want to see December, then January, not scroll past
    eleven months you have already had. Quiet months are dropped entirely; the current month
    is the one exception, because "nobody this month" is itself the answer to the question. */
+/* Ignored people are off the tab by default and the toggle at the bottom brings them back
+   into view. In-memory and per-visit, like every other "what am I looking at" state in this
+   app: it is a peek, not a preference. */
+let showIgnoredBirthdays = false;
+function toggleIgnoredBirthdays(){ showIgnoredBirthdays = !showIgnoredBirthdays; renderBirthdays(); }
+
+/* Hide somebody from the Birthdays tab for good — they have left and we will not be sending
+   them anything. Reversible from the toggle at the bottom, which is why it does not ask. */
+function setBirthdayIgnored(id, on){
+  const m = members.find(x=>x.id===id); if(!m) return;
+  m.birthdayIgnored = !!on;
+  save(); renderAll();
+}
+/* Park this year's birthday, or unpark it. Stores the YEAR of the birthday being settled, so
+   it lapses on its own when the next one comes round — see birthdayActioned. */
+function toggleBirthdayActioned(id){
+  const m = members.find(x=>x.id===id); if(!m) return;
+  const nb = nextBirthday(m); if(!nb) return;          // no dob, nothing to action
+  m.birthdayActionedYear = birthdayActioned(m) ? null : nb.year;
+  save(); renderAll();
+}
+
+/* The two actions on a card. Small, quiet and at the far end: they are the least important
+   thing on the row until the moment you want one. Ignored rows lose the Actioned button —
+   there is nothing to handle for somebody we have taken off the tab — and keep the other one,
+   flipped, so the row you are looking at is always the row you can undo. */
+function birthdayActionsHtml(m){
+  const done = birthdayActioned(m), ign = !!m.birthdayIgnored;
+  const act = ign ? '' : `<button type="button" class="bday-act${done?' done':''}"
+      onclick="toggleBirthdayActioned('${m.id}')"
+      title="${done?'Handled for this year — tap to undo':'Mark this year\u2019s birthday as handled'}"
+      aria-pressed="${done?'true':'false'}">${done?'✓ Actioned':'Actioned'}</button>`;
+  const ignore = `<button type="button" class="bday-act ghost"
+      onclick="setBirthdayIgnored('${m.id}',${ign?'false':'true'})"
+      title="${ign?'Put them back on the Birthdays tab':'Hide them from the Birthdays tab for good'}"
+      >${ign?'Un-ignore':'Ignore'}</button>`;
+  return `<div class="bday-acts">${act}${ignore}</div>`;
+}
+
+/* ---------------- Birthday examples — a demo prop, and only that ----------------
+   A month with nobody's birthday in it is a hard thing to show a team. The tab is working
+   perfectly and it looks like nothing does, so there is no card to point at while explaining
+   what a milestone looks like or what Ignore is for. These are two people who do not exist,
+   at the top of the tab, one with an ordinary birthday coming up and one turning 50.
+
+   THEY ARE NOWHERE NEAR `members`, and that is the whole design. Not in the roster, not in
+   the blob that syncs, not in a month group, not in any count, and not in the dot on the tab.
+   A fake person in the real list would surface in the conversion bar, the Challengers tabs
+   and the whole-journey table, and the first coach to find one there would be right to stop
+   trusting every number on the screen. They live in this function and nowhere else.
+
+   What IS real about them is the rules: their dates of birth are generated so that
+   nextBirthday and birthdayMilestone actually run on them, so the milestone treatment being
+   demonstrated is the treatment, not a mock-up of it.
+
+   The one honest limit is where the dismissal is kept. There are exactly two synced blobs in
+   this app — the roster and the member list — and neither is a place for "Ash has finished
+   his team meeting", so it goes in localStorage. Clearing the examples clears them from the
+   device you are holding; Dan's phone will still have them until he clears his. For a prop
+   that exists to be shown once and then swept away, that is the right trade rather than a
+   third synced key and a merge rule to go with it. */
+const BDAY_EXAMPLE_KEY = 'bsj_bday_examples';   // {dismissed:[id], actioned:[id]} on this device
+
+/* Always a birthday that is still to come, however long after this was written the meeting
+   happens: the dates are built forward from today and the year is worked back from the age. */
+function birthdayExamples(){
+  const dob = (daysAhead, age)=>{
+    const d = new Date(addDays(today0(), daysAhead)), p = n=>String(n).padStart(2,'0');
+    return (d.getFullYear()-age)+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+  };
+  return [
+    {id:'eg-soon',      name:'Jo Example',  coach:'Dan', dob:dob(6,34),  at:addDays(today0(),6)},
+    {id:'eg-milestone', name:'Pat Example', coach:'Dan', dob:dob(13,50), at:addDays(today0(),13)}
+  ];
+}
+function readBdayExampleState(){
+  try{
+    const r = JSON.parse(localStorage.getItem(BDAY_EXAMPLE_KEY));
+    return { dismissed: Array.isArray(r&&r.dismissed)?r.dismissed:[],
+             actioned:  Array.isArray(r&&r.actioned) ?r.actioned :[] };
+  }catch(e){ return {dismissed:[], actioned:[]}; }
+}
+function writeBdayExampleState(st){
+  try{ localStorage.setItem(BDAY_EXAMPLE_KEY, JSON.stringify(st)); }catch(e){}
+}
+/* Ignore, on an example: gone for good rather than hidden behind the "N ignored — show"
+   toggle. That toggle is a safety net for real people, and there is nothing to undo here. */
+function dismissBirthdayExample(id){
+  const st = readBdayExampleState();
+  if(st.dismissed.indexOf(id)===-1) st.dismissed.push(id);
+  writeBdayExampleState(st); renderBirthdays();
+}
+function toggleExampleActioned(id){
+  const st = readBdayExampleState();
+  const i = st.actioned.indexOf(id);
+  if(i===-1) st.actioned.push(id); else st.actioned.splice(i,1);
+  writeBdayExampleState(st); renderBirthdays();
+}
+/* Their own block above the months, not rows smuggled into August. Two reasons: no month
+   group's count has to lie to accommodate them, and a heading that says "example" sits over
+   the thing being demonstrated instead of a chip having to carry that alone. */
+function birthdayExamplesHtml(){
+  const st = readBdayExampleState();
+  const rows = birthdayExamples().filter(x=> st.dismissed.indexOf(x.id)===-1);
+  if(!rows.length) return '';
+  return `<div class="bday-examples">
+    <div class="group-label">Example — for showing the team<span class="gcount">${rows.length}</span></div>
+    <div class="bday-example-note">Two people who do not exist, so a card can be pointed at rather
+      than described. They are not on the roster, they count towards nothing, and they never light
+      the dot on the tab. <b>Ignore</b> clears one away for good when you are done with it.</div>`
+    + rows.map(x=>{
+      const nb = nextBirthday(x), age = birthdayMilestone(x);
+      const done = st.actioned.indexOf(x.id)!==-1;
+      return `<div class="bday-row example${age?' milestone':''}${done?' actioned':''}">
+        <span class="bday-day">${ordinal(nb.d)}</span>
+        <div class="bday-who">
+          <div class="bday-name">${esc(x.name)}<span class="bday-example-tag">Example</span>${
+            age?`<span class="bday-milestone">🎉 Turning ${age}</span>`:''}</div>
+          <div class="bday-meta">Coach ${esc(x.coach)} · on the journey · ${fmt(x.at)}</div>
+        </div>
+        <div class="bday-acts">
+          <button type="button" class="bday-act${done?' done':''}" onclick="toggleExampleActioned('${x.id}')"
+            aria-pressed="${done?'true':'false'}"
+            title="${done?'Handled — tap to undo':'What Actioned looks like on a real card'}">${done?'✓ Actioned':'Actioned'}</button>
+          <button type="button" class="bday-act ghost" onclick="dismissBirthdayExample('${x.id}')"
+            title="Clear this example away for good">Ignore</button>
+        </div>
+      </div>`;
+    }).join('') + `</div>`;
+}
+
 function renderBirthdays(){
   const host=document.getElementById('birthdayList'); if(!host) return;
-  host.innerHTML = birthdaysHtml(members, {
+  // counted off people with a dob: somebody with no date of birth is not on this tab to hide
+  const ignored = members.filter(m=>m.birthdayIgnored && dobParts(m.dob)).length;
+  host.innerHTML = birthdayExamplesHtml() + birthdaysHtml(members, {
     noun:'challenger',
     empty:`<div class="empty"><div class="big">No birthdays on file yet.</div>
       Add a date of birth from <b>Edit</b> on a challenger's card — or let the Ontraport zap fill them in.</div>`,
@@ -3417,7 +3657,25 @@ function renderBirthdays(){
                   : s==='paused' ? 'paused'
                   : 'on the journey';
       return `Coach ${esc(m.coach)} · ${state}`;
-    }
+    },
+    // ignored people are out of the groups AND out of their counts, not greyed out in place
+    hidden:m=> !!m.birthdayIgnored && !showIgnoredBirthdays,
+    rowClass:m=>{
+      const cls=[];
+      if(birthdayMilestone(m)) cls.push('milestone');
+      if(birthdayActioned(m)) cls.push('actioned');
+      if(m.birthdayIgnored) cls.push('ignored');
+      return cls.join(' ');
+    },
+    // the milestone rides beside the name, where the person is, rather than out at the end
+    // with the buttons: it is a fact about them, not something you can do
+    nameExtra:m=>{
+      const age = birthdayMilestone(m);
+      return age ? `<span class="bday-milestone">🎉 Turning ${age}</span>` : '';
+    },
+    rowExtra:birthdayActionsHtml,
+    footer: ignored ? `<div class="bday-ignored-note">${ignored} ignored — `
+      + `<button type="button" onclick="toggleIgnoredBirthdays()">${showIgnoredBirthdays?'hide':'show'}</button></div>` : ''
   });
 }
 
@@ -3436,17 +3694,28 @@ function renderRetentionBirthdays(){
 }
 
 /* The tab itself, for any list of people who have a dob. */
+/* The optional hooks are all no-ops by default, which is how the retention tab gets the tab
+   it already had: it passes none of them, so it renders exactly as before. The onboarding tab
+   passes all five, and they are what the Ignore / milestone / Actioned features are made of.
+     hidden(m)     — drop them from the groups AND from the month counts entirely
+     rowClass(m)   — extra classes on the row
+     nameExtra(m)  — markup beside the name
+     rowExtra(m)   — markup at the far end of the row, after the Today chip
+     footer        — a line under the whole thing */
 function birthdaysHtml(roster, opts){
   const o = opts||{};
   const noun = o.noun || 'challenger';
   const people = Array.isArray(roster) ? roster : [];
 
   const all = people.map(m=>({m:m, p:dobParts(m.dob)})).filter(x=>x.p);
+  // the empty state is about having no dates of birth on file, so it is asked BEFORE hiding:
+  // "everybody on this tab is ignored" is a different sentence from "nobody has a dob yet"
   if(!all.length) return o.empty || '';
+  const shown = o.hidden ? all.filter(x=>!o.hidden(x.m)) : all;
 
   const now=new Date(), curM=now.getMonth()+1, curD=now.getDate();
   const byMonth={};
-  all.forEach(x=>{ (byMonth[x.p.m]=byMonth[x.p.m]||[]).push(x); });
+  shown.forEach(x=>{ (byMonth[x.p.m]=byMonth[x.p.m]||[]).push(x); });
   Object.keys(byMonth).forEach(k=>
     byMonth[k].sort((a,b)=> a.p.d-b.p.d || a.m.name.localeCompare(b.m.name)));
 
@@ -3463,13 +3732,15 @@ function birthdaysHtml(roster, opts){
     }else{
       html += list.map(x=>{
         const m=x.m, p=x.p;
-        return `<div class="bday-row">
+        const cls = o.rowClass ? (o.rowClass(m)||'') : '';
+        return `<div class="bday-row${cls?' '+cls:''}">
           <span class="bday-day">${ordinal(p.d)}</span>
           <div class="bday-who">
-            <div class="bday-name">${esc(m.name)}${notesBtn(m)}</div>
+            <div class="bday-name">${esc(m.name)}${notesBtn(m)}${o.nameExtra?o.nameExtra(m):''}</div>
             <div class="bday-meta">${o.meta ? o.meta(m) : 'Coach '+esc(m.coach)}</div>
           </div>
           ${(isNow && p.d===curD)?'<span class="bday-today">Today 🎂</span>':''}
+          ${o.rowExtra?o.rowExtra(m):''}
         </div>`;
       }).join('');
     }
@@ -3482,7 +3753,7 @@ function birthdaysHtml(roster, opts){
     html += `<div class="bday-missing">${missing} ${noun}${missing===1?'':'s'} `
       + `${missing===1?'has':'have'} no date of birth yet — add one from Edit on their card.</div>`;
   }
-  return html;
+  return html + (o.footer||'');
 }
 
 /* ---------------- THE MEMBER JOURNEY ----------------

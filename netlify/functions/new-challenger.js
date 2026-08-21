@@ -129,6 +129,8 @@ exports.handler = async (event) => {
       notes: '',               // the shared per-client notes document
       followUpOn: null,        // "Left — follow up": timestamp (local midnight) or null
       followUpStatus: null,    // 'pending' | 'done' | null
+      birthdayIgnored: false,  // hidden from the Birthdays tab for good
+      birthdayActionedYear: null, // the year of the birthday already handled, or null
       source: 'ontraport'      // handy marker; the app ignores unknown fields
     };
     roster.push(challenger);

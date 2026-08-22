@@ -948,6 +948,26 @@
   .imp-sum{margin-top:16px;border-radius:10px;padding:13px 15px;font-size:13px;line-height:1.55;
     background:rgba(var(--green-rgb),.08);border:1px solid rgba(var(--green-rgb),.3);color:var(--ink)}
   .imp-sum.err{background:rgba(var(--red-rgb),.1);border-color:rgba(var(--red-rgb),.35)}
+  /* How to get the file. Compact and quiet — it is a reminder for something done once a week,
+     not a lesson — and it wraps to a phone without any of it needing to be tapped open. */
+  .att-howto{margin-top:14px;padding:13px 15px;border:1px solid var(--line);border-radius:11px;
+    background:var(--card-2);font-size:12.5px;line-height:1.55;color:var(--ink-dim)}
+  .att-howto-head{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-faint);margin-bottom:8px}
+  .att-steps{list-style:none;counter-reset:att;display:grid;gap:5px;margin:0}
+  .att-steps li{counter-increment:att;position:relative;padding-left:24px;overflow-wrap:break-word}
+  .att-steps li::before{content:counter(att);position:absolute;left:0;top:0;width:16px;height:16px;
+    border-radius:50%;background:var(--navy-2);border:1px solid var(--line);color:var(--ink-faint);
+    font-size:9.5px;font-weight:800;display:flex;align-items:center;justify-content:center}
+  .att-steps b{color:var(--ink);font-weight:700}
+  .att-howto-warn{margin-top:10px;padding-top:9px;border-top:1px solid var(--line);
+    color:var(--ink-dim);overflow-wrap:break-word}
+  .att-howto-warn b{color:var(--orange-soft);font-weight:700}
+  /* A file that READ but landed on nobody. Not an error — the file was fine — but not a
+     success either, and the thing to fix is on somebody's card rather than in the file. */
+  .imp-sum.warn{background:rgba(var(--amber-rgb),.09);border-color:rgba(var(--amber-rgb),.35)}
+  .imp-why{margin-top:9px;padding-top:9px;border-top:1px solid var(--line);color:var(--ink-dim)}
+  .imp-why b{color:var(--ink)}
   .imp-sum .imp-head{font-weight:800;margin-bottom:6px}
   .imp-sum ul{margin:8px 0 0 18px}
   .imp-sum li{margin-bottom:2px;font-size:12.5px;color:var(--ink-dim)}
@@ -1459,6 +1479,20 @@
         <input type="file" id="att-file" accept=".csv,text/csv" onchange="runAttendanceImport(this)">
       </label>
       <span class="admin-hint">One file a week. Re-uploading the same week replaces it rather than counting it twice, so it is safe to do again if you're not sure.</span>
+    </div>
+    <!-- The path through GoTeamUp, on the screen, always. It is four clicks and nobody does it
+         often enough to remember them, and a coach who has to go and ask is a week of
+         attendance nobody uploaded. -->
+    <div class="att-howto">
+      <div class="att-howto-head">How to get the report from GoTeamUp</div>
+      <ol class="att-steps">
+        <li><b>Classes / Appointments</b> → <b>Class Attendances</b></li>
+        <li><b>See results from</b> — set the dates for the week you want</li>
+        <li><b>Export</b> → <b>Name &amp; Email</b> → <b>Download</b></li>
+      </ol>
+      <p class="att-howto-warn"><b>Check the year on the dates before you export.</b> The date box
+        often opens on the wrong one, and a wrong year downloads either somebody else's week or
+        an empty file — both of which look like the upload has failed when it has not.</p>
     </div>
     <div id="attResult"></div>
     <div id="attList" style="margin-top:16px"></div>
@@ -4815,6 +4849,16 @@ function attWeekKey(value){
   if(!s) return null;
   const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
   if(iso) return isoWeekKeyFrom(+iso[1], +iso[2], +iso[3]);
+  /* 22/08/2026 — read DAY first. The gym is in Warrington and its exports are British, and
+     new Date() below would read it as the 8th of month 22 and give up, or worse read
+     05/08/2026 as 5 August in one place and 8 May in another. Day-first, once, here. */
+  const dmy = /^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})/.exec(s);
+  if(dmy){
+    let day=+dmy[1], mon=+dmy[2];
+    if(day<=12 && mon>12){ const t=day; day=mon; mon=t; }   // 08/22/2026 can only be month-first
+    if(mon>=1 && mon<=12 && day>=1 && day<=31) return isoWeekKeyFrom(+dmy[3], mon, day);
+    return null;
+  }
   const d = new Date(s);
   if(isNaN(d.getTime())) return null;
   return isoWeekKeyFrom(d.getFullYear(), d.getMonth()+1, d.getDate());
@@ -4843,16 +4887,56 @@ function emptyWeekBucket(){
   return {attendedPT:0, attendedOther:0, noShow:0, lateCancelled:0, registered:0};
 }
 
-const ATT_HEADERS = {
-  email:['customer email','email','customer e-mail','e-mail','email address'],
-  name:['customer name','name','full name','customer'],
-  starts:['event starts at','event start','event starts','starts at','event date','date'],
-  offering:['offering type name','offering type','offering','class type','event type'],
-  status:['status','booking status','attendance status']
-};
+/* GoTeamUp exports this report under two different sets of column names, and a gym gets
+   whichever one the report screen it used produces. They carry the same five things under
+   different headings, so the headings are mapped to the five and nothing downstream knows or
+   cares which file it was handed.
+
+   Listed per FORMAT rather than as one flat pile of aliases, so a third export shape is a
+   named case to add rather than a guess about which heading meant what — and so the error a
+   coach gets when a file is neither can name both, in the words their own screen uses.
+
+     Bookings export      Customer Name, Customer Email, Event Starts At, Offering Type Name, Status
+     Class Attendances    Customer,      Email,          Date (+ Time),   Class Type,         Status
+
+   The Class Attendances export splits the moment into Date and Time. Only the date is read:
+   these are ISO weeks, and no session starts on one day and finishes in another week. */
+const ATT_FORMATS = [
+  { name:'Bookings export',
+    cols:{ name:'Customer Name', email:'Customer Email', starts:'Event Starts At',
+           offering:'Offering Type Name', status:'Status' } },
+  { name:'Class Attendances export',
+    cols:{ name:'Customer', email:'Email', starts:'Date',
+           offering:'Class Type', status:'Status' } }
+];
+/* Every heading either format uses, plus the near-misses a hand-edited file throws up. Built
+   from ATT_FORMATS so a format's columns are declared once. */
+const ATT_HEADERS = (function(){
+  const extra = {
+    email:['customer e-mail','e-mail','email address'],
+    name:['name','full name'],
+    starts:['event start','event starts','starts at','event date','session date'],
+    offering:['offering type','offering','event type','class','session type'],
+    status:['booking status','attendance status']
+  };
+  const out = {email:[], name:[], starts:[], offering:[], status:[]};
+  Object.keys(out).forEach(k=>{
+    ATT_FORMATS.forEach(f=>{
+      const h = String(f.cols[k]||'').toLowerCase();
+      if(h && out[k].indexOf(h)===-1) out[k].push(h);
+    });
+    (extra[k]||[]).forEach(h=>{ if(out[k].indexOf(h)===-1) out[k].push(h); });
+  });
+  return out;
+})();
 function attHeaderIndex(headerRow){
   const idx={};
   (headerRow||[]).forEach((h,i)=>{
+    /* trim() is doing more work here than it looks. As well as spaces it strips \uFEFF — the
+       byte-order mark a spreadsheet leaves on the first cell of a file it saved as UTF-8,
+       which is invisible to a person and would otherwise stop the very first heading matching
+       anything at all. It is in the spec's definition of whitespace; it is worth knowing that
+       is why nothing else here has to deal with it. */
     const k=String(h==null?'':h).trim().toLowerCase().replace(/\s+/g,' ');
     Object.keys(ATT_HEADERS).forEach(key=>{
       if(idx[key]===undefined && ATT_HEADERS[key].indexOf(k)!==-1) idx[key]=i;
@@ -4870,10 +4954,13 @@ function readAttendanceCsv(text){
   const cols = (table[0]||[]).map(h=>String(h||'').trim()).filter(Boolean).join(', ');
   const missing = ['email','starts','offering','status'].filter(k=>idx[k]===undefined);
   if(missing.length){
-    const names = {email:'Customer Email', starts:'Event Starts At',
-                   offering:'Offering Type Name', status:'Status'};
-    return {ok:false, error:'That file is missing '+missing.map(k=>'“'+names[k]+'”').join(', ')
-      +'. Columns found: '+(cols||'none')};
+    /* Name both formats, in the words the export screens use, rather than one set of column
+       names that may not be the ones this file was ever going to have. A coach reading this
+       has a file open and needs to know which report to go back and run. */
+    const shape = f => ['email','starts','offering','status'].map(k=>'“'+f.cols[k]+'”').join(', ');
+    return {ok:false, error:'That file is not one this can read. It needs either '
+      + ATT_FORMATS.map(f=>f.name+' ('+shape(f)+')').join(', or ')
+      + '. Columns found: '+(cols||'none')};
   }
 
   const weeks = {};            // weekKey -> { normalisedEmail -> bucket }
@@ -5299,6 +5386,10 @@ function applyAttendanceCsv(text){
     matched: applied.matched.size,
     unmatched: applied.unmatched.size,
     unidentifiable: applied.unidentifiable.size,
+    // three addresses out of the file, for the message below to hold up beside the tracker's
+    // own when nothing matched. Enough to see the difference, not enough to be a list.
+    sampleEmails: [...applied.unmatched].slice(0,3),
+    memberCount: retention.length,
     zeroed: applied.zeroed,
     flagged: flaggedNow.length,
     newlyFlagged: flaggedNow.filter(id=>!flaggedBefore.has(id)).length
@@ -5320,12 +5411,33 @@ function attendanceSummaryHtml(r, filename){
     r.matched+' member'+(r.matched===1?'':'s')+' matched'
   ];
   if(r.unmatched) bits.push(r.unmatched+' customer'+(r.unmatched===1?'':'s')+' not tracked (skipped)');
+  if(r.unidentifiable) bits.push(r.unidentifiable+' member'+(r.unidentifiable===1?'':'s')+' with no email on file');
   if(r.badDate) bits.push(r.badDate+' with no readable date (skipped)');
   if(r.unknownStatus) bits.push(r.unknownStatus+' with an unknown status (skipped)');
   bits.push(r.flagged+' flagged as dropping'+(r.newlyFlagged?' ('+r.newlyFlagged+' new)':''));
-  return `<div class="imp-sum">
+
+  /* A file that read perfectly and matched NOBODY is the one outcome a plain count cannot
+     explain, and it is the one that actually happens: the columns were fine, the dates were
+     fine, and every address in the file belongs to somebody the tracker has never heard of.
+     Matching is by email and only by email, so the answer is always one of two things — the
+     members here have no email on them, or they have a different one from the gym's. Both are
+     fixable in a minute once somebody is told which. */
+  let why = '';
+  if(!r.matched){
+    const reasons = [];
+    if(!r.memberCount) reasons.push('there are no members on the tracker yet');
+    if(r.unidentifiable) reasons.push(r.unidentifiable+' member'+(r.unidentifiable===1?' has':'s have')
+      +' no email address on their record — people are matched by email, so they can never be found in a file');
+    if(r.unmatched) reasons.push('none of the '+r.unmatched+' address'+(r.unmatched===1?'':'es')
+      +' in the file belongs to a member here'
+      + (r.sampleEmails && r.sampleEmails.length
+          ? ' (for example '+r.sampleEmails.map(esc).join(', ')+')' : ''));
+    why = `<div class="imp-why"><b>Nothing was recorded.</b> ${reasons.join('. ')}. `
+      + `Check the email on a member’s card against the one in the file — Edit on their card is where to fix it.</div>`;
+  }
+  return `<div class="imp-sum${r.matched?'':' warn'}">
     <div class="imp-head">${esc(weeks)} · ${esc(filename||'import')}</div>
-    ${esc(bits.join(' · '))}.
+    ${esc(bits.join(' · '))}.${why}
   </div>`;
 }
 function runAttendanceImport(input){

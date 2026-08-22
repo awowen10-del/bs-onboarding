@@ -599,4 +599,222 @@ function sliding(id, name, counts, joinedDaysAgo, endWeeksAgo) {
   assert.ok(/runAttendanceImport/.test(view), "…still wired to the importer");
 }
 
+/* ---------- 14: the OTHER export, which is the one the gym actually runs ----------
+   GoTeamUp puts this report out under two different sets of column names depending on which
+   screen produced it. The Class Attendances export — the one a coach reaches through Export →
+   Name & Email — names the same five things differently and splits the moment into a Date and
+   a Time. Everything below the columns is the same feature: the same counting rules, the same
+   email matching, the same weeks, the same overwrite. */
+{
+  const H2 = "Customer,Email,Date,Time,Class Type,Venue,Instructors,Booking Method," +
+    "Membership,Booking Source,Status";
+  // one booking row, in the Class Attendances export's own column order
+  const row2 = (o) => [o.name || "A Person", o.email === undefined ? "a@example.com" : o.email,
+    o.date, o.time || "07:00", o.type === undefined ? "Bodysculpt PT" : o.type,
+    "Warrington", "Gaz", "Online", "Membership", "Web",
+    o.status === undefined ? "Attended" : o.status].join(",");
+  const csv2 = (...rows) => [H2].concat(rows).join("\n");
+  // the Date column, for the same week/day the other fixtures use
+  const day = (n, off) => {
+    const d = mondayWeeksAgo(n); d.setDate(d.getDate() + (off || 0));
+    const p = (x) => String(x).padStart(2, "0");
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+  };
+
+  const app = boot({ retention: [
+    member("m", "Mo Member", "mo@example.com", 90),
+    member("a", "Al Also", "AL@Example.com", 90),
+  ] });
+  const r = app.ctx.applyAttendanceCsv(csv2(
+    row2({ email: "mo@example.com", date: day(1, 0) }),                                 // ✓ PT
+    row2({ email: " MO@EXAMPLE.COM ", date: day(1, 2) }),                               // ✓ PT, typed loudly
+    row2({ email: "mo@example.com", date: day(1, 3), status: "Registered" }),
+    row2({ email: "mo@example.com", date: day(1, 4), status: "No show" }),
+    row2({ email: "mo@example.com", date: day(1, 5), status: "Late Cancelled" }),
+    row2({ email: "mo@example.com", date: day(1, 6), type: "SWEAT" }),                  // another class
+    row2({ email: "al@example.com", date: day(2, 1) }),                                 // a second week
+    row2({ email: "stranger@example.com", date: day(1, 1) })                            // not a member
+  ));
+
+  assert.strictEqual(r.ok, true, "the Class Attendances export is read: " + (r.error || ""));
+  assert.strictEqual(r.rows, 8, "every row was read");
+  assert.strictEqual(r.matched, 2, "…and both members were found, by email");
+  assert.strictEqual(r.unmatched, 1, "…with the rest of the gym ignored");
+
+  const wk1 = weekKey(app, 1), wk2 = weekKey(app, 2);
+  const b = app.findMember("m").attendance[wk1];
+  assert.strictEqual(b.attendedPT, 2, "only Attended + Bodysculpt PT counts, same as the other file");
+  assert.strictEqual(b.attendedOther, 1, "…the class they turned up to is kept separately");
+  assert.strictEqual(b.registered, 1);
+  assert.strictEqual(b.noShow, 1);
+  assert.strictEqual(b.lateCancelled, 1);
+  assert.strictEqual(app.findMember("a").attendance[wk2].attendedPT, 1,
+    "…and a second week in the same file lands in its own bucket");
+  assert.deepStrictEqual([...r.weekKeys], [wk2, wk1], "two weeks, in order");
+
+  // the email match is the same forgiving one: the tracker's "AL@Example.com" found the
+  // file's "al@example.com"
+  assert.ok(app.findMember("a").attendance[wk2], "case and spacing do not stop a match");
+
+  // and the same file dropped in twice lands on the same numbers
+  const before = JSON.stringify(app.retention());
+  app.ctx.applyAttendanceCsv(csv2(
+    row2({ email: "mo@example.com", date: day(1, 0) }),
+    row2({ email: " MO@EXAMPLE.COM ", date: day(1, 2) }),
+    row2({ email: "mo@example.com", date: day(1, 3), status: "Registered" }),
+    row2({ email: "mo@example.com", date: day(1, 4), status: "No show" }),
+    row2({ email: "mo@example.com", date: day(1, 5), status: "Late Cancelled" }),
+    row2({ email: "mo@example.com", date: day(1, 6), type: "SWEAT" }),
+    row2({ email: "al@example.com", date: day(2, 1) }),
+    row2({ email: "stranger@example.com", date: day(1, 1) })
+  ));
+  assert.strictEqual(JSON.stringify(app.retention()), before,
+    "re-uploading the same file changes nothing — the week is replaced, never added to");
+
+  /* A file at the size the gym actually exports: 366 rows, 328 of them Bodysculpt PT, most
+     of them belonging to people who are not members here. The reported symptom was this file
+     producing 0 matches; it produces real ones. */
+  const big = [];
+  for (let i = 0; i < 40; i++) big.push(row2({ email: "mo@example.com", date: day(1, i % 7) }));
+  for (let i = 0; i < 288; i++) big.push(row2({ email: "cust" + i + "@example.com", date: day(1, i % 7) }));
+  for (let i = 0; i < 38; i++) big.push(row2({ email: "cust" + i + "@example.com", date: day(1, i % 7), type: "SWEAT" }));
+  const fresh = boot({ retention: [member("m", "Mo Member", "mo@example.com", 90)] });
+  const bigR = fresh.ctx.applyAttendanceCsv(csv2(...big));
+  assert.strictEqual(bigR.rows, 366, "366 rows");
+  assert.strictEqual(bigR.matched, 1, "…and the member in it is matched, not skipped");
+  assert.strictEqual(fresh.findMember("m").attendance[weekKey(fresh, 1)].attendedPT, 40,
+    "…with all forty of their PT sessions counted");
+}
+
+/* ---------- 14b: which format a file is, is not a question anybody is asked ---------- */
+{
+  const app = boot({ retention: [member("m", "Mo Member", "mo@example.com", 90)] });
+  const day = (n) => {
+    const d = mondayWeeksAgo(n);
+    const p = (x) => String(x).padStart(2, "0");
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+  };
+  const wk = weekKey(app, 1);
+
+  // the old file
+  const a = app.ctx.applyAttendanceCsv(csv(row({ email: "mo@example.com", at: at(1, 0) })));
+  assert.strictEqual(a.matched, 1, "the Bookings export still reads");
+  assert.strictEqual(app.findMember("m").attendance[wk].attendedPT, 1);
+
+  // the new file, same week, same member — replaces it rather than doubling it
+  const b = app.ctx.applyAttendanceCsv(
+    "Customer,Email,Date,Time,Class Type,Venue,Instructors,Booking Method,Membership,Booking Source,Status\n"
+    + ["A Person", "mo@example.com", day(1), "07:00", "Bodysculpt PT", "W", "G", "O", "M", "W", "Attended"].join(","));
+  assert.strictEqual(b.matched, 1, "…and so does the Class Attendances export");
+  assert.strictEqual(app.findMember("m").attendance[wk].attendedPT, 1,
+    "…into the same week, with no double count when the formats are mixed");
+
+  /* A spreadsheet's byte-order mark on the very first heading — invisible to a person, and it
+     must be to this too or the first column matches nothing at all. Nothing in the app deals
+     with it explicitly: trim() strips \uFEFF as whitespace, in parseCsv and again in the
+     header index. Pinned here because that is not obvious, and somebody replacing a trim()
+     with something more precise would take it out without knowing. */
+  assert.strictEqual(app.ctx.parseCsv("\uFEFFCustomer,Email\na,b")[0][0], "Customer",
+    "the CSV reader comes out the other side without a BOM on the first cell");
+  assert.strictEqual(app.ctx.attHeaderIndex(["\uFEFFCustomer Email", "Event Starts At",
+    "Offering Type Name", "Status"]).email, 0,
+    "…and a header row carrying one still resolves its columns");
+  const bom = app.ctx.readAttendanceCsv("\uFEFFCustomer,Email,Date,Time,Class Type,Venue,"
+    + "Instructors,Booking Method,Membership,Booking Source,Status\n"
+    + ["A Person", "mo@example.com", day(1), "07:00", "Bodysculpt PT", "W", "G", "O", "M", "W", "Attended"].join(","));
+  assert.strictEqual(bom.ok, true, "…and the file reads");
+  assert.strictEqual(bom.counted, 1);
+
+  // a British date in the Date column reads day-first, not as a failure and not as May
+  assert.strictEqual(app.ctx.attWeekKey("22/08/2026"), "2026-W34", "22 August, day first");
+  assert.strictEqual(app.ctx.attWeekKey("05/08/2026"), "2026-W32", "…and 5 August, not 8 May");
+  assert.strictEqual(app.ctx.attWeekKey("08/22/2026"), "2026-W34",
+    "…while a date that can only be month-first is still read");
+}
+
+/* ---------- 14c: a file that is neither format says so, and says what it wanted ---------- */
+{
+  const app = boot({ retention: [member("m", "Mo Member", "mo@example.com", 90)] });
+  const r = app.ctx.applyAttendanceCsv("Person,Mail,When,Kind\nJane,a@e.com,2026-08-17,PT");
+
+  assert.strictEqual(r.ok, false, "it is refused rather than read as an empty week");
+  assert.ok(/Bookings export/.test(r.error) && /Class Attendances export/.test(r.error),
+    "…and names both reports a coach could have run");
+  assert.ok(/“Customer Email”/.test(r.error) && /“Email”/.test(r.error),
+    "…with the columns each of them has");
+  assert.ok(/Columns found: Person, Mail, When, Kind/.test(r.error),
+    "…and what it got instead, so the two can be held side by side");
+  assert.ok(/Nothing imported/.test(app.ctx.attendanceSummaryHtml(r, "wrong.csv")),
+    "…and the summary says nothing was imported");
+}
+
+/* ---------- 14d: a file that reads but matches NOBODY explains itself ----------
+   The reported symptom — "366 rows · 0 members matched" — with a plain count under it and no
+   way to tell whether the file was wrong, the app was wrong, or the emails simply do not
+   line up. Matching is by email and only by email, so there are exactly two answers, and the
+   summary now gives whichever one applies. */
+{
+  const H2 = "Customer,Email,Date,Time,Class Type,Venue,Instructors,Booking Method," +
+    "Membership,Booking Source,Status";
+  const day = (n) => {
+    const d = mondayWeeksAgo(n);
+    const p = (x) => String(x).padStart(2, "0");
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+  };
+  const file = [H2,
+    ["A Person", "someone@example.com", day(1), "07:00", "Bodysculpt PT", "W", "G", "O", "M", "W", "Attended"].join(","),
+    ["B Person", "other@example.com", day(1), "07:00", "Bodysculpt PT", "W", "G", "O", "M", "W", "Attended"].join(","),
+  ].join("\n");
+  const text = (h) => h.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+
+  // …because the members here have no email on them at all
+  const noEmail = boot({ retention: [member("m", "Mo Member", "", 90)] });
+  const a = text(noEmail.ctx.attendanceSummaryHtml(noEmail.ctx.applyAttendanceCsv(file), "week.csv"));
+  assert.ok(/0 members matched/.test(a), "the count is still the count");
+  assert.ok(/Nothing was recorded/.test(a), "…and it is called what it is");
+  assert.ok(/no email address on their record/.test(a), "…with the reason that applies");
+  assert.ok(/Edit on their card/.test(a), "…and where to fix it");
+
+  // …or because they have one, and it is a different one
+  const other = boot({ retention: [member("m", "Mo Member", "mo@bodysculpt.com", 90)] });
+  const b = text(other.ctx.attendanceSummaryHtml(other.ctx.applyAttendanceCsv(file), "week.csv"));
+  assert.ok(/none of the 2 addresses in the file belongs to a member here/.test(b),
+    "the other reason, when they do have an email");
+  assert.ok(/someone@example\.com/.test(b),
+    "…with addresses out of the file to hold beside the tracker's own");
+  assert.ok(!/no email address on their record/.test(b), "…and not the reason that does not apply");
+
+  // …and when it works, none of that is said
+  const works = boot({ retention: [member("m", "Mo Member", "someone@example.com", 90)] });
+  const c = text(works.ctx.attendanceSummaryHtml(works.ctx.applyAttendanceCsv(file), "week.csv"));
+  assert.ok(/1 member matched/.test(c));
+  assert.ok(!/Nothing was recorded/.test(c), "a working import is not explained at somebody");
+}
+
+/* ---------- 14e: how to get the file, on the screen ---------- */
+{
+  const view = /<section class="view" id="view-ret-attendance"[\s\S]*?<\/section>/.exec(HTML)[0];
+  assert.ok(/class="att-howto"/.test(view), "the instructions are on the tab");
+  assert.ok(view.indexOf('class="att-howto"') > view.indexOf('id="att-file"'),
+    "…beside the upload control they are about");
+  assert.ok(view.indexOf('class="att-howto"') < view.indexOf('id="attList"'),
+    "…and above the member table, so they are visible without scrolling past a hundred rows");
+  for (const step of ["Class Attendances", "See results from", "Export", "Name &amp; Email", "Download"]) {
+    assert.ok(view.includes(step), "the path says: " + step);
+  }
+  assert.ok(/Check the year on the dates/.test(view),
+    "…and warns about the year, which is the mistake that costs a week");
+  assert.ok(!/hidden|display:none/.test(/class="att-howto"[\s\S]*?<\/div>\s*<div id="attResult"/.exec(view)[0]),
+    "…always visible, not behind a toggle");
+
+  // and it is styled to be quiet and to wrap on a phone
+  const CSS = HTML.slice(HTML.indexOf("<style>") + 7, HTML.indexOf("</style>"));
+  const RULES = [...CSS.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .map((m) => ({ sel: m[1].replace(/\/\*[\s\S]*?\*\//g, "").trim(), body: m[2] }));
+  const rule = (sel) => (RULES.find((r) => r.sel.split(",").map((t) => t.trim()).includes(sel)) || { body: "" }).body;
+  assert.ok(/font-size:12/.test(rule(".att-howto")), "compact type: " + rule(".att-howto"));
+  assert.ok(/overflow-wrap:break-word/.test(rule(".att-steps li")), "…that wraps on a narrow screen");
+  assert.ok(!/(^|;)\s*width:\s*\d+px/.test(rule(".att-howto")), "…and is not pinned to a width");
+}
+
 console.log("attendance.test.cjs: OK");

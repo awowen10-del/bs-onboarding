@@ -4,6 +4,11 @@
 // are matched on a trimmed, case-insensitive name with email as a fallback; a name that
 // matches nobody creates NOTHING and writes NOTHING; and a successful match writes the
 // roster back with only that one person changed.
+//
+// And the quiet one that keeps the whole thing running: a payload with no date of birth in it
+// answers 200, not 400. The Zap feeding this fires on every customer profile update, so most
+// runs have nothing to do — and a Zapier Zap that accumulates failures pauses itself, which
+// would stop birthdays syncing with nothing on screen to say so.
 const assert = require("assert");
 const path = require("path");
 
@@ -216,26 +221,61 @@ const roster = () => ([
   assert.ok(r.logs.some((l) => /^UNCHANGED:/.test(l)));
 }
 
-/* ---------- 7: bad or missing input is refused clearly ---------- */
+/* ---------- 7: a payload with no date of birth is a calm 200, not a failure ----------
+   The Zap feeding this fires on "Customer Updated" — any change to any profile in GoTeamUp —
+   and almost none of those changes are about a birthday. Answering 400 to all of them meant a
+   steady drip of failed runs, and Zapier auto-pauses a Zap that accumulates enough of those:
+   birthdays would quietly stop syncing and the only sign would be a Zap somebody had to
+   notice was off. So it reads like the no-match case — nothing happened, said plainly. */
+{
+  const mod = load();
+  const list = roster();
+  const calls = stubFetch(list);
+  const before = JSON.stringify(list);
+
+  const noDob = await run(mod, ev({ name: "Sarah Doyle" }));
+  assert.strictEqual(noDob.status, 200, "a profile update with no birthday in it is not a failure");
+  assert.strictEqual(noDob.body.result, "no_dob");
+  assert.strictEqual(noDob.body.updated, false);
+  assert.strictEqual(noDob.body.ok, true);
+  assert.strictEqual(noDob.body.note, "No date of birth in payload; nothing changed.");
+  assert.strictEqual(noDob.body.received, null, "there was nothing to quote back");
+  assert.ok(noDob.logs.some((l) => /^NO DOB: nothing to do/.test(l)),
+    "…and it says so in the log, plainly and findably");
+
+  // a date that ARRIVED but could not be read is the same calm answer — a Zap that pauses is
+  // worse than a bad date — but it is worth saying out loud, because somebody may want to fix it
+  const badDob = await run(mod, ev({ name: "Sarah Doyle", dob: "sometime in 1990" }));
+  assert.strictEqual(badDob.status, 200);
+  assert.strictEqual(badDob.body.result, "no_dob");
+  assert.strictEqual(badDob.body.received, "sometime in 1990", "…and quotes back what it got");
+  assert.ok(/YYYY-MM-DD/.test(badDob.body.hint), "…with how to send it so it always reads");
+  assert.ok(badDob.logs.some((l) => /^NO DOB: nothing to do — could not read/.test(l)),
+    "…and the log distinguishes an unreadable date from no date at all");
+
+  // NOTHING was touched by either
+  assert.strictEqual(calls.filter((c) => c.method === "POST").length, 0, "nothing was written");
+  assert.strictEqual(JSON.stringify(list), before, "…and no record changed");
+  assert.strictEqual(list.length, 3, "…and nobody was created");
+
+  // it does not even go looking: with no date there is no reason to read the roster
+  assert.strictEqual(calls.length, 0, "no read, no write — the run costs nothing");
+}
+
+/* ---------- 7b: a genuinely broken request is still refused ----------
+   The distinction being drawn is between "there was nothing to do" and "this request makes no
+   sense". The first is the ordinary case and must never fail the Zap; the second is a Zap
+   somebody has misconfigured, and saying 200 to it would hide that. */
 {
   const mod = load();
   stubFetch(roster());
 
-  const noDob = await run(mod, ev({ name: "Sarah Doyle" }));
-  assert.strictEqual(noDob.status, 400);
-  assert.ok(/could not read a date of birth/i.test(noDob.body.error));
-  assert.ok(/YYYY-MM-DD/.test(noDob.body.hint), "the error tells you how to fix it");
-
-  const badDob = await run(mod, ev({ name: "Sarah Doyle", dob: "sometime in 1990" }));
-  assert.strictEqual(badDob.status, 400);
-  assert.strictEqual(badDob.body.received, "sometime in 1990", "…and quotes back what it got");
-
   const noName = await run(mod, ev({ dob: "1990-04-23" }));
-  assert.strictEqual(noName.status, 400);
+  assert.strictEqual(noName.status, 400, "a date of birth belonging to nobody is a broken Zap");
   assert.ok(/no name or email/i.test(noName.body.error));
 
   const junk = await run(mod, ev(null, { raw: "{not json" }));
-  assert.strictEqual(junk.status, 400);
+  assert.strictEqual(junk.status, 400, "…as is a body that is not a body");
 }
 
 /* ---------- 8: form-encoded bodies and the other field names ---------- */

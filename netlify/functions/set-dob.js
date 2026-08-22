@@ -8,6 +8,12 @@
  * Matching: by name — trimmed, case-insensitive, repeated spaces collapsed — falling back
  * to email when one is sent and the name finds nothing.
  *
+ * NOTHING HERE IS AN ERROR EXCEPT A BROKEN REQUEST. A payload with no date of birth in it,
+ * and a name that matches nobody, both answer 200 and say what they did — which was nothing.
+ * The Zap feeding this fires on every customer profile update, so the great majority of runs
+ * are exactly those two cases, and a Zapier Zap that accumulates failures auto-pauses itself.
+ * A 400 here would eventually stop birthdays syncing with no sign that it had.
+ *
  * ENVIRONMENT VARIABLES (Netlify → Site settings → Environment variables):
  *   SUPABASE_URL          your project URL (https://xxxx.supabase.co)
  *   SUPABASE_SERVICE_KEY  the Supabase SECRET key (server-only, never in the browser)
@@ -185,14 +191,30 @@ exports.handler = async (event) => {
     console.log('REJECT: no name or email in payload. Keys=' + Object.keys(data).join(','));
     return resp(400, { error: 'No name or email in payload', keysReceived: Object.keys(data) });
   }
+  /* No date of birth is NOT an error.
+     The Zap that feeds this fires on "Customer Updated" — any change to any profile in
+     GoTeamUp — and almost none of those changes are about a birthday. Answering 400 to all of
+     them meant a steady drip of failed runs, and Zapier auto-pauses a Zap that accumulates
+     enough of those. The failure mode was the worst kind: birthdays would quietly stop
+     syncing, and the only sign would be a Zap somebody had to notice was off.
+     So this reads like the no-match below it: a calm 200 that says plainly that nothing
+     happened. Loud in the log, findable in the Zap history, and not a failure.
+     A date that arrived but could not be READ is still worth saying out loud — that is a real
+     formatting problem somebody may want to fix — so the two log lines differ while the
+     answer does not. */
   const parsed = parseDob(rawDob);
   if (!parsed) {
-    console.log('REJECT: could not read a date of birth from ' + JSON.stringify(rawDob)
-      + ' for name="' + name + '"');
-    return resp(400, {
-      error: 'Could not read a date of birth',
-      received: String(rawDob).slice(0, 60),
-      hint: 'Send it as YYYY-MM-DD (e.g. 1990-04-23) and it is never ambiguous.',
+    const had = String(rawDob == null ? '' : rawDob).trim();
+    console.log('NO DOB: nothing to do — ' + (had
+      ? 'could not read a date of birth from ' + JSON.stringify(rawDob)
+      : 'no date of birth in the payload')
+      + ' for name="' + name + '"' + (email ? ' email="' + email + '"' : ''));
+    return resp(200, {
+      ok: true, updated: false, result: 'no_dob',
+      note: 'No date of birth in payload; nothing changed.',
+      name: name || null, email: email || null,
+      received: had ? had.slice(0, 60) : null,
+      hint: 'When there is one to send, send it as YYYY-MM-DD (e.g. 1990-04-23) and it is never ambiguous.',
       keysReceived: Object.keys(data)
     });
   }

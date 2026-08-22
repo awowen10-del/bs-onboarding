@@ -853,6 +853,9 @@
     border:1px solid var(--line);padding:0 6px}
   .att-n.zero{color:var(--red);background:rgba(var(--red-rgb),.1);border-color:rgba(var(--red-rgb),.3)}
   .att-n.none{color:var(--ink-faint);background:transparent;border-color:transparent;font-weight:600}
+  /* Before their first full week: not a gap in our data, so it must not look like the dash
+     that means one. Fainter still, and a dot rather than a dash. */
+  .att-n.before{color:var(--line);background:transparent;border-color:transparent;font-weight:700}
   tr.att-flagged td.who{box-shadow:inset 3px 0 0 var(--amber)}
   .att-warn{color:var(--amber);font-weight:700}
   /* the sparkline — one bar per week, oldest on the left */
@@ -953,6 +956,9 @@
 
   /* ---------- Birthdays ---------- */
   .lbl-opt{font-weight:600;color:var(--ink-faint);text-transform:none;letter-spacing:0}
+  /* A line UNDER a field, for a consequence worth spelling out before somebody changes it —
+     as opposed to .lbl-opt, which qualifies the label itself. */
+  .field-note{margin-top:6px;font-size:11.5px;line-height:1.5;color:var(--ink-faint)}
   .bday-month{margin-bottom:4px}
   /* the current month leads the list and is the only one wearing the brand accent */
   .bday-month.now .group-label{color:var(--orange-soft)}
@@ -1579,6 +1585,17 @@
     <div class="field">
       <label>Date of birth <span class="lbl-opt">optional — shows on the Birthdays tab</span></label>
       <input type="date" id="rf-dob">
+    </div>
+    <!-- The date everything about a member hangs off. Editable because it is often wrong at
+         first — somebody handed over on the day the paperwork was done rather than the day
+         they actually started — and because a wrong start date quietly moves their whole
+         journey and every week of their attendance. -->
+    <div class="field">
+      <label>Start date <span class="lbl-opt">the day they became a member</span></label>
+      <input type="date" id="rf-joined">
+      <div class="field-note">Their journey and their attendance weeks are both counted from
+        this day, so changing it moves their welcome card, day 30, day 60 and anniversary, and
+        renumbers their attendance weeks.</div>
     </div>
     <!-- Typed in, not counted. A challenge is six weeks until somebody pauses or extends it,
          so how many sessions they actually did is a thing a coach knows and the tracker does
@@ -4915,8 +4932,11 @@ function applyAttendanceToMembers(read){
         summary.matched.add(m.id);
         return;
       }
-      // no rows for them this week — a real zero, but only once they were a member
-      if(!m.joined || isoWeekKeyOf(m.joined) > wk) return;
+      /* No rows for them this week — a real zero, but only from their FIRST FULL WEEK.
+         Their partial join week is not one of their weeks, so a zero written against it would
+         be a week of theirs that never existed sitting at the front of their history. */
+      const one = memberWeekOneKey(m);
+      if(!one || wk < one) return;
       m.attendance[wk] = emptyWeekBucket();
       summary.zeroed++;
     });
@@ -4924,9 +4944,67 @@ function applyAttendanceToMembers(read){
   return summary;
 }
 
+/* ---- A member's own weeks ----
+   Attendance is counted per member from THEIR first full week, not from the calendar. A
+   member who joined on a Wednesday did not have a week that week — they had three days — and
+   counting those three days as a week produces a low first number followed by a normal one,
+   which is a rise nobody made, or a fall nobody made if they happened to train twice on the
+   Thursday. Either way it is noise at exactly the moment the history is shortest and every
+   number counts double.
+
+   So Week 1 is the first ISO week that STARTS on or after the day they joined. Join on a
+   Monday and that Monday is Week 1; join on any other day and the partial week is ignored and
+   the following Monday opens Week 1. It is the same rule the grid draws and the drop-off
+   alert counts on, from the same functions, so the two can never disagree about what a
+   member's third week was. */
+function firstFullWeekMonday(ts){
+  const d = new Date(ts); d.setHours(0,0,0,0);
+  const dow = d.getDay() || 7;                      // 1 = Monday … 7 = Sunday
+  if(dow !== 1) d.setDate(d.getDate() + (8 - dow)); // …otherwise the next Monday
+  return d;
+}
+/* The ISO week key of their Week 1, or null for somebody with no start date. */
+function memberWeekOneKey(m){
+  if(!m || !m.joined) return null;
+  const d = firstFullWeekMonday(m.joined);
+  return isoWeekKeyFrom(d.getFullYear(), d.getMonth()+1, d.getDate());
+}
+/* Every membership week they have had so far, oldest first: Week 1 through the week we are
+   in. Empty for somebody who joined this week and whose first full week has not started yet —
+   which is the right answer, not a bug: they have no weeks to show. */
+function memberWeekKeys(m){
+  if(!m || !m.joined) return [];
+  const cur = new Date(); cur.setHours(0,0,0,0);
+  cur.setDate(cur.getDate() - ((cur.getDay()||7) - 1));    // Monday of this week
+  const d = firstFullWeekMonday(m.joined);
+  const out = [];
+  // the guard is a backstop against a nonsense start date, not a real limit — six months of
+  // membership is 26 of these and the tab only ever draws the last eight
+  while(d.getTime() <= cur.getTime() && out.length < 600){
+    out.push(isoWeekKeyFrom(d.getFullYear(), d.getMonth()+1, d.getDate()));
+    d.setDate(d.getDate()+7);
+  }
+  return out;
+}
+/* Which of their weeks a given ISO week is — 1-based, or 0 for a week before they were a
+   member (their partial join week, or anything earlier). */
+function memberWeekNumber(m, wk){
+  const one = memberWeekOneKey(m);
+  if(!one || !wk || wk < one) return 0;
+  return memberWeekKeys(m).indexOf(wk) + 1;
+}
+
 /* ---- reading a member's history ---- */
+/* The weeks of theirs we hold anything for. Filtered to their OWN weeks — anything stored
+   against their partial join week, or against a week before they were a member at all, is
+   kept on the record and left out of every reading of it. That filter is what makes the
+   sparkline, the drop-off run and the grid agree on what a member's weeks are: they all
+   come through here. */
 function attendanceWeeks(m){
-  return Object.keys((m && m.attendance) || {}).filter(k=>/^\d{4}-W\d{2}$/.test(k)).sort();
+  const one = memberWeekOneKey(m);
+  return Object.keys((m && m.attendance) || {})
+    .filter(k=>/^\d{4}-W\d{2}$/.test(k) && (!one || k >= one))
+    .sort();
 }
 function attendedPTIn(m, wk){
   const b = m && m.attendance && m.attendance[wk];
@@ -4949,6 +5027,37 @@ function withinFirstMonths(m, months){
 
 const ATT_DROP_WEEKS = 3;          // how long a decline has to run before we say anything
 const ATT_WATCH_MONTHS = 6;        // …and how new they have to be for us to act on it
+const ATT_GRID_WEEKS = 8;          // …and how many weeks of it the tab draws
+
+/* The last n ISO weeks by the CALENDAR, ending with the week we are in — not the weeks we
+   happen to hold data for. The difference is the whole fix on this tab: columns that come
+   from the data disappear when there is no data, and a member who has never been uploaded
+   for then has no row to sit in. The calendar always knows what the last eight weeks were.
+
+   It does mean the rightmost column is the week in progress, which will read "–" until that
+   week's file goes in. That is true and worth saying: it is the week nobody has uploaded
+   yet, and a dash on it is a better answer than hiding it. */
+function recentWeekKeys(n){
+  const out = [];
+  const monday = new Date(); monday.setHours(0,0,0,0);
+  monday.setDate(monday.getDate() - ((monday.getDay()||7) - 1));
+  for(let i=(n||ATT_GRID_WEEKS)-1; i>=0; i--){
+    const d = new Date(monday); d.setDate(d.getDate() - i*7);
+    out.push(isoWeekKeyFrom(d.getFullYear(), d.getMonth()+1, d.getDate()));
+  }
+  return out;
+}
+/* Who this tab is about: members inside their first months, who have not left. MEMBERSHIP is
+   what puts somebody on it — not attendance, and not an upload. Somebody who joined this
+   morning is on this list this morning, with eight dashes, which is exactly right: the list
+   is who we are watching, and the file is what fills it in.
+   Past the watch window they drop off, because a decline in month nine is a different
+   question answered by different reporting. And a member who has cancelled drops off too:
+   there is nothing to watch, and leaving them here would be asking a coach to worry about
+   somebody who has already gone. */
+function attendanceWatchList(){
+  return retention.filter(m=> withinFirstMonths(m, ATT_WATCH_MONTHS) && !hasLeft(m));
+}
 
 /* The most recent run of three consecutive weeks-with-data, each strictly lower than the one
    before: 3 → 2 → 1. A single zero is not a decline, and neither is 3 → 3 → 0 — that is the
@@ -5253,46 +5362,84 @@ function attendanceSpark(m, n){
     + `</span>`;
 }
 
+/* The tab is a WATCH LIST, and the thing that puts somebody on it is being a member.
+   It used to be built the other way round — the rows came out of the attendance data, so the
+   whole table sat behind a "no attendance uploaded yet" screen and a member nobody had
+   uploaded for had nowhere to appear. That is backwards: membership creates the row, the file
+   fills in the numbers. Somebody who joined this morning belongs on this list this morning,
+   with eight dashes across it, because the list is who we are watching and the dashes are the
+   honest state of what we know about them. */
 function renderAttendance(){
   const host = document.getElementById('attList'); if(!host) return;
 
-  const withData = retention.filter(m=>attendanceWeeks(m).length);
   if(!retention.length){
     host.innerHTML = `<div class="empty"><div class="big">No members yet.</div>
       Attendance is tracked per member — anyone marked <b>Stayed on</b> in the Onboarding tracker arrives here automatically.</div>`;
     return;
   }
-  if(!withData.length){
-    host.innerHTML = `<div class="empty"><div class="big">No attendance uploaded yet.</div>
-      Export the week's attendance from GoTeamUp and drop the file in above. It takes three weeks of history before a decline can show.</div>`;
-    return;
-  }
-
-  // the columns are every week we hold, most recent last, capped at the last eight
-  const allWeeks = [...new Set(retention.flatMap(attendanceWeeks))].sort().slice(-8);
-  const latest = allWeeks[allWeeks.length-1];
-  const rows = retention.slice().sort((a,b)=>{
+  const rows = attendanceWatchList().sort((a,b)=>{
     const fa = isAttendanceFlagged(a)?0:1, fb = isAttendanceFlagged(b)?0:1;   // flagged first
     return fa-fb || String(a.name||'').localeCompare(String(b.name||''));
   });
+  if(!rows.length){
+    host.innerHTML = `<div class="empty"><div class="big">Nobody in their first ${ATT_WATCH_MONTHS} months.</div>
+      This tab watches new members — everyone here is past their first ${ATT_WATCH_MONTHS} months or has left.
+      Attendance still uploads and still stores; there is just nobody new to watch today.</div>`;
+    return;
+  }
+
+  /* Eight columns, and each row reads its OWN weeks across them.
+
+     A member's weeks are counted from their first full week of membership, so week 3 means
+     their third week and not the third week of the year. Everybody's latest membership week
+     is the week we are in — that is where their clock has got to — so the columns line up on
+     the calendar anyway, and the date headers are true for every row. What differs is where
+     each row STARTS: a member four weeks in has four cells and four blanks before them,
+     because those weeks are not weeks of theirs to have a number for. That is a different
+     thing from a dash, which says we hold no file for a week they were here.
+
+     Eight of them, however long they have been with us: a six-month member would otherwise
+     bring twenty-six columns and take the table off the side of the screen, and the weeks
+     anybody acts on are the recent ones. */
+  const allWeeks = recentWeekKeys(ATT_GRID_WEEKS);
+  const latest = allWeeks[allWeeks.length-1];
 
   const head = `<thead><tr><th class="who">Member</th>
-    ${allWeeks.map(w=>`<th${w===latest?' class="grp"':''}>${esc(fmt(isoWeekStart(w)))}${w===latest?'<br>latest':''}</th>`).join('')}
+    ${allWeeks.map(w=>`<th${w===latest?' class="grp"':''}>${esc(fmt(isoWeekStart(w)))}${w===latest?'<br>this week':''}</th>`).join('')}
     <th>Trend</th></tr></thead>`;
   const body = rows.map(m=>{
     const flagged = isAttendanceFlagged(m);
+    const mine = memberWeekKeys(m);
+    const one = mine.length ? mine[0] : null;
     const cells = allWeeks.map(w=>{
+      // before their first full week: not a week of theirs, and not a gap in our data either
+      if(!one || w < one){
+        return `<td><span class="att-n before" title="${esc(m.name+' · '+attWeekLabel(w)
+          +' · not a member yet')}">·</span></td>`;
+      }
+      const wkNo = memberWeekNumber(m, w);
       const has = m.attendance && m.attendance[w];
       const n = attendedPTIn(m,w);
       return `<td><span class="att-n${!has?' none':(n===0?' zero':'')}"
-        title="${esc(m.name+' · '+attWeekLabel(w)+' · '+(has?n+' PT session'+(n===1?'':'s'):'no data'))}"
+        title="${esc(m.name+' · week '+wkNo+' ('+attWeekLabel(w)+') · '
+          +(has?n+' PT session'+(n===1?'':'s'):'no data'))}"
         >${has?n:'–'}</span></td>`;
     }).join('');
-    const watch = withinFirstMonths(m, ATT_WATCH_MONTHS) ? '' :
-      `<div class="meta">past ${ATT_WATCH_MONTHS} months — not watched</div>`;
+    /* Under their name: where their own clock has got to, and then whatever is worth saying
+       on top of it. The week number leads because it is what makes the row readable — the
+       columns are dates, and "week 5 of membership" is what turns those dates into a member's
+       own history. Then the exception, if there is one: a decline, or nothing on file at all.
+       A row of "–" could be read as a bad month; "no attendance uploaded yet" cannot, and it
+       is a statement about US rather than about them, which is what the dashes exist to keep
+       apart. Somebody whose first full week has not started has no week number yet, so their
+       line says when it opens instead — a whole row of dots would otherwise look like a fault. */
+    const wkLine = mine.length ? 'week '+mine.length+' of membership' : '';
+    const state = flagged ? '<span class="att-warn">Attendance dropping</span>'
+      : !mine.length ? 'first full week starts '+esc(fmt(firstFullWeekMonday(m.joined).getTime()))
+      : !attendanceWeeks(m).length ? 'no attendance uploaded yet' : '';
+    const note = `<div class="meta">${[wkLine, state].filter(Boolean).join(' · ')}</div>`;
     return `<tr${flagged?' class="att-flagged"':''}>
-      <td class="who"><div class="nm">${esc(m.name)}${notesBtn(m)}</div>
-        ${flagged?'<div class="meta att-warn">Attendance dropping</div>':watch}</td>
+      <td class="who"><div class="nm">${esc(m.name)}${notesBtn(m)}</div>${note}</td>
       ${cells}
       <td>${attendanceSpark(m, allWeeks.length)}</td>
     </tr>`;
@@ -5300,9 +5447,11 @@ function renderAttendance(){
 
   host.innerHTML = `<div class="tbl-scroll"><table class="journey attend">${head}<tbody>${body}</tbody></table></div>
     <div class="tbl-legend">
-      <span>Bodysculpt PT sessions attended, by week</span>
-      <span>· “–” means we hold no file for that week</span>
-      <span>· ${ATT_DROP_WEEKS} weeks each lower than the last, inside the first ${ATT_WATCH_MONTHS} months, raises a check-in</span>
+      <span>Bodysculpt PT sessions attended, by each member's own weeks</span>
+      <span>· everyone in their first ${ATT_WATCH_MONTHS} months of membership</span>
+      <span>· week 1 is their first full week — a part-week join does not count as one</span>
+      <span>· “–” means we hold no file for that week, “·” that they had not joined yet</span>
+      <span>· ${ATT_DROP_WEEKS} weeks each lower than the last raises a check-in</span>
     </div>`;
 }
 
@@ -5370,6 +5519,7 @@ function openRetAdd(){
   document.getElementById('rf-coach').value='Dan';
   document.getElementById('rf-dob').value='';
   document.getElementById('rf-sessions').value='';
+  document.getElementById('rf-joined').value=toDateInput(today0());   // today, for somebody joining now
   document.getElementById('retModalBg').classList.add('show');
 }
 function openRetEdit(id){
@@ -5383,6 +5533,7 @@ function openRetEdit(id){
   document.getElementById('rf-dob').value=m.dob||'';
   // null reads as an empty box, which is exactly what it means: nobody has said yet
   document.getElementById('rf-sessions').value = m.challengeSessions==null ? '' : m.challengeSessions;
+  document.getElementById('rf-joined').value = m.joined ? toDateInput(m.joined) : '';
   document.getElementById('retModalBg').classList.add('show');
 }
 function closeRetModal(){ document.getElementById('retModalBg').classList.remove('show'); }
@@ -5391,6 +5542,15 @@ function closeRetModal(){ document.getElementById('retModalBg').classList.remove
    half-typed box should leave the field alone rather than storing nonsense in it. Zero is a
    real answer and is kept as one. Negatives and fractions are not sessions anybody did, so
    they round and clamp rather than being stored as typed. */
+/* A start date as a timestamp at local midnight, or null if it is not a real calendar date.
+   dobParts does the validating — it is the app's one "is this a real date" check, and 30
+   February fails it there exactly as it fails here. */
+function normalizeJoinedDate(v){
+  const p = dobParts(v);
+  if(!p) return null;
+  const pad=n=>String(n).padStart(2,'0');
+  return parseDate(p.y+'-'+pad(p.m)+'-'+pad(p.d));
+}
 function normalizeSessions(v){
   const s = String(v==null?'':v).trim();
   if(!s) return null;
@@ -5405,12 +5565,18 @@ function saveRetMember(){
   const coach=document.getElementById('rf-coach').value;
   const dob=normalizeDob(document.getElementById('rf-dob').value);   // '' or nonsense -> null
   const challengeSessions=normalizeSessions(document.getElementById('rf-sessions').value);
+  /* A member without a start date has no journey, no attendance weeks and no watch window —
+     three features that would each quietly do nothing rather than fail — so this one is not
+     optional and a bad date is refused rather than stored as null. */
+  const joined=normalizeJoinedDate(document.getElementById('rf-joined').value);
+  if(!joined){ alert('Add a start date — everything about a member is counted from it.'); return; }
   if(retEditTarget){
     const m=retention.find(x=>x.id===retEditTarget);
-    if(m){ m.name=name; m.email=email; m.coach=coach; m.dob=dob; m.challengeSessions=challengeSessions; }
+    if(m){ m.name=name; m.email=email; m.coach=coach; m.dob=dob; m.challengeSessions=challengeSessions;
+           m.joined=joined; }
   }else{
-    retention.push({id:newClientId('r'), name, email, coach, dob, challengeSessions,
-      personal:'', notes:'', joined:today0(), fromChallenger:null, left:false,
+    retention.push({id:newClientId('r'), name, email, coach, dob, challengeSessions, joined,
+      personal:'', notes:'', fromChallenger:null, left:false,
       completed:[], missed:[], doneMeta:{}, attendance:{}});
   }
   closeRetModal(); saveRetention(); renderAll();

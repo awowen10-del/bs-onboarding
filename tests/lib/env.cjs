@@ -233,6 +233,12 @@ function boot(opts = {}) {
   get JOURNEY(){ return JOURNEY; },
   get TABLE_COLS(){ return TABLE_COLS; },
   get MEMBER_JOURNEY(){ return MEMBER_JOURNEY; },
+  // the attendance windows — top-level consts, so not properties of the vm global either.
+  // Exposed so a test can assert the tab and the alert read the SAME window rather than
+  // hard-coding 6 in two places and never noticing when one of them moves.
+  get ATT_WATCH_MONTHS(){ return ATT_WATCH_MONTHS; },
+  get ATT_DROP_WEEKS(){ return ATT_DROP_WEEKS; },
+  get ATT_GRID_WEEKS(){ return ATT_GRID_WEEKS; },
   get MEMBER_COLS(){ return MEMBER_COLS; }
 };`;
   // localStorage as it is BEFORE the app script runs — a returning device. The app reads a

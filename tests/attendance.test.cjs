@@ -66,10 +66,17 @@ function history(m, counts, endWeeksAgo) {
   });
   return m;
 }
-// a member `joinedDaysAgo` old whose last `counts.length` weeks read `counts`
+/* A member whose last `counts.length` weeks read `counts`.
+
+   The default start date is derived from the history rather than fixed, because a member's
+   weeks are now counted from THEIR first full week: a fixture that gives somebody attendance
+   from eight weeks ago and a start date of last month is describing a member who was not a
+   member yet, and the app is right to ignore it. Two weeks of margin, so the oldest week in
+   the history is comfortably inside their membership. */
 function sliding(id, name, counts, joinedDaysAgo, endWeeksAgo) {
+  const spanWeeks = counts.length + (endWeeksAgo === undefined ? 1 : endWeeksAgo);
   return history(member(id, name, id + "@example.com",
-    joinedDaysAgo === undefined ? 30 : joinedDaysAgo), counts, endWeeksAgo);
+    joinedDaysAgo === undefined ? (spanWeeks + 2) * 7 : joinedDaysAgo), counts, endWeeksAgo);
 }
 
 /* ---------- 1: ISO weeks ---------- */
@@ -336,7 +343,8 @@ function sliding(id, name, counts, joinedDaysAgo, endWeeksAgo) {
 
   // A genuinely new decline, starting entirely after the one we handled, does surface.
   // The first slide runs weeks 8-6 ago; the second runs weeks 3-1 ago.
-  const fresh = boot({ retention: [sliding("m", "Mo Member", [3, 2, 1], 30, 6)] });
+  // …and old enough a member for weeks 8–6 ago to be weeks of theirs
+  const fresh = boot({ retention: [sliding("m", "Mo Member", [3, 2, 1], 84, 6)] });
   const firstRun = fresh.ctx.attendanceAlert(fresh.findMember("m"));
   assert.ok(firstRun, "sanity: the older slide is what surfaces first");
   fresh.ctx.retMarkMissed("m", firstRun.key);
@@ -367,13 +375,11 @@ function sliding(id, name, counts, joinedDaysAgo, endWeeksAgo) {
   const tab = app.html("attList");
   assert.ok(tab.includes("Dee Dropping") && tab.includes("Sid Steady"), "everyone is listed");
   assert.ok(tab.indexOf("Dee Dropping") < tab.indexOf("Sid Steady"), "flagged members lead");
-  assert.ok(tab.includes("latest"), "the most recent week is labelled");
+  assert.ok(tab.includes("this week"), "the current week is labelled");
   assert.ok(/class="att-n[^>]*>1</.test(tab), "the weekly counts are shown");
   assert.ok(/att-flagged/.test(tab), "…and the flagged row is marked");
 
-  // empty states
-  const none = boot({ retention: [member("x", "Xavier X", "x@example.com", 10)] });
-  assert.ok(none.html("attList").includes("No attendance uploaded yet"));
+  // the only empty state left is a gym with no members in it
   assert.ok(boot({}).html("attList").includes("No members yet"));
 }
 
@@ -445,6 +451,152 @@ function sliding(id, name, counts, joinedDaysAgo, endWeeksAgo) {
     "an attendance import does not touch the onboarding tracker at all");
   assert.strictEqual(app.cached().length, 0, "…nor its roster row");
   assert.ok(app.html("retTodayList").includes("Welcome card"), "the member journey is unaffected");
+}
+
+/* ---------- 13: the tab is a WATCH LIST, and membership is what puts you on it ----------
+   It used to be built the other way round: the rows came out of the attendance data, so the
+   whole table sat behind a "no attendance uploaded yet" screen and a member nobody had
+   uploaded for had nowhere to appear. Backwards. Membership creates the row; the file fills
+   in the numbers. */
+{
+  // three members, nothing uploaded, ever
+  const app = boot({ retention: [
+    member("a", "Ann Arrived", "ann@example.com", 1),      // joined yesterday
+    member("b", "Bo Bedded-in", "bo@example.com", 120),    // four months in
+    member("c", "Cal Current", "cal@example.com", 63),     // nine weeks in
+  ] });
+  const tab = app.html("attList");
+
+  for (const name of ["Ann Arrived", "Bo Bedded-in", "Cal Current"]) {
+    assert.ok(tab.includes(name), name + " is on the tab with no CSV ever uploaded");
+  }
+  assert.ok(!/No attendance uploaded yet/.test(tab),
+    "…and the screen that used to hide the whole table is gone");
+  assert.ok(/<table class="journey attend"/.test(tab), "the table is drawn");
+  assert.strictEqual((tab.match(/<tr/g) || []).length, 4, "a header row and three members");
+
+  // …and not one cell of it is a zero. "Nobody has uploaded" is a statement about us;
+  // "they attended nothing" is a statement about them, and they are not the same claim.
+  assert.ok(!/class="att-n[^"]*"[^>]*>0</.test(tab), "no zeros anywhere");
+  const rowOf = (name) => (tab.split("<tr").find((r) => r.includes(name)) || "");
+  for (const name of ["Bo Bedded-in", "Cal Current"]) {
+    assert.strictEqual((rowOf(name).match(/att-n none/g) || []).length, 8,
+      name + ": eight dashes — eight weeks of theirs, no file for any of them");
+    assert.ok(/no attendance uploaded yet/.test(rowOf(name)),
+      "…and it is said in words too, so a row of dashes cannot read as a bad month");
+  }
+  assert.ok(/“–” means we hold no file for that week/.test(tab), "the legend says what a dash is");
+}
+
+/* ---------- 13b: who is on it, and who is not ---------- */
+{
+  const t = new Date();
+  const app = boot({ retention: [
+    member("n", "Nell New", "nell@example.com", 0),        // joined today
+    member("e", "Ed Edge", "ed@example.com", 175),         // just inside six months
+    member("o", "Olly Old", "olly@example.com", 200),      // past it
+    member("l", "Lou Left", "lou@example.com", 30, { left: true }),
+    member("j", "Jo Nojoin", "jo@example.com", null),      // no joined date at all
+  ] });
+  const tab = app.html("attList");
+
+  assert.ok(tab.includes("Nell New"), "somebody who joined today is watched from today");
+  assert.ok(tab.includes("Ed Edge"), "…and so is somebody just inside their first six months");
+  assert.ok(!tab.includes("Olly Old"),
+    "past six months they drop off — a decline in month nine is a different question");
+  assert.ok(!tab.includes("Lou Left"),
+    "a member who has cancelled is not a new member to watch");
+  assert.ok(!tab.includes("Jo Nojoin"), "…and neither is somebody with no membership date");
+
+  // the tab's window and the alert's window are the same window, from the same function
+  const withinFirstMonths = app.ctx.withinFirstMonths;
+  const ATT_WATCH_MONTHS = app.ctx.__t.ATT_WATCH_MONTHS;
+  for (const id of ["n", "e"]) {
+    assert.strictEqual(withinFirstMonths(app.findMember(id), ATT_WATCH_MONTHS), true,
+      id + " is inside the watch window the alert uses");
+  }
+  assert.strictEqual(withinFirstMonths(app.findMember("o"), ATT_WATCH_MONTHS), false);
+  assert.strictEqual(ATT_WATCH_MONTHS, 6, "and that window is six months, on both");
+
+  // a gym where everyone is past it says so, rather than showing an empty table
+  const settled = boot({ retention: [member("o", "Olly Old", "o@example.com", 300)] });
+  assert.ok(/Nobody in their first 6 months/.test(settled.html("attList")),
+    "…and explains why it is empty");
+  assert.ok(!/<table/.test(settled.html("attList")), "with no table under it");
+}
+
+/* ---------- 13c: eight columns, always the same eight ----------
+   By the calendar, not by the data — which is what stops the table disappearing when nothing
+   has been uploaded, and stops a six-month member bringing twenty-six columns with them. */
+{
+  const app = boot({ retention: [sliding("d", "Dee Data", [1, 2, 3], 170)] });
+  const tab = app.html("attList");
+  const headCells = (/<thead>[\s\S]*?<\/thead>/.exec(tab) || [""])[0];
+  assert.strictEqual((headCells.match(/<th[ >]/g) || []).length, 10,
+    "Member, eight weeks, Trend");
+
+  const expect = app.ctx.recentWeekKeys(8);
+  assert.strictEqual(expect.length, 8, "eight week keys");
+  assert.strictEqual(expect[7], app.ctx.isoWeekKeyOf(Date.now()), "ending with the week we are in");
+  assert.strictEqual(expect[0], weekKey(app, 7), "…and starting seven weeks back");
+  for (let i = 1; i < expect.length; i++) {
+    assert.ok(expect[i] > expect[i - 1], "…in order: " + expect.join(" "));
+  }
+  // each of the eight is a column, labelled with its Monday
+  expect.forEach((w) => {
+    assert.ok(headCells.includes(app.ctx.fmt(app.ctx.isoWeekStart(w))),
+      "week " + w + " has a column");
+  });
+
+  // a member with six months of history still gets eight columns and no more
+  const long = boot({ retention: [sliding("x", "Xavier Long",
+    [4, 4, 3, 4, 4, 3, 4, 4, 3, 4, 4, 3, 4, 4, 3, 4, 4, 3, 4, 4], 175)] });
+  assert.strictEqual(
+    (/<thead>[\s\S]*?<\/thead>/.exec(long.html("attList"))[0].match(/<th[ >]/g) || []).length, 10,
+    "twenty weeks of history, still eight columns");
+}
+
+/* ---------- 13d: a member WITH data reads correctly, beside one without ---------- */
+{
+  const app = boot({ retention: [
+    sliding("d", "Dee Data", [3, 2, 1], 84),               // 12 weeks a member, last 3 weeks filled
+    member("n", "Nora Nothing", "nora@example.com", 63),   // 9 weeks a member, nothing on file
+  ] });
+  const tab = app.html("attList");
+  const rowOf = (name) => (tab.split("<tr").find((r) => r.includes(name)) || "");
+
+  const dee = rowOf("Dee Data");
+  assert.ok(/att-n[^>]*>3</.test(dee) && /att-n[^>]*>2</.test(dee) && /att-n[^>]*>1</.test(dee),
+    "her three weeks are on her row, as numbers");
+  assert.strictEqual((dee.match(/att-n none/g) || []).length, 5,
+    "…and the five weeks nobody uploaded for her are dashes");
+  assert.strictEqual((dee.match(/att-n before/g) || []).length, 0,
+    "…none of the eight is before she joined — she has been a member twelve weeks");
+  assert.ok(!/no attendance uploaded yet/.test(dee), "…so she is not labelled as having none");
+  assert.ok(/class="spark/.test(dee), "her trend is drawn");
+  assert.ok(/Bodysculpt PT sessions, last 3 weeks: 3, 2, 1/.test(dee), "…and readable");
+
+  const nora = rowOf("Nora Nothing");
+  assert.strictEqual((nora.match(/att-n none/g) || []).length, 8, "eight dashes for the member with no file");
+  assert.ok(/no attendance uploaded yet/.test(nora), "…and said in words");
+
+  // a real zero is a zero, and reads differently from a dash
+  const zeroed = boot({ retention: [sliding("z", "Zed Zero", [2, 0], 84)] });
+  const zrow = zeroed.html("attList").split("<tr").find((r) => r.includes("Zed Zero"));
+  assert.ok(/att-n zero[^>]*>0</.test(zrow), "an uploaded zero shows as 0, not as a dash");
+  assert.ok(/no PT sessions|0 PT sessions/.test(zrow), "…and says so on hover");
+}
+
+/* ---------- 13e: the upload control sits above the table ----------
+   Always visible, and not pushed down the page as the member list grows. */
+{
+  const view = /<section class="view" id="view-ret-attendance"[\s\S]*?<\/section>/.exec(HTML)[0];
+  assert.ok(/id="att-file"/.test(view), "the upload control is on the tab");
+  assert.ok(view.indexOf('id="att-file"') < view.indexOf('id="attList"'),
+    "…above the member table, so a long list never pushes it off the screen");
+  assert.ok(view.indexOf('id="attResult"') < view.indexOf('id="attList"'),
+    "…and so is the summary line it prints");
+  assert.ok(/runAttendanceImport/.test(view), "…still wired to the importer");
 }
 
 console.log("attendance.test.cjs: OK");

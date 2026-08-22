@@ -33,8 +33,13 @@ function challenger(id, name, extra) {
     extraDays: 0, pausedDays: 0, pausedAt: null,
   }, extra || {});
 }
+/* A member always has a start date: everything about them — their journey, their attendance
+   weeks, the first-six-months watch window — is counted from it, and the member form refuses
+   to save one without it. Migration will not invent one, so a fixture that means "a member"
+   has to carry it. */
 function member(id, name, extra) {
-  return Object.assign({ id, name, coach: "Grace", email: "", dob: null }, extra || {});
+  return Object.assign({ id, name, coach: "Grace", email: "", dob: null,
+    joined: daysFromToday(-60) }, extra || {});
 }
 
 /* ---------- 1: the app opens on the home screen, every time ---------- */

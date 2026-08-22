@@ -230,7 +230,8 @@ const SAM = () => challenger("sam", "Sam Doyle", {
   assert.strictEqual(m.personal, "");
   assert.strictEqual(m.dob, null);
   assert.strictEqual(m.coach, "Dan");
-  for (const k of ["id", "name", "email", "coach", "personal", "notes", "dob", "joined", "fromChallenger"]) {
+  for (const k of ["id", "name", "email", "coach", "personal", "notes", "dob", "joined",
+                   "fromChallenger", "left"]) {
     assert.notStrictEqual(m[k], undefined, k + " is never undefined on a handed-over member");
   }
   assert.ok(bare.html("retBirthdayList").includes("No birthdays on file yet"),

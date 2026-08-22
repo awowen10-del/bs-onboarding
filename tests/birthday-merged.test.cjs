@@ -107,6 +107,8 @@ const onbGroup = (app) => {
     ],
     retention: [member("r", "Mo Member", at(6, 33), { coach: "Gaz" })],
   });
+  // Everyone, so all four kinds of person are on one list to compare
+  app.ctx.setBirthdayFilter("everyone");
   // a challenger's is their journey status — it is how you spot who has left, and that is
   // the whole Ignore decision
   assert.strictEqual(metaOf(rowFor(app, "Ada Active")), "on the journey");

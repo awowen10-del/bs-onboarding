@@ -266,4 +266,83 @@ const tabRow = (app, name) =>
   assert.ok(!ret.includes("Tara Today"), "…and no challenger in it");
 }
 
+/* ---------- N: a birthday belonging to somebody who has LEFT is not today's work ----------
+   Today's moves is the routine list: everything on it is work somebody is expected to do
+   today, and it arrives with a Done button on it. A card for somebody who has left the six
+   weeks — or ended a membership — is not routine, it is a judgment call about a particular
+   person, and the Birthdays tab already separates the two: Active is the routine, Left is the
+   discretion.
+
+   Pushed onto the morning list, that decision arrives as a task, which is how it gets made by
+   not being made — or dismissed by a coach who never took it for a decision in the first
+   place. So it is off the day and on the tab, under Left, where it is a choice you go and make.
+   The same hasLeft() the filter uses, so the two cannot drift apart. */
+{
+  const app = boot({
+    members: [
+      person("a", "Ada Active", at(1, 29)),
+      person("l", "Lee Left", at(1, 30), { outcome: "left" }),
+    ],
+    retention: [
+      { id: "r1", name: "Mo Member", coach: "Dan", dob: at(1, 41), email: "", personal: "",
+        notes: "", joined: daysFromToday(-90), completed: [], missed: [], doneMeta: {},
+        attendance: {}, left: false },
+      // the flag the cancellation webhook will set — nothing in the app sets it today
+      { id: "r2", name: "Xan Excancelled", coach: "Dan", dob: at(1, 42), email: "", personal: "",
+        notes: "", joined: daysFromToday(-90), completed: [], missed: [], doneMeta: {},
+        attendance: {}, left: true },
+    ],
+  });
+
+  // …on the onboarding tracker
+  assert.ok(app.html("todayList").includes('id="act-a-birthday"'),
+    "a challenger still with us raises her birthday task");
+  assert.ok(!app.html("todayList").includes('id="act-l-birthday"'),
+    "a challenger who has left does not — his card is a decision, not a job for this morning");
+  assert.ok(onToday(app, "Ada Active") && !onToday(app, "Lee Left"),
+    "…so only one of them is in the Birthdays group at all");
+  assert.ok(/Birthdays this week<span class="gcount">1<\/span>/.test(app.html("todayList")),
+    "…and the group counts one, not two");
+
+  /* …and on the retention tracker, by the member's own flag. Asserted on the birthday CARD's
+     id rather than on the name: an ex-member is still on that screen as member-journey work,
+     which is a separate question this change does not touch. */
+  const ret = app.html("retTodayList");
+  assert.ok(ret.includes('id="act-r1-birthday"'), "a member still with us raises hers");
+  assert.ok(!ret.includes('id="act-r2-birthday"'),
+    "a member whose membership has ended does not — same rule, the other roster");
+  assert.ok(/Birthdays this week<span class="gcount">1<\/span>/.test(ret), "…and the same count");
+
+  // it is birthdayDue itself that says so, which is what makes both trackers agree
+  assert.strictEqual(app.ctx.birthdayDue(app.find("a")), true, "due for the active challenger");
+  assert.strictEqual(app.ctx.birthdayDue(app.find("l")), false, "…and not for the one who left");
+  assert.strictEqual(app.ctx.birthdayDue(app.findMember("r1")), true, "due for the active member");
+  assert.strictEqual(app.ctx.birthdayDue(app.findMember("r2")), false, "…and not for the ex-member");
+
+  // NOTHING was taken off the Birthdays tab. Both of them are on it, under Left, with their
+  // rows and their controls exactly as before.
+  app.ctx.setBirthdayFilter("left");
+  const tab = app.html("birthdayList");
+  assert.ok(tab.includes("Lee Left"), "the challenger is on the Birthdays tab under Left");
+  assert.ok(tab.includes("Xan Excancelled"), "…and so is the ex-member");
+  assert.ok(!tab.includes("Ada Active") && !tab.includes("Mo Member"),
+    "…and the two still with us are not on that list");
+  assert.ok(/toggleBirthdayActioned\('l'\)/.test(tab), "the row still has its Actioned control");
+  assert.ok(/<span class="bday-day">/.test(tab), "…and still says which day it is");
+  assert.ok(/Turning 30/.test(tab), "…and that it is a milestone, which is why it is a decision");
+
+  app.ctx.setBirthdayFilter("active");
+  const active = app.html("birthdayList");
+  assert.ok(active.includes("Ada Active") && active.includes("Mo Member"),
+    "and Active is the two people whose birthdays ARE on Today's moves");
+  assert.ok(!active.includes("Lee Left") && !active.includes("Xan Excancelled"),
+    "…which is the whole point: one list of routine work, said the same way in both places");
+
+  // the count in the tab badge follows, because it is counted off the same rows
+  assert.strictEqual(Number(app.el("todayCount").textContent) >= 1, true,
+    "the day still has work in it");
+  assert.ok(!app.html("todayList").includes("act-l-birthday"),
+    "and no card for the left challenger is in the page at all");
+}
+
 console.log("birthday-today.test.cjs: OK");

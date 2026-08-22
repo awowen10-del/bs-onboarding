@@ -2013,6 +2013,12 @@ function migrateRetentionList(arr){
     // it settles, so next year's comes round unhandled by itself.
     if(m.birthdayIgnored===undefined) m.birthdayIgnored = false;
     if(m.birthdayActionedYear===undefined) m.birthdayActionedYear = null;
+    /* Have they gone? A challenger records this as `outcome:'left'`, which a coach sets on
+       their card. A member has no outcome and no journey to leave, so it is a flag of its own —
+       set by the cancellation webhook when that is built, and false on everybody until then.
+       Defaulted here rather than left absent so `hasLeft` never has to ask twice, and so an
+       existing member record picks it up on the next load without anything else happening. */
+    if(m.left===undefined) m.left = false;
     // Where they came from, for the handoff that isn't built yet: the day they became a full
     // member, and the challenger record they were promoted from.
     if(m.joined===undefined) m.joined = null;   // timestamp (local midnight) or null
@@ -2418,15 +2424,19 @@ function onJourneyCount(list){ return (Array.isArray(list)?list:members).filter(
    Nothing is subtracted or compared as timestamps: it is month equal, day not yet passed.
    No year to roll over, no clock change to round off, nothing to get wrong. And it returns a
    yes/no, never a count — a birthday is a thing to notice, not a queue to clear. */
-function birthdaysSoon(roster){
+function birthdaysSoonList(roster){
   const people = Array.isArray(roster) ? roster : [];
   const now = new Date(), curM = now.getMonth()+1, curD = now.getDate();
-  return people.some(m=>{
+  return people.filter(m=>{
     if(m && m.birthdayIgnored) return false;   // hidden from the tab, so it cannot nudge either
     const p = dobParts(m && m.dob);            // null for no dob, and for anything malformed
     return !!p && p.m===curM && p.d>=curD;
   });
 }
+/* The dot's own reading of it: a yes/no, because a birthday is a thing to notice and not a
+   queue to clear. The Left filter's badge reads the same list and counts it, so "coming up"
+   means one thing on this tab however it is being asked. */
+function birthdaysSoon(roster){ return birthdaysSoonList(roster).length>0; }
 
 /* ---------------- The birthday a card is ABOUT ----------------
    Every one of the three features below turns on the same question — which birthday is this
@@ -2540,6 +2550,16 @@ function birthdayTaskHtml(x, which, isExample){
 function birthdayDue(m){
   if(!m || m.birthdayIgnored) return false;      // off the tab, so off the day too
   if(birthdayActioned(m)) return false;          // handled — the same flag the tab sets
+  /* And nobody who has gone. Today's moves is the ROUTINE list — everything on it is work
+     somebody is expected to do today — and a card for somebody who has left the 6 weeks or
+     ended a membership is not routine, it is a judgment call about a particular person. The
+     Birthdays tab already separates the two: Active is the routine, Left is the discretion.
+     Pushing a left person's birthday onto the morning list would be the same decision arriving
+     as a task with a Done button on it, which is how a judgment call gets made by not being
+     made — or, just as bad, dismissed by a coach who never meant it as a decision at all.
+     Their birthday is still on the Birthdays tab under Left, where it is a choice you go and
+     make. The same hasLeft() the filter uses, so the two can never drift apart. */
+  if(hasLeft(m)) return false;
   const days = birthdayDaysAway(m);
   return days!==null && days>=0 && days<=BIRTHDAY_LEAD_DAYS;
 }
@@ -3586,6 +3606,19 @@ function setOutcome(id,outcome){
   save(); renderAll();
 }
 function isInactive(m){ return m.outcome==='left'; }
+/* ---- Has this person gone? ----
+   Asked of a challenger and of a member with the same call, because the Birthdays tab is one
+   merged list and cannot be asking two questions depending on which roster a row came off.
+   The two rosters record it differently for good reasons — a challenger LEFT THE 6 WEEKS,
+   which is a decision a coach makes on their card, and a member ENDED A MEMBERSHIP, which is
+   something a payment system will tell us — so this is where the two meet.
+   `m.left` is set by nothing today: the cancellation webhook is a later build. When it starts
+   being set, those members appear in the Left filter by themselves, with nothing here or on
+   the tab to change. */
+function hasLeft(m){
+  if(!m) return false;
+  return m.outcome==='left' || m.left===true;
+}
 
 /* ---------------- Onboarding → Retention handoff ----------------
    The moment a challenger stays on, they become a member on the other tracker. They are not
@@ -3620,6 +3653,7 @@ function handOffToRetention(m){
     dob: m.dob || null,
     joined: today0(),                         // the anchor for day-30, day-60, anniversaries
     fromChallenger: m.id,
+    left: false,                              // they have just JOINED; the cancellation flag is off
     completed: [], missed: [], doneMeta: {},  // their member journey starts here, at day 0
     attendance: {},                           // …and their attendance history from the next upload
     /* Birthday housekeeping starts clean, and DELIBERATELY does not travel with them. Ignoring
@@ -4408,23 +4442,97 @@ function birthdayMergedList(){
 }
 function birthdayEveryone(){ return birthdayMergedList().people; }
 
+/* ---------------- Active / Left / Everyone ----------------
+   Two different jobs wearing one list. ACTIVE is the routine: everybody still with us, whether
+   they are mid-challenge, paused, finished, waiting to start or a full member — you send the
+   card, you tie the balloons, there is no decision to make. LEFT is the opposite of routine:
+   some people who have gone are worth a card and some are not, and that is a human call about
+   a particular person. Mixed together, the judgment calls sit buried among thirty routine ones
+   and get made by not being made.
+
+   So they are separated, and Active leads, because Active is what a coach opens this tab for.
+   EVERYONE is still there for anyone who wants the whole gym in one list, which is what this
+   tab was before today.
+
+   `hasLeft` is what splits them, and it answers for a challenger and a member alike — see it
+   for why the two rosters record it differently. */
+const BIRTHDAY_FILTERS = [
+  {id:'active',   label:'Active',   match:m=> !hasLeft(m)},
+  {id:'left',     label:'Left',     match:m=> hasLeft(m)},
+  {id:'everyone', label:'Everyone', match:()=> true}
+];
+/* Which one is showing. In memory and per visit, like every other "where am I looking" state
+   in this app: it is not a fact about the gym and one coach's tap must not move another's
+   screen. Active on every load. */
+let birthdayFilter = BIRTHDAY_FILTERS[0].id;
+function birthdayFilterMatch(id){
+  const f = BIRTHDAY_FILTERS.find(x=>x.id===id) || BIRTHDAY_FILTERS[0];
+  return f.match;
+}
+function setBirthdayFilter(id){
+  if(!BIRTHDAY_FILTERS.some(f=>f.id===id)) return birthdayFilter;   // an unknown tab changes nothing
+  birthdayFilter = id;
+  renderBirthdays();
+  return birthdayFilter;
+}
+/* The row of three, and the one number on it. Left carries a count of how many people who have
+   gone have a birthday COMING UP — the same "this month, not yet past" the tab's dot uses — so
+   a coach is nudged to go and make those calls without the discretion list having to be opened
+   every morning to find out there is nothing in it. No badge at zero: a nought on a
+   discretionary list is a thing to read and dismiss, every single day, for nothing.
+
+   Active and Everyone carry no number at all. A count means "there is something here to decide"
+   and only one of these three lists is a decision. */
+function birthdayFiltersHtml(everyone){
+  const soonLeft = birthdaysSoonList(everyone.filter(hasLeft)).length;
+  return `<div class="filterbar bday-filterbar" role="tablist" aria-label="Which birthdays to show">`
+    + BIRTHDAY_FILTERS.map(f=>{
+        const on = f.id===birthdayFilter;
+        const badge = (f.id==='left' && soonLeft)
+          ? ` <span class="count tally">${soonLeft}</span>` : '';
+        return `<button type="button" role="tab" aria-selected="${on?'true':'false'}"
+          data-bfilter="${f.id}" onclick="setBirthdayFilter('${f.id}')">${f.label}${badge}</button>`;
+      }).join('')
+    + `</div>`;
+}
+
 function birthdaysMergedHtml(){
   const merged = birthdayMergedList();
   const scope = merged.scope;
   const everyone = merged.people;
+  // Active / Left / Everyone. The filter decides WHO is on the list and nothing else: every
+  // row below is built exactly as it was, so the tags, the milestones, Ignore, Actioned, the
+  // notes icon and the month grouping all work the same inside whichever list you are on.
+  const shown = everyone.filter(birthdayFilterMatch(birthdayFilter));
   // counted off people with a dob: somebody with no date of birth is not on this tab to hide
-  const ignored = everyone.filter(m=>m.birthdayIgnored && dobParts(m.dob)).length;
-  return birthdayExamplesHtml() + birthdaysHtml(everyone, {
+  const ignored = shown.filter(m=>m.birthdayIgnored && dobParts(m.dob)).length;
+  /* The demo props sit out the Left list. They are two people who do not exist, invented to
+     demonstrate what a routine birthday card looks like — and a list whose whole point is that
+     everybody on it has gone is not a place to put somebody who has not. */
+  const examples = birthdayFilter==='left' ? '' : birthdayExamplesHtml();
+  return birthdayFiltersHtml(everyone) + examples + birthdaysHtml(shown, {
     noun:'person', nounPlural:'people',
-    empty:`<div class="empty"><div class="big">No birthdays on file yet.</div>
+    /* Three empty states, because there are three different things "nothing here" can mean on
+       this tab and only one of them is a job to go and do. Nobody on file at all is the one
+       that wants the how-to. A list emptied by the FILTER is not — the dates are on file, they
+       are just on the other list, and telling a coach to go and add some would be wrong. */
+    empty: birthdayFilter==='left'
+      ? `<div class="empty"><div class="big">Nobody who has left has a birthday on file.</div>
+         When somebody leaves the 6 weeks — or a membership ends — they arrive on this list, and
+         whether they get a card is a call you make one person at a time.</div>`
+      : (everyone.some(m=>dobParts(m.dob))
+        ? `<div class="empty"><div class="big">No birthdays on this list.</div>
+           Everybody with a date of birth on file has left. They are on the <b>Left</b> list,
+           where a card is a decision rather than a routine.</div>`
+        : `<div class="empty"><div class="big">No birthdays on file yet.</div>
       Add a date of birth from <b>Edit</b> on somebody's card, import them from a CSV — or let
-      the Ontraport zap fill them in.</div>`,
+      the Ontraport zap fill them in.</div>`),
     /* What is useful about somebody, which differs by type because their situations do. A
        challenger's is their journey status: it is how you spot the ones who have left, and
        that is the whole Ignore decision. A member has no 42-day clock to report, so theirs is
        their coach. Neither line repeats the type — the tag beside the name has said it. */
     meta:m=>{
-      if(scope(m)==='retention') return 'Coach '+esc(m.coach||'—');
+      if(scope(m)==='retention') return hasLeft(m) ? 'left' : 'Coach '+esc(m.coach||'—');
       const st=status(m);
       return isInactive(m) ? 'left'
            : st==='notstarted' ? 'not started yet'
@@ -5249,7 +5357,7 @@ function saveRetMember(){
     if(m){ m.name=name; m.email=email; m.coach=coach; m.dob=dob; }
   }else{
     retention.push({id:newClientId('r'), name, email, coach, dob,
-      personal:'', notes:'', joined:today0(), fromChallenger:null,
+      personal:'', notes:'', joined:today0(), fromChallenger:null, left:false,
       completed:[], missed:[], doneMeta:{}, attendance:{}});
   }
   closeRetModal(); saveRetention(); renderAll();
@@ -5480,7 +5588,12 @@ function renderAll(){
   // Both dots point at the same merged tab, so both read the same combined list. A member's
   // birthday lighting the dot inside Onboarding is not a leak: the tab it points at has them
   // on it. Ignored people are already excluded inside birthdaysSoon.
-  const bdaySoon = birthdaysSoon(birthdayEveryone());
+  /* The dot is the ROUTINE nudge, so it is asked of the active people only. Two reasons, and
+     the second is the load-bearing one: a card for somebody who has left is a judgment call
+     rather than work, and the tab it points at opens on Active — so a dot lit by somebody on
+     the Left list would send a coach to a screen that person is not on. The Left filter's own
+     badge is where that list asks for attention. */
+  const bdaySoon = birthdaysSoon(birthdayEveryone().filter(m=>!hasLeft(m)));
   setTabDot('bdayDot', bdaySoon);
   setTabDot('retBdayDot', bdaySoon);
 }

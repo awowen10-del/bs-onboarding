@@ -293,6 +293,7 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
     Object.assign(person("f", "Fay Finished", (Y - 30) + "-06-17"),
       { day0: daysFromToday(-60), booked: daysFromToday(-60) }),
   ] });
+  app.ctx.setBirthdayFilter("everyone");     // Lee has left, and this is about all four lines
   const h = app.html("birthdayList");
   assert.ok(!/Coach/.test(h), "no coach's name anywhere on the tab");
 

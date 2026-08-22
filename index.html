@@ -4679,9 +4679,24 @@ function memberDay(m){
 }
 function memberEffectiveGraceEnd(it){ return it.grace==null ? Infinity : it.day + it.grace; }
 
-/* What this member needs from us today — the member journey's dueToday(). */
+/* What this member needs from us today — the member journey's dueToday().
+
+   Nobody who has GONE needs anything. A membership that has ended is not a relationship with
+   a day-60 check-in still to come, and a welcome card posted to somebody who cancelled last
+   week is worse than no card at all. So a left member raises nothing here — no touchpoint, no
+   count, no row — which is the same line birthdayDue() draws for the same reason and through
+   the same hasLeft(), so the two can never come apart.
+
+   Gated HERE, in the one function the retention Today's moves derives its work from, rather
+   than where the rows are gathered: a second place to ask is a second place to forget.
+
+   Their record is untouched by any of it. They are still on the Members list, still in the
+   whole-journey grid with everything they were sent while they were with us, and still on the
+   Birthdays tab under Left, where sending a card is a decision somebody makes rather than a
+   task somebody is handed. */
 function memberDueToday(m){
   if(!memberStarted(m)) return [];
+  if(hasLeft(m)) return [];
   const cd = memberDay(m);
   return MEMBER_JOURNEY.filter(it=>
     !isHandled(m,it.id) && cd >= it.day && cd <= memberEffectiveGraceEnd(it));

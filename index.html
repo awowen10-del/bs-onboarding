@@ -1580,6 +1580,14 @@
       <label>Date of birth <span class="lbl-opt">optional — shows on the Birthdays tab</span></label>
       <input type="date" id="rf-dob">
     </div>
+    <!-- Typed in, not counted. A challenge is six weeks until somebody pauses or extends it,
+         so how many sessions they actually did is a thing a coach knows and the tracker does
+         not. Left blank it stays blank: "nobody has said" and "they did none" are different
+         answers and this field keeps them apart. -->
+    <div class="field">
+      <label>Challenge sessions completed <span class="lbl-opt">optional — how many they did in their 6 weeks</span></label>
+      <input type="number" id="rf-sessions" min="0" step="1" inputmode="numeric" placeholder="e.g. 14">
+    </div>
     <div class="modal-acts">
       <button class="btn ghost" onclick="closeRetModal()">Cancel</button>
       <button class="btn primary" onclick="saveRetMember()">Save</button>
@@ -2029,6 +2037,16 @@ function migrateRetentionList(arr){
     if(m.completed===undefined) m.completed = [];
     if(m.missed===undefined) m.missed = [];
     if(m.doneMeta===undefined) m.doneMeta = {};
+    /* How many sessions they did during their six-week challenge, typed in by a coach.
+       NULL, not 0, and the difference matters: null is "nobody has said", 0 is "they did
+       none", and a member who arrives from the handoff has had nobody say. Anything that
+       later reads this number has to be able to tell those apart, because "no data" and "did
+       nothing" would point at opposite conclusions about the same person.
+
+       Typed rather than counted on purpose. A challenge is six weeks until it is not —
+       people pause, extend, come back — so the number of sessions somebody actually did is
+       something a coach knows and the tracker does not. Captured here, used later. */
+    if(m.challengeSessions===undefined) m.challengeSessions = null;
     // Weekly attendance history, ISO week key -> a bucket of counts. Empty on everyone who
     // existed before the attendance tab did, so nobody arrives with a phantom decline.
     if(m.attendance===undefined || m.attendance===null || typeof m.attendance!=='object'
@@ -3654,6 +3672,10 @@ function handOffToRetention(m){
     joined: today0(),                         // the anchor for day-30, day-60, anniversaries
     fromChallenger: m.id,
     left: false,                              // they have just JOINED; the cancellation flag is off
+    /* Nobody has said how many challenge sessions they did, and the tracker cannot work it
+       out — a six-week challenge is six weeks until somebody pauses or extends it. It is a
+       coach's number, typed in from their card. */
+    challengeSessions: null,
     completed: [], missed: [], doneMeta: {},  // their member journey starts here, at day 0
     attendance: {},                           // …and their attendance history from the next upload
     /* Birthday housekeeping starts clean, and DELIBERATELY does not travel with them. Ignoring
@@ -5347,6 +5369,7 @@ function openRetAdd(){
   document.getElementById('rf-email').value='';
   document.getElementById('rf-coach').value='Dan';
   document.getElementById('rf-dob').value='';
+  document.getElementById('rf-sessions').value='';
   document.getElementById('retModalBg').classList.add('show');
 }
 function openRetEdit(id){
@@ -5358,20 +5381,35 @@ function openRetEdit(id){
   document.getElementById('rf-email').value=m.email||'';
   document.getElementById('rf-coach').value=m.coach||'Dan';
   document.getElementById('rf-dob').value=m.dob||'';
+  // null reads as an empty box, which is exactly what it means: nobody has said yet
+  document.getElementById('rf-sessions').value = m.challengeSessions==null ? '' : m.challengeSessions;
   document.getElementById('retModalBg').classList.add('show');
 }
 function closeRetModal(){ document.getElementById('retModalBg').classList.remove('show'); }
+/* What goes into storage from the sessions box: a whole number of sessions, or null.
+   Blank is null — "nobody has said" — and so is anything that is not a number, because a
+   half-typed box should leave the field alone rather than storing nonsense in it. Zero is a
+   real answer and is kept as one. Negatives and fractions are not sessions anybody did, so
+   they round and clamp rather than being stored as typed. */
+function normalizeSessions(v){
+  const s = String(v==null?'':v).trim();
+  if(!s) return null;
+  const n = Number(s);
+  if(!isFinite(n)) return null;
+  return Math.max(0, Math.round(n));
+}
 function saveRetMember(){
   const name=document.getElementById('rf-name').value.trim();
   if(!name){ alert('Add a name.'); return; }
   const email=document.getElementById('rf-email').value.trim();
   const coach=document.getElementById('rf-coach').value;
   const dob=normalizeDob(document.getElementById('rf-dob').value);   // '' or nonsense -> null
+  const challengeSessions=normalizeSessions(document.getElementById('rf-sessions').value);
   if(retEditTarget){
     const m=retention.find(x=>x.id===retEditTarget);
-    if(m){ m.name=name; m.email=email; m.coach=coach; m.dob=dob; }
+    if(m){ m.name=name; m.email=email; m.coach=coach; m.dob=dob; m.challengeSessions=challengeSessions; }
   }else{
-    retention.push({id:newClientId('r'), name, email, coach, dob,
+    retention.push({id:newClientId('r'), name, email, coach, dob, challengeSessions,
       personal:'', notes:'', joined:today0(), fromChallenger:null, left:false,
       completed:[], missed:[], doneMeta:{}, attendance:{}});
   }

@@ -776,6 +776,26 @@
     border-radius:var(--radius);background:var(--card-2)}
   .pbx-footnote p{max-width:74ch;font-size:13px;line-height:1.7;color:var(--ink-dim);overflow-wrap:break-word}
   .pbx-footnote b{color:var(--ink);font-weight:700}
+  /* editing the wording: a pen in the corner, dashed rules round what a coach owns.
+     The eyebrow gives the pen its room rather than running underneath it. */
+  .pbx-eyebrow{padding-right:170px}
+  .pbx-edit-toggle{position:absolute;top:16px;right:16px;z-index:2;display:inline-flex;align-items:center;
+    gap:7px;font:inherit;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-dim);background:var(--card);border:1px solid var(--line);border-radius:999px;
+    padding:8px 13px;cursor:pointer}
+  .pbx-edit-toggle:hover{color:var(--ink);border-color:var(--ink-faint)}
+  .pbx-edit-toggle.on{color:var(--on-accent);background:var(--orange);border-color:var(--orange)}
+  .pbx-edit-note{position:relative;margin-top:20px;padding:13px 15px;border-radius:11px;
+    max-width:74ch;font-size:12.5px;line-height:1.65;color:var(--ink-dim);
+    background:rgba(var(--orange-rgb),.08);border:1px solid rgba(var(--orange-rgb),.3)}
+  .pbx-edit-note b{color:var(--ink);font-weight:700}
+  .pbx-deck.editing .pbx-card{border-color:rgba(var(--orange-rgb),.28)}
+  .pb-editable{outline:1px dashed rgba(var(--orange-rgb),.55);outline-offset:5px;border-radius:3px;cursor:text}
+  .pb-editable:focus{outline:2px solid var(--orange);outline-offset:5px}
+  .pb-reset{margin-left:10px;font:inherit;font-size:10px;font-weight:800;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--ink-faint);background:transparent;border:1px solid var(--line);
+    border-radius:999px;padding:3px 9px;cursor:pointer;vertical-align:middle}
+  .pb-reset:hover{color:var(--orange-soft);border-color:rgba(var(--orange-rgb),.45)}
 
   /* ---------- Today's moves / Whole journey toggle ----------
      The tab row's little brother, and it follows it: two separate pressable things with a gap
@@ -1126,6 +1146,11 @@
     .pbx-why p{font-size:15px}
     .pbx-seed{padding:18px 18px}
     .pbx-footnote{padding:20px}
+    /* on a phone the pen is just a pen — the words beside it would push the eyebrow onto a
+       second line for no gain, and the button still says what it is to a screen reader */
+    .pbx-edit-toggle{top:12px;right:12px;padding:7px 10px;font-size:12px}
+    .pbx-edit-label{display:none}
+    .pbx-eyebrow{padding-right:44px}
     /* a phone's masthead: trim the gaps and the chip so the logo, the title and the way home
        sit on one row at 390px with room to spare. Inside a tracker there are two chips and
        they wrap, which is fine. */
@@ -1332,12 +1357,22 @@
        of JOURNEY; the statement and the printing note are static copy and live here. -->
   <section class="view" id="view-playbook" data-tracker="onboarding">
     <div class="pbx-hero">
+      <!-- The pen. The wording on this page is the team's; the shape of the journey is not,
+           so this button changes what you can TYPE and nothing else. -->
+      <button type="button" class="pbx-edit-toggle" id="pbEditBtn" aria-pressed="false"
+        title="Edit the wording on this page" aria-label="Edit the wording on this page"
+        onclick="togglePlaybookEdit()">✎ <span class="pbx-edit-label">Edit wording</span></button>
       <div class="pbx-eyebrow">The Playbook · The First 42 Days</div>
       <blockquote class="pbx-hero-quote">Hospitality is the sense that you&rsquo;re on someone&rsquo;s side.</blockquote>
       <p class="pbx-hero-lead">That is the whole point of these 42 days. Every moment in this deck is built to
         feel personal, to anticipate rather than react, and to make a challenger feel seen. The mechanics are
         the easy part — what follows is why each one is worth doing properly.</p>
       <p class="pbx-hero-note">Front-load the effort: the first two weeks decide whether someone stays.</p>
+      <p class="pbx-edit-note hide" id="pbEditNote"><b>Editing the wording.</b> Tap a title, a
+        principle, a description or a step and type. It saves as you move on, and everyone else
+        sees it — including on Today&rsquo;s moves and the journey table, which say the same
+        thing. <b>Reset</b> puts the original words back. When a touchpoint happens, whether it
+        happens and who does it are fixed in the app and are not editable here.</p>
     </div>
     <div class="pbx-deck" id="playbookList"></div>
     <div class="pbx-footnote">
@@ -1702,6 +1737,170 @@ let retention = [];                        // full members
 const RET_ROW_KEY = 'retention';           // its row in the same `bodysculpt` table
 const RET_CACHE = 'bsj_retention_cache';   // its own offline cache
 
+/* ---- The Playbook's WORDS: an overrides layer over the journey ----------------
+   Every touchpoint's wording is editable in the app. Nothing else about it is. Which day a
+   touchpoint fires, whether it exists at all, its channel, its owner, its conditions — all of
+   that stays in JOURNEY above, in code, where a coach on a phone cannot reach it. What lives
+   here is a thin layer of replacement TEXT sitting on top: touchpoint id -> field -> the
+   words somebody typed instead.
+
+   A layer rather than an edit in place, for two reasons. The obvious one is that the defaults
+   survive, so a bad edit is one tap from being undone. The quieter one is that it makes the
+   override the SINGLE source every screen reads: the deck, Today's moves and the journey
+   table all resolve their text through the helpers below, so renaming a touchpoint on the
+   Playbook renames it on the card a coach taps at 7am too. Two copies of the same sentence
+   that are free to disagree is exactly what this avoids.
+
+   Stored in the same Supabase table as the two rosters, under its own key, carried by the
+   same realtime channel — a fourth blob beside roster, retention and seeded. */
+let pbOverrides = {};                        // { touchpointId: { field: 'the words' } }
+const PB_ROW_KEY = 'playbook_overrides';     // its row in the same `bodysculpt` table
+const PB_CACHE = 'bsj_playbook_cache';       // its own offline cache
+let pbEditMode = false;                      // is the Playbook currently in edit mode?
+
+/* The fields a coach may rewrite — and nothing else is a field. `step<n>` is one line of a
+   touchpoint's checklist, BY POSITION, which is also why a step can only be reworded and
+   never added or removed: there is no name for a sixth step of a five-step list. A `why` is
+   only editable where the Playbook already has one, and a seed line only where there is a
+   seed line, so an override can never conjure a block onto a card that has none. */
+function pbFieldAllowed(it, field){
+  if(!it) return false;
+  if(field==='title' || field==='what') return true;
+  if(field==='why') return !!PB_WHY[it.id];
+  if(field==='seed') return !!it.seed;
+  const m = /^step(\d+)$/.exec(String(field==null?'':field));
+  return !!(m && it.checklist && +m[1] < it.checklist.length);
+}
+/* The code's own copy of a field, for falling back to and for comparing against. */
+function pbDefaultText(it, field){
+  if(!it) return '';
+  if(field==='title') return it.title||'';
+  if(field==='why') return PB_WHY[it.id]||'';
+  if(field==='what') return it.what||'';
+  if(field==='seed') return it.seed||'';
+  const m = /^step(\d+)$/.exec(String(field==null?'':field));
+  return (m && it.checklist) ? (it.checklist[+m[1]]||'') : '';
+}
+
+/* Cleaned at the boundary, so nothing downstream has to wonder. However a value arrived —
+   typed into the page, pulled out of the cloud, sitting in an old cache — it goes through
+   here before it is stored, which means every render path can treat an override exactly as
+   it treats the code's own copy.
+   The body copy keeps the light emphasis the defaults already use (<b>, <i>), because that
+   copy leans on it. Every other tag a contenteditable or a paste can produce is DROPPED
+   rather than escaped, so an edit can never become markup — or a script — on the page. */
+function pbCleanHtml(s){
+  let out = String(s==null?'':s);
+  out = out.replace(/<\s*(script|style)\b[\s\S]*?(?:<\s*\/\s*\1\s*>|$)/gi,'');
+  out = out.replace(/<\s*br\s*\/?\s*>/gi,' ');
+  out = out.replace(/<(\/?)(b|strong|i|em)\b[^>]*>/gi, (m,sl,tag)=>'<'+sl+tag.toLowerCase()+'>');
+  out = out.replace(/<(?!\/?(?:b|strong|i|em)>)[^>]*>/g,'');
+  return out.replace(/\s+/g,' ').trim();
+}
+function pbCleanText(s){ return stripTags(String(s==null?'':s)).replace(/\s+/g,' ').trim(); }
+function pbClean(field, v){ return field==='what' ? pbCleanHtml(v) : pbCleanText(v); }
+
+/* Every way an overrides blob can reach this device runs through here: the pull at boot, a
+   change arriving over realtime, this device's own cache. It is a whitelist rather than a
+   tidy-up — an id that is not in JOURNEY, a field that is not one of the text fields above,
+   a value that is not a non-blank string, are simply not copied across. That is what makes
+   the promise on the tin true: there is no shape of data in that row, however it got there,
+   that can move a touchpoint, invent one, or change a day. And no row at all is the normal
+   case on every device until somebody makes the first edit — hence the empty object. */
+function migratePlaybookOverrides(raw){
+  const out = {};
+  if(!raw || typeof raw!=='object' || Array.isArray(raw)) return out;
+  JOURNEY.forEach(it=>{
+    const src = raw[it.id];
+    if(!src || typeof src!=='object' || Array.isArray(src)) return;
+    const keep = {};
+    Object.keys(src).forEach(field=>{
+      if(!pbFieldAllowed(it, field)) return;
+      if(typeof src[field]!=='string') return;
+      const v = pbClean(field, src[field]);
+      if(v) keep[field] = v;                   // a blank override is no override at all
+    });
+    if(Object.keys(keep).length) out[it.id] = keep;
+  });
+  return out;
+}
+
+/* ---- What a touchpoint SAYS: the one place any screen asks ----
+   Override if there is one, the code's copy if there isn't. A blank one counts as absent, so
+   a field that somehow ended up empty shows its default rather than a hole. Each takes the
+   touchpoint itself rather than an id, so a card built from something that isn't in JOURNEY
+   at all still renders its own words. */
+function pbOverrideFor(it, field){
+  const o = (it && it.id) ? pbOverrides[it.id] : null;
+  const v = o ? o[field] : null;
+  return (typeof v==='string' && v.trim()) ? v : '';
+}
+function pbHasOverride(it, field){ return !!pbOverrideFor(it, field); }
+function tpTitle(it){ return pbOverrideFor(it,'title') || it.title || ''; }
+function tpWhy(it){ return pbOverrideFor(it,'why') || PB_WHY[it.id] || ''; }
+function tpSeed(it){ return it.seed ? (pbOverrideFor(it,'seed') || it.seed) : ''; }
+function tpSteps(it){ return (it.checklist||[]).map((s,i)=> pbOverrideFor(it,'step'+i) || s); }
+function tpWhatHtml(it){ return pbOverrideFor(it,'what') || it.what || ''; }
+function tpWhatText(it){ return stripTags(tpWhatHtml(it)); }
+
+/* Rewrite one field, or hand it back to the code. Blank is not a value: clearing a field
+   restores the default rather than leaving a hole where a title used to be — which is also
+   what makes Reset one line, since it is a set to nothing. Typing the default back in by
+   hand lands in the same place, so the row never fills with overrides that override nothing.
+   Returns whether anything actually changed, so a blur that typed nothing writes nothing. */
+function pbSetField(id, field, text){
+  const it = JOURNEY.find(j=>j.id===id);
+  if(!it || !pbFieldAllowed(it, field)) return false;      // unknown touchpoint, or not a field
+  const val = pbClean(field, text);
+  const cur = pbOverrides[id] || {};
+  if(!val || val === pbClean(field, pbDefaultText(it, field))){
+    if(!(field in cur)) return false;
+    delete cur[field];
+    if(Object.keys(cur).length) pbOverrides[id] = cur; else delete pbOverrides[id];
+  }else{
+    if(cur[field]===val) return false;
+    cur[field] = val;
+    pbOverrides[id] = cur;
+  }
+  savePlaybookOverrides();
+  return true;
+}
+function pbResetField(id, field){ return pbSetField(id, field, ''); }
+
+/* Its half of the same persistence the rosters use: instant local copy, debounced push. */
+function readPlaybookCache(){
+  try{ return migratePlaybookOverrides(JSON.parse(localStorage.getItem(PB_CACHE))); }
+  catch(e){ return {}; }
+}
+function writePlaybookCache(){ try{ localStorage.setItem(PB_CACHE, JSON.stringify(pbOverrides)); }catch(e){} }
+
+let pbSaveTimer=null;
+let lastOwnPbWrite=0;
+function savePlaybookOverrides(){
+  writePlaybookCache();
+  if(!sb) return;
+  clearTimeout(pbSaveTimer);
+  pbSaveTimer = setTimeout(pushPlaybookToCloud, 400);
+}
+/* No fold-in guard here, unlike the two rosters, and deliberately: the thing that guard
+   protects against is a whole-list write DELETING a person some other writer added, and
+   there are no people in this row. It is a small map of copy that only ever changes when a
+   coach is looking at the Playbook with edit mode on. Last write wins, per whole map. */
+async function pushPlaybookToCloud(){
+  if(!sb) return;
+  pbSaveTimer = null;
+  const stamp = new Date().toISOString();
+  lastOwnPbWrite = Date.parse(stamp);
+  try{
+    const { error } = await sb.from('bodysculpt')
+      .upsert({ key: PB_ROW_KEY, value: pbOverrides, updated_at: stamp }, { onConflict: 'key' });
+    if(error) throw error;
+    showSync('ok','Saved ✓', true);
+  }catch(e){
+    showSync('err','Couldn’t save the wording to the cloud — your edit is stored on this device and will retry. ('+(e.message||e)+')');
+  }
+}
+
 /* normalise/upgrade any record shape so older or imported data never breaks */
 function migrateList(arr){
   if(!Array.isArray(arr)) return [];
@@ -1913,6 +2112,7 @@ async function bootData(){
     // Not set up yet — run from local cache so the app still works for testing.
     members = readCache();
     retention = readRetentionCache();
+    pbOverrides = readPlaybookCache();
     seedIfEmpty();
     showSync('warn','Running in local-only mode — set your Supabase keys to sync across devices.');
     renderAll();
@@ -1922,14 +2122,18 @@ async function bootData(){
   try{
     // pull the roster, the member list and a one-time "seeded" marker in one go
     const { data, error } = await sb.from('bodysculpt').select('key,value,updated_at')
-      .in('key', [ROW_KEY, RET_ROW_KEY, 'seeded']);
+      .in('key', [ROW_KEY, RET_ROW_KEY, PB_ROW_KEY, 'seeded']);
     if(error) throw error;
     const rosterRow = (data||[]).find(r=>r.key===ROW_KEY);
     const retRow = (data||[]).find(r=>r.key===RET_ROW_KEY);
     const seededRow = (data||[]).find(r=>r.key==='seeded');
+    // No overrides row yet is the normal case on every device until somebody edits a word of
+    // the Playbook, and it reads as "no overrides" rather than as an error.
+    const pbRow = (data||[]).find(r=>r.key===PB_ROW_KEY);
     members = migrateList(rosterRow && Array.isArray(rosterRow.value) ? rosterRow.value : []);
     // No retention row yet is the normal case on every device until the first member exists.
     retention = migrateRetentionList(retRow && Array.isArray(retRow.value) ? retRow.value : []);
+    pbOverrides = migratePlaybookOverrides(pbRow ? pbRow.value : null);
     // everyone in the row at boot is "seen": a later absence from our list is a real removal
     markSeen(seenRosterIds, members);
     markSeen(seenRetentionIds, retention);
@@ -1941,6 +2145,7 @@ async function bootData(){
     }
     writeCache();
     writeRetentionCache();
+    writePlaybookCache();
     showSync('ok','Connected ✓', true);
     renderAll();
     // live updates: if Dan changes something, Ash sees it (and vice versa).
@@ -1963,6 +2168,19 @@ async function bootData(){
           if(incomingTime && Math.abs(incomingTime - lastOwnRetWrite) < 1500) return;
           if(Array.isArray(incoming)){ retention = migrateRetentionList(incoming); markSeen(seenRetentionIds, retention); writeRetentionCache(); renderAll(); }
         })
+      /* …and so does the Playbook's wording, on the same channel with the same echo guard.
+         It is the whole point of putting the words in the backend rather than in each
+         device's head: Ash rewrites a check-in on the laptop and the card Dan is looking at
+         on his phone says the new thing, without either of them reloading anything. */
+      .on('postgres_changes', { event:'*', schema:'public', table:'bodysculpt', filter:'key=eq.'+PB_ROW_KEY },
+        payload=>{
+          const incoming = payload.new && payload.new.value;
+          const incomingTime = payload.new && Date.parse(payload.new.updated_at||0);
+          if(incomingTime && Math.abs(incomingTime - lastOwnPbWrite) < 1500) return;
+          pbOverrides = migratePlaybookOverrides(incoming);
+          writePlaybookCache();
+          renderAll();
+        })
       /* Subscribing can FAIL — most commonly because Realtime has never been switched on for
          the `bodysculpt` table, in which case the server accepts the channel and then replies
          "Unable to subscribe to changes". Passing no callback here swallowed that entirely:
@@ -1982,6 +2200,7 @@ async function bootData(){
     // connection failed — fall back to cache so the team can still work offline
     members = readCache();
     retention = readRetentionCache();
+    pbOverrides = readPlaybookCache();
     showSync('err','Offline — showing this device’s last copy. Changes will sync when the connection returns. ('+(e.message||e)+')');
     renderAll();
   }
@@ -2007,7 +2226,27 @@ async function refreshFromCloud(){
   if(r.added){ members = r.list; writeCache(); }
   const t = await foldInRemoteAdditions(RET_ROW_KEY, seenRetentionIds, retention, migrateRetentionList);
   if(t.added){ retention = t.list; writeRetentionCache(); }
-  if(r.added || t.added) renderAll();
+  const w = await refreshPlaybookOverrides();
+  if(r.added || t.added || w) renderAll();
+}
+
+/* The wording's half of the same safety net. Whole-map rather than additions-only, because
+   unlike a roster this row has no records to lose — the newest map IS the answer. Skipped
+   while an edit of our own is still waiting on its debounce, so a poll can never overwrite
+   something a coach typed a moment ago and has not finished pushing. */
+async function refreshPlaybookOverrides(){
+  if(!sb || pbSaveTimer) return false;
+  try{
+    const { data, error } = await sb.from('bodysculpt').select('key,value,updated_at').in('key',[PB_ROW_KEY]);
+    if(error) throw error;
+    const row = (data||[]).find(r=>r.key===PB_ROW_KEY);
+    if(!row) return false;
+    const next = migratePlaybookOverrides(row.value);
+    if(JSON.stringify(next)===JSON.stringify(pbOverrides)) return false;
+    pbOverrides = next;
+    writePlaybookCache();
+    return true;
+  }catch(e){ return false; }
 }
 function startCloudPolling(){
   if(pollTimer) return;
@@ -2520,10 +2759,10 @@ function renderToday(){
       const cl = item.checklist ? buildChecklist(m,item) : '';
       const seedBlock = item.seed ? `<div class="seed-line">
         <div class="seed-label">End the voice note with this:</div>
-        <div class="seed-text">“${esc(item.seed)}”</div>
+        <div class="seed-text">“${esc(tpSeed(item))}”</div>
       </div>` : '';
       const detail = `<div class="detail">
-        ${esc(stripTags(item.what))}
+        ${esc(tpWhatText(item))}
         ${cl}
         ${seedBlock}
       </div>`;
@@ -2543,7 +2782,7 @@ function renderToday(){
         <div class="body" onclick="toggleExpand('${m.id}','${item.id}')">
           <div class="who">
             <span class="nm">${esc(m.name)}</span>${notesBtn(m)}
-            <span class="ttl">${esc(item.title)}</span>
+            <span class="ttl">${esc(tpTitle(item))}</span>
           </div>
           ${detail}
         </div>
@@ -2591,6 +2830,10 @@ function buildChecklist(m,item){
   // tools that sit inline under a specific checklist step (intro only)
   const nutriBlock = item.phase==='intro' ? buildNutrition(m) : '';
   const msgBlock = item.welcomeMsg ? buildWelcomeMsg(m) : '';
+  // Which step a tool belongs under is decided by the step the CODE defines, never by the
+  // words on screen: rewording "Add their Nutrition Goals" must not take the calculator away
+  // with it. So the wording is resolved for display and the default is what gets matched.
+  const shown = tpSteps(item);
   const rows = item.checklist.map((label,i)=>{
     const checked = state[i];
     let inlineTool = '';
@@ -2601,7 +2844,7 @@ function buildChecklist(m,item){
       else if(/welcome message/i.test(label)) inlineTool = msgBlock;
     }
     return `<div class="ci ${checked?'checked':''}" onclick="event.stopPropagation();toggleCheck('${m.id}','${item.id}',${i})">
-        <span class="box">✓</span><span>${esc(label)}</span>
+        <span class="box">✓</span><span>${esc(shown[i])}</span>
       </div>${inlineTool?`<div class="ci-tool">${inlineTool}</div>`:''}`;
   }).join('');
   const start = item.phase==='intro' ? buildStartBlock(m) : '';
@@ -3107,7 +3350,7 @@ function renderMemberTable(){
     const cells = cols.map(c=>{
       const st = cellStatus(m,c);
       const glyph = st==='done'?'✓' : st==='missed'?'✕' : st==='overdue'?'!' : st==='due'?'•' : st==='na'?'·' : '–';
-      const title = `${m.name} · ${c.title} · ${st}`;
+      const title = `${m.name} · ${tpTitle(c)} · ${st}`;
       // clicking a cell toggles done (only meaningful if applicable)
       const click = st==='na' ? '' : `onclick="tableCellTap('${m.id}','${c.id}')"`;
       return `<td><span class="cell ${st}" title="${esc(title)}" ${click}>${glyph}</span></td>`;
@@ -4846,9 +5089,11 @@ function dayBadge(it){
 
    These are one-line principles distilled from the copy already sitting in each `what`. They
    live HERE and not in JOURNEY on purpose: that array is read by Today's moves, the journey
-   table and the member cards, and none of them should carry a field they never render. Edit
-   the wording freely — nothing outside this screen reads it, and a touchpoint with no entry
-   simply renders without the rail. */
+   table and the member cards, and none of them should carry a field they never render. A
+   touchpoint with no entry here simply renders without the rail — and, having no default to
+   override, cannot be given one from the app either.
+   These are the DEFAULTS. A coach who rewrites one in edit mode does not change this object:
+   the new words go into pbOverrides and come back out through tpWhy(). */
 const PB_WHY = {
   intro:       'Everything set up before they have to ask for it.',
   d1_text:     'The hardest session is the first one.',
@@ -4875,20 +5120,100 @@ const PB_CHAPTERS = [
 ];
 const PB_OWNER = {coach:'Coach', team:'Team'};
 
+/* ---- Edit mode ----
+   A property of the SCREEN, not of the data: one boolean, held in memory, dead when the page
+   is. Nobody else's screen moves when this is switched on, and nothing about a touchpoint
+   changes by being editable — the same card is rendered, with its text fields typeable.
+   Everything OUTSIDE those fields — the day badge, the channel tag, the owner, the named-win
+   flag, the walkthrough link, which cards exist and in what order — is rendered exactly as
+   it is out of edit mode, because none of it is text a coach owns. */
+function togglePlaybookEdit(on){
+  pbEditMode = on===undefined ? !pbEditMode : !!on;
+  renderPlaybook();
+  return pbEditMode;
+}
+/* The attributes that make one field typeable, and the pill that puts it back. Both collapse
+   to nothing out of edit mode, so the read-only Playbook is what it always was. */
+function pbEd(id, field){
+  return pbEditMode ? ` contenteditable="true" role="textbox" data-pb-id="${esc(id)}" data-pb-field="${esc(field)}"`
+    + ` onblur="pbFieldBlur(this)" onkeydown="pbFieldKey(event,this)"` : '';
+}
+/* The class attribute for one editable field: its own class out of edit mode, plus the
+   dashed rule in it. Built here rather than inline so a field with no class of its own
+   doesn't render an empty one. */
+function pbFieldCls(base){
+  const c = (base||'') + (pbEditMode ? (base?' ':'')+'pb-editable' : '');
+  return c ? ` class="${c}"` : '';
+}
+function pbResetBtn(it, field){
+  if(!pbEditMode || !pbHasOverride(it, field)) return '';
+  // mousedown, not click: the field this belongs to is still focused, and by the time a
+  // click landed the blur would already have rebuilt the deck out from under the button.
+  return `<button type="button" class="pb-reset" title="Put the original wording back"
+    onmousedown="event.preventDefault();pbResetAndRender('${esc(it.id)}','${esc(field)}')">↺ Reset</button>`;
+}
+/* Committing an edit. The body copy is read as HTML so the emphasis in it survives; every
+   other field is read as text, because a title is a title. Both are cleaned on the way in. */
+let pbSuppressBlur = false;
+function pbFieldBlur(el){
+  if(pbSuppressBlur || !el || !el.dataset) return;
+  const id = el.dataset.pbId, field = el.dataset.pbField;
+  if(!id || !field) return;
+  if(!pbSetField(id, field, field==='what' ? el.innerHTML : el.textContent)) return;
+  pbRedrawOtherScreens();
+  // The deck itself waits a beat. The click that took focus OUT of this field is very often a
+  // click INTO the next one, and rebuilding the cards from under it would swallow that click
+  // and leave a coach tapping twice for every field they edit.
+  setTimeout(pbRedrawDeckWhenIdle, 0);
+}
+/* The two screens that show a touchpoint's words besides the Playbook. Named rather than
+   going through renderAll() because renderAll() would redraw the deck, which is exactly what
+   the moment after an edit needs to avoid. */
+function pbRedrawOtherScreens(){
+  renderToday();
+  if(todayView==='table') renderMemberTable();
+}
+function pbRedrawDeckWhenIdle(){
+  const a = document.activeElement;
+  if(a && a.dataset && a.dataset.pbField) return;    // still typing in another field
+  renderPlaybook();
+}
+/* Enter commits rather than opening a second line — these are one-idea fields, and a stray
+   newline in a title is not something anybody meant. Escape abandons the edit. */
+function pbFieldKey(ev, el){
+  if(ev.key==='Enter' && !ev.shiftKey){ ev.preventDefault(); if(el.blur) el.blur(); }
+  else if(ev.key==='Escape'){
+    ev.preventDefault();
+    pbSuppressBlur = true;                  // the redraw detaches the field; don't save it
+    renderPlaybook();
+    setTimeout(()=>{ pbSuppressBlur = false; }, 0);
+  }
+}
+function pbResetAndRender(id, field){
+  // The redraw below detaches the field this button belongs to, and a blur fired by that
+  // detachment would carry the words we have just thrown away straight back in.
+  pbSuppressBlur = true;
+  if(pbResetField(id, field)){ pbRedrawOtherScreens(); renderPlaybook(); }
+  setTimeout(()=>{ pbSuppressBlur = false; }, 0);
+}
+
 function playbookCardHtml(it){
   const ch = it.ch==='inperson' ? 'inperson' : it.ch;
-  const why = PB_WHY[it.id];
+  const why = tpWhy(it);
   const whyBlock = why ? `<div class="pbx-why">
       <span class="pbx-why-label">Why this matters</span>
-      <p>${esc(why)}</p>
+      <p${pbFieldCls('')}${pbEd(it.id,'why')}>${esc(why)}</p>${pbResetBtn(it,'why')}
     </div>` : '';
+  const shown = tpSteps(it);
   const steps = it.checklist ? `<div class="pbx-steps">
       <div class="pbx-sub">How it’s done</div>
-      <ol>${it.checklist.map(c=>`<li>${esc(c)}</li>`).join('')}</ol>
+      <ol>${shown.map((c,i)=>`<li>${pbEditMode
+        ? `<span${pbFieldCls('')}${pbEd(it.id,'step'+i)}>${esc(c)}</span>${pbResetBtn(it,'step'+i)}`
+        : esc(c)}</li>`).join('')}</ol>
     </div>` : '';
   const seed = it.seed ? `<figure class="pbx-seed">
       <div class="pbx-sub">End the voice note with this</div>
-      <blockquote>${esc(it.seed)}</blockquote>
+      <blockquote${pbFieldCls('')}${pbEd(it.id,'seed')}>${esc(tpSeed(it))}</blockquote>${pbResetBtn(it,'seed')}
     </figure>` : '';
   const walk = it.walkthrough ? `<a class="pbx-link" href="${esc(it.walkthrough)}" target="_blank" rel="noopener">Watch the walkthrough →</a>` : '';
   // No "·" joining this to the owner: the header wraps on a phone and a leading separator
@@ -4900,9 +5225,9 @@ function playbookCardHtml(it){
       <span class="pbx-tag ${ch}"><span class="pbx-dot"></span>${esc(CH_LABEL[it.ch])}</span>
       <span class="pbx-owner">${esc(PB_OWNER[it.owner] || it.owner || '')}</span>${win}
     </div>
-    <h3 class="pbx-title">${esc(it.title)}</h3>
+    <h3${pbFieldCls('pbx-title')}${pbEd(it.id,'title')}>${esc(tpTitle(it))}</h3>${pbResetBtn(it,'title')}
     ${whyBlock}
-    <div class="pbx-what">${it.what}</div>
+    <div${pbFieldCls('pbx-what')}${pbEd(it.id,'what')}>${tpWhatHtml(it)}</div>${pbResetBtn(it,'what')}
     ${steps}
     ${seed}
     ${walk}
@@ -4910,7 +5235,20 @@ function playbookCardHtml(it){
 }
 
 function renderPlaybook(){
+  const btn=document.getElementById('pbEditBtn');
+  if(btn){
+    btn.innerHTML = pbEditMode ? '✓ <span class="pbx-edit-label">Done</span>'
+                               : '✎ <span class="pbx-edit-label">Edit wording</span>';
+    btn.setAttribute('aria-pressed', pbEditMode ? 'true' : 'false');
+    const label = pbEditMode ? 'Finish editing the wording' : 'Edit the wording on this page';
+    btn.setAttribute('title', label);
+    btn.setAttribute('aria-label', label);      // the words are hidden on a phone
+    if(btn.classList) btn.classList.toggle('on', pbEditMode);
+  }
+  const note=document.getElementById('pbEditNote');
+  if(note && note.classList) note.classList.toggle('hide', !pbEditMode);
   const el=document.getElementById('playbookList');
+  if(el.classList) el.classList.toggle('editing', pbEditMode);
   el.innerHTML = PB_CHAPTERS.map(c=>{
     const items = JOURNEY.filter(it=>it.phase===c.phase);
     if(!items.length) return '';
@@ -5026,6 +5364,10 @@ function setTab(which, view){
       if(sec) sec.classList.toggle('active', tk!==null && k===tracker && k===tk && v===view);
     });
   });
+  // Edit mode belongs to the Playbook and to the moment you are on it. Walking away — to
+  // another tab, to the other tracker, back to the home screen — leaves it read-only, so
+  // nobody returns later to a screen quietly waiting to be typed into.
+  if(pbEditMode && !(tk==='onboarding' && view==='playbook')) togglePlaybookEdit(false);
   if(tk){
     const nav=document.getElementById('tabs-'+tk);
     if(nav && nav.querySelectorAll){

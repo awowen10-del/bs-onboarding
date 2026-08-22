@@ -150,8 +150,13 @@ function member(id, name, extra) {
     "readTrackerValue", "lastOwnTrackerWrite", "setTracker", "trackerswitch"]) {
     assert.ok(!HTML.includes(gone), gone + " should be gone from the app");
   }
-  assert.strictEqual((HTML.match(/key=eq\./g) || []).length, 2,
-    "exactly two realtime subscriptions remain — the roster and the member list");
+  // The realtime channel carries SHARED data and nothing else. Three subscriptions: the
+  // roster, the member list and the Playbook's wording overrides — no fourth one for which
+  // tracker somebody is looking at, because that is this device's business.
+  assert.strictEqual((HTML.match(/key=eq\./g) || []).length, 3,
+    "three realtime subscriptions — the roster, the member list, the Playbook wording");
+  assert.ok(!/key=eq\.'\+TRACKER|key=eq\.tracker/.test(HTML),
+    "…and none of them is the tracker choice");
 
   // a fresh load is always home, whatever the last one did
   const again = boot({});
@@ -574,10 +579,11 @@ async function cloudTests() {
     assert.strictEqual(app.el("homeScreen").classList.contains("hide"), false);
     assert.strictEqual(app.el("view-today").classList.contains("active"), false);
 
-    // the realtime channel carries the two rosters and nothing else
+    // the realtime channel carries the shared DATA — the two rosters and the Playbook's
+    // wording — and nothing about which screen anybody is looking at
     assert.deepStrictEqual(app.cloud.subscribedTo().slice().sort(),
-      ["key=eq.retention", "key=eq.roster"],
-      "no third subscription for a tracker row");
+      ["key=eq.playbook_overrides", "key=eq.retention", "key=eq.roster"],
+      "no subscription for a tracker row");
   }
 
   /* --- a tracker row left over from the old build is never read or written --- */

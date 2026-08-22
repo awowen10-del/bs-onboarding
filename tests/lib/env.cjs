@@ -222,6 +222,13 @@ function boot(opts = {}) {
   get fuTarget(){ return fuTarget; },
   get CACHE(){ return CACHE; },
   get RET_CACHE(){ return RET_CACHE; },
+  // the Playbook's wording overrides — the third blob in the same backend, plus the screen
+  // state that decides whether the deck is typeable
+  get pbOverrides(){ return pbOverrides; }, set pbOverrides(v){ pbOverrides = v; },
+  get pbEditMode(){ return pbEditMode; },
+  get PB_CACHE(){ return PB_CACHE; },
+  get PB_ROW_KEY(){ return PB_ROW_KEY; },
+  get PB_WHY(){ return PB_WHY; },
   // the journey definitions — top-level consts, so not properties of the vm global either
   get JOURNEY(){ return JOURNEY; },
   get TABLE_COLS(){ return TABLE_COLS; },

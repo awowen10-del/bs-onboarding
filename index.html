@@ -347,77 +347,109 @@
      out past a logo and a tab strip that stayed where they were, which reads as a mistake.
      Everything on the screen moves together, so the edges still line up.
 
-     1560px is the cap, not a percentage. The board is seven lanes now — the intro sessions
-     and the six weeks — and at 1440px they came out under 200px each, which is not enough for
-     a name, a title and two buttons. Still short of the full width of a large monitor, where a
-     board stretched edge to edge becomes a neck exercise.
+     1240px is the cap, not a percentage. It was 1560px when this screen was seven side-by-side
+     lanes and every pixel went into making them wide enough to read. One week at a time needs
+     far less: a card is a row, and a row 1500px long puts the challenger's name and the button
+     you press about a foot apart. Wider than the page's 1100px reading column, because the
+     folder carries a tab row and the cards carry a rail and two buttons the roster does not —
+     and no wider than that.
 
      :has() rather than a class toggled in script: which view is showing is already in the DOM,
      and a second source of truth for it would be one more thing to keep in step. Where :has()
      is not supported the rule is simply dropped and the screen stays at its old 1100px, which
      is the layout that shipped before this — no fallback needed. */
-  body:has(#view-today.active) .wrap{max-width:1560px}
+  body:has(#view-today.active) .wrap{max-width:1240px}
 
   /* ---------- Today's moves BOARD ----------
-     The day's touchpoints laid out as columns instead of one long stack. It is a board in
-     APPEARANCE only: nothing drags, and nothing here decides what is due. The cards are sorted
-     into their column by the same journey logic that always grouped them, so a column is
-     simply the old group heading turned on its side.
+     The day's touchpoints, arranged. Nothing here decides what is due and nothing drags: the
+     cards are sorted into their place by the same journey logic that has always grouped them,
+     and the layout only decides where you read them.
 
-     Seven lanes: the intro sessions to run, then week one to week six. A column is a RECESSED
-     well (--navy-2, the same step-down the toolbars use) so the white cards inside it lift —
-     that tone step is what makes the board read as columns at a glance rather than as seven
-     lists that happen to sit side by side.
+     Two blocks stacked, both full width: the intro sessions to run, and then the six weeks as
+     a FOLDER — a row of tabs with one week open under it.
 
-     Seven across is a lot of lanes, so the count steps down with the screen (see the
-     breakpoints below) rather than the lanes getting narrower and narrower until a card
-     cannot hold a button. The columns wrap onto a second row in reading order, so week 5 is
-     still after week 4 wherever the wrap lands.
-
-     minmax(0,1fr) rather than 1fr: an fr track's automatic minimum is its content's
-     min-content width, so a long challenger name in one column would otherwise push the whole
-     board — and the page — wider than the screen. */
-  .board{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;align-items:start;margin-top:22px}
+     It was seven side-by-side lanes, and the reason it is not any more is width. Seven columns
+     inside even a very wide page leave each card about 180px to hold a name, a touchpoint
+     title, a day, two buttons and a chevron, and a card that narrow does not wrap so much as
+     shred: a word or two per line, sometimes a letter. One week at a time is the trade — you
+     stop seeing all six at once, and in exchange the week you are working through is readable.
+     The tab row carries every week's count, so the five you cannot see still say so. */
+  .board{display:flex;flex-direction:column;gap:16px;margin-top:22px}
   .board-col{min-width:0;background:var(--navy-2);border:1px solid var(--line);border-radius:14px;padding:12px 12px 4px}
-  /* min-height is two lines of the title: "INTRO SESSIONS TO RUN" wraps and "WEEK 3" does not,
-     and without it the first card in each lane would start at a different height. */
   .board-col-head{display:flex;align-items:center;gap:10px;margin:2px 2px 12px;padding-bottom:11px;
-    min-height:45px;border-bottom:1px solid var(--line)}
+    border-bottom:1px solid var(--line)}
   .board-col-title{flex:1;min-width:0;font-size:12px;letter-spacing:.5px;text-transform:uppercase;
     font-weight:800;color:var(--ink);line-height:1.4}
   /* the same count pill the stacked group headings carried, on the card tone rather than the
      recessed one, because here it sits ON the recess instead of on the page */
   .board-col-head .gcount{flex-shrink:0;font-size:11px;font-weight:700;color:var(--ink-faint);
     background:var(--card);border:1px solid var(--line);border-radius:20px;padding:2px 9px;letter-spacing:0}
-  /* An empty column keeps its width and says so rather than collapsing, so the board still
-     reads as a board on a quiet day. Dashed and faint on purpose — it is the absence of work,
-     not a piece of it. */
+  /* ---------- The week folder ----------
+     Six tabs and one open week. The tabs are a row that WRAPS rather than scrolls: six of them
+     fit a laptop on one line and a phone on two, and a tab you have to swipe sideways to find
+     is a tab nobody presses. The open tab joins the panel below it — same tone, no line between
+     them — which is what makes the pair read as a folder rather than as a toolbar above a list. */
+  .weekfolder{min-width:0}
+  .week-tabs{display:flex;flex-wrap:wrap;gap:6px}
+  .week-tab{position:relative;display:inline-flex;align-items:center;gap:8px;font:inherit;
+    font-size:12.5px;font-weight:700;color:var(--ink-dim);background:var(--card);
+    border:1px solid var(--line);border-bottom-color:transparent;border-radius:11px 11px 0 0;
+    padding:10px 15px;margin-bottom:-1px;cursor:pointer;white-space:nowrap;
+    transition:color .15s ease,background .15s ease}
+  .week-tab:hover{color:var(--ink)}
+  .week-tab.on{color:var(--ink);background:var(--navy-2);border-color:var(--line);
+    border-bottom-color:var(--navy-2)}
+  /* The count, and the one piece of colour on the row. Red is reserved for a week holding
+     something overdue — the only thing on this screen worth pulling somebody out of the week
+     they are working through. A week with nothing outstanding carries no count at all. */
+  .wk-count{font-size:11px;font-weight:800;line-height:1;color:var(--ink-faint);
+    background:var(--navy-2);border:1px solid var(--line);border-radius:20px;padding:3px 8px}
+  /* :not(.late) matters. Without it this rule out-specifies the red one below — three classes
+     against two — and paints the open tab's count white ON white, which is a count that is not
+     there at all on exactly the week somebody is looking at. */
+  .week-tab.on .wk-count:not(.late){background:var(--card)}
+  .wk-count.late{color:var(--on-accent);background:var(--red);border-color:var(--red)}
+  .week-panel{min-width:0;background:var(--navy-2);border:1px solid var(--line);
+    border-radius:0 14px 14px 14px;padding:14px 14px 6px}
+
+  /* An empty lane keeps its place and says so rather than collapsing, so the screen still
+     reads the same shape on a quiet day. Dashed and faint on purpose — it is the absence of
+     work, not a piece of it. */
   .board-empty{margin-bottom:8px;padding:20px 12px;text-align:center;font-size:12.5px;
     color:var(--ink-faint);border:1px dashed var(--line);border-radius:11px}
 
-  /* The card, inside a column. Same element and the same handlers as the row it used to be —
-     only the arrangement changes, because a third of the width cannot hold name · title · day ·
-     two buttons on one line. So it stacks in three bands: a thin top rail, the body, then the
-     two mark buttons side by side along the bottom like a card's footer.
+  /* ---------- The card ----------
+     One full-width row: who it is and what the touchpoint is on the left, where it stands and
+     the two buttons on the right, and the detail dropping to its own line underneath when the
+     card is opened. This is the shape the card was designed as. It spent a while stacked into
+     three bands because a seventh of the screen could not hold a row — and the shredded text
+     that came out of that is why the weeks are a folder now. With one week open at a time
+     there is a whole screen to lay a card across, so it lies across it.
 
      The card carries no channel chip. Which channel a touchpoint is was being spelled out on
-     every card to a team that already knows a postcard from a text. The coloured stripe down
-     the left edge still says it for anyone who wants it, and since the columns are weeks now
-     rather than channels, the stripe is the only place it is said. */
-  .board .action{flex-wrap:wrap;align-items:center;row-gap:9px;padding:12px 13px;margin-bottom:8px}
+     every card to a team that already knows a postcard from a text; the coloured stripe down
+     the left edge says it for anyone who wants it. */
+  .board .action{flex-wrap:wrap;align-items:center;gap:10px 14px;padding:13px 15px;margin-bottom:8px}
 
-  /* The top rail: the expand chevron, and the overdue flag when there is one, together in the
-     card's top-right corner.
+  /* display:contents dissolves the body's own box so its two halves become flex items of the
+     card itself: the name block takes the line, and the detail drops to a row of its own at
+     FULL card width rather than being sized to whatever is left beside the buttons. The body
+     keeps its click handler — display:contents removes the box, not the element, so clicks on
+     the name or the detail still bubble through it. */
+  .board .action .body{display:contents}
+  /* flex:1 1 240px — it takes the line and gives way to the rail and the buttons rather than
+     pushing them off it, and below 240px of its own it wraps them onto the next line instead
+     of squeezing. min-width:0 and break-word between them mean a long unbroken name wraps
+     inside the card rather than widening it: break-word, NOT anywhere, because anywhere is
+     what turns a narrow card into one letter per line, which is the bug this layout fixes. */
+  .board .action .who{order:1;flex:1 1 240px;min-width:0;display:flex;flex-wrap:wrap;
+    align-items:baseline;gap:2px 10px;line-height:1.45;overflow-wrap:break-word}
+  .board .action .who .nm{flex-shrink:0}
 
-     It sits BESIDE the body on the same flex line, not on a row of its own. A row of its own is
-     what it had first, and on a card with nothing to flag that row was a chevron and a band of
-     empty space holding the challenger's name away from the top of the card. Beside the body
-     the rail costs no height at all: the line is as tall as the body, the rail tucks into the
-     corner of it, and the body — which grows — automatically gives up exactly the width the
-     rail needs and no more. So a long name wraps rather than running underneath it, and a card
-     with a flag and a card without one have identical padding. */
-  .board .action .card-top{order:2;flex:0 0 auto;align-self:flex-start;margin-top:3px;
-    display:flex;align-items:center;gap:9px;line-height:1}
+  /* The top rail: where the touchpoint stands, and the chevron that opens it, in the card's
+     right-hand end. */
+  .board .action .card-top{order:2;flex:0 0 auto;display:flex;align-items:center;gap:10px;
+    line-height:1}
   .board .action .card-top .chev{margin:0}
 
   /* The status line: DAY 8 · then, only when it is late, a hairline and OVERDUE. One line
@@ -437,46 +469,16 @@
   .overdue-flag{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
     color:var(--red);line-height:1;white-space:nowrap}
 
-  /* display:contents dissolves the body's own box, so its two halves become flex items of the
-     card itself: the name block takes the top line beside the status rail, and the detail drops
-     to a row of its own at FULL card width.
-
-     That full width is the point. The detail used to be inside the body, and the body is sized
-     to whatever the rail leaves — so an expanded intro card laid its checklist, its start-clock
-     block and its calculator out in a ~210px strip with 120px of dead space beside them, when
-     the card itself was 335px wide. Nothing was ever going to fix that from inside the body;
-     the body had to stop being the thing that measured it.
-
-     The body keeps its click handler: display:contents removes the box, not the element, so
-     clicks on the name or the detail still bubble through it, and `cursor` still inherits down.
-
-     flex:1 1 0 on the name block, and the ZERO basis is load-bearing: it starts from nothing
-     and grows into whatever the rail leaves, so the rail keeps its corner however long the name
-     is. With an auto basis its base size is its content, and a long enough name pushed the rail
-     off the end of the line and down to the bottom of the card. min-width:0 for the reason
-     spelled out on .board-col: a flex item's automatic minimum is min-content, and an unbroken
-     word would widen the card rather than wrap. */
-  .board .action .body{display:contents}
-  .board .action .detail{order:3;flex-basis:100%;margin-top:12px;padding-top:12px;line-height:1.6}
+  .board .action .mark-btns{order:3;flex:0 0 auto;flex-direction:row;gap:8px}
+  .board .action .detail{order:4;flex-basis:100%;margin-top:2px;padding-top:12px;line-height:1.6}
   /* An expanded card is read top to bottom, so the blocks inside it get a little more air than
-     they need in a wide row: enough that the walkthrough link, the start-clock box, the
+     they need in the row above: enough that the walkthrough link, the start-clock box, the
      checklist and its tools each read as their own section rather than one long column of
      boxes. */
   .board .action .detail > .walk-link{margin-top:13px}
   .board .action .detail > .startblock{margin-top:13px}
   .board .action .detail > .checklist{margin-top:15px}
   .board .action .detail > .checklist-progress{margin-top:12px}
-  /* The body runs as normal BLOCK flow inside a card rather than as the flex row it is on a
-     wide screen. Flex would treat the challenger's name as one unbreakable item and bounce the
-     notes icon onto a line of its own the moment the name got long; in block flow the icon —
-     which is inline-flex and vertical-aligned precisely for this — simply stays beside the last
-     word of the name, with the title on the line below. (The day label used to sit under that
-     again; it lives in the status line in the corner now.) */
-  .board .action .who{order:1;flex:1 1 0;min-width:0;display:block;line-height:1.45;
-    overflow-wrap:anywhere}
-  .board .action .who .ttl{display:block;margin-top:3px}
-  .board .action .mark-btns{order:4;flex-basis:100%;flex-direction:row;gap:8px;margin-top:1px}
-  .board .action .mark-btns .btn{flex:1 1 0;text-align:center}
 
   /* "Waiting on a first session" — the standing task between the intro and Day 0.
      The quietest row on Today by design: it is a waiting-for state, not work due today, so it
@@ -1095,32 +1097,18 @@
   .notes-saved.on{color:var(--green)}
 
   .hide{display:none !important}
-  /* Once the screen is wide enough for the raised cap to bite, the columns get a little more
-     air: a wider gap so the lanes read as separate, and a touch more padding in the well.
-     Declared here, with the board's other breakpoints, so it lands after the base rules it is
-     overriding rather than in front of them. */
-  @media (min-width:1400px){
-    .board{gap:14px}
-    .board-col{padding:14px 14px 6px}
-  }
-
-  /* Fewer lanes as the screen narrows, rather than seven lanes getting thinner until a card
-     cannot hold its two buttons. The columns wrap in reading order, so a four-wide board is
-     the intro and weeks 1–3 above weeks 4–6 — still left to right, still in order. The step
-     down is by column COUNT and not by hiding anything: every week is on the board at every
-     width, because a week that disappears on a laptop is a week somebody forgets. */
-  @media (max-width:1280px){
-    .board{grid-template-columns:repeat(4,minmax(0,1fr))}
-  }
+  /* Between a laptop and a phone the layout does not change SHAPE — one week open at full
+     width works at every size, which is the point of it — it only tightens. Declared here,
+     with the board's other breakpoints, so it lands after the base rules it is overriding
+     rather than in front of them. */
   @media (max-width:900px){
-    .board{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .board{gap:12px}
     .board-col{padding:10px 10px 2px;border-radius:12px}
     .board-col-title{font-size:11px;letter-spacing:.4px}
-    .board .action{padding:11px 11px;gap:8px}
+    .week-panel{padding:11px 11px 3px;border-radius:0 12px 12px 12px}
+    .week-tab{padding:9px 12px;font-size:12px}
+    .board .action{padding:11px 12px;gap:9px 12px}
     .board .action .mark-btns{gap:6px}
-  }
-  @media (max-width:760px){
-    .board{grid-template-columns:repeat(2,minmax(0,1fr))}
   }
 
   @media (max-width:640px){
@@ -1138,12 +1126,16 @@
     .viewtoggle .vt{padding:9px 13px;font-size:12.5px}
     .action{flex-wrap:wrap}
     .action .body{flex-basis:calc(100% - 130px)}
-    /* The board stacks on a phone: one full-width column above the next, each keeping its
-       heading, its count and its empty state, so the day still reads in the same seven
-       chapters rather than being squeezed into columns too narrow to use. Stacked, every
-       heading is one line and there is nothing to line up, so the head's min-height goes. */
-    .board{grid-template-columns:minmax(0,1fr);gap:16px;margin-top:18px}
-    .board-col-head{min-height:0}
+    /* Nothing about the layout has to change on a phone — one week at full width is one week
+       at full width — so this is the same screen with less air in it. */
+    .board{gap:12px;margin-top:18px}
+    /* Six tabs across two rows rather than one row you have to swipe. flex:1 1 auto — an AUTO
+       basis, not zero: from zero they would all claim the same line, be unable to shrink below
+       "Week 1" and run off the side of it. A basis of 28% takes three to a row at any phone
+       width and lets them grow to fill it, so the six land as two rows of three rather than
+       five and a stranded one. */
+    .week-tab{flex:1 1 28%;justify-content:center;padding:9px 10px;font-size:12px;gap:6px}
+    .wk-count{padding:2px 6px}
     /* On a phone the status line takes the top row of the card instead of sitting beside the
        name. Beside it, "DAY 8 · OVERDUE" and a name leave too little between them: the notes
        icon gets bumped onto a line of its own, orphaned under the name. A row of its own costs
@@ -1151,6 +1143,10 @@
        difference between this and the empty band that used to sit here. Still top-RIGHT: the
        row is justified to the end. */
     .board .action .card-top{order:0;flex-basis:100%;justify-content:flex-end;margin-top:0}
+    /* …and the two buttons take the bottom of the card, side by side and half each, which is a
+       thumb-sized target where a pair of small buttons squeezed beside a name is not. */
+    .board .action .mark-btns{flex-basis:100%;margin-top:2px}
+    .board .action .mark-btns .btn{flex:1 1 0;text-align:center}
     /* the waiting row's control is a date field AND a full-sentence button, far wider than the
        130px column the rule above reserves, so on a phone it takes the next line to itself */
     .action.awaiting .body{flex-basis:100%}
@@ -2598,6 +2594,28 @@ function journeyWeek(it){
   const d = Number(it.day);
   return Math.min(6, Math.max(1, Math.ceil((isFinite(d) ? d : 1)/7)));
 }
+/* ---- Which week the folder has open ----
+   In memory, for this tab, for as long as it is open — exactly like the Today's moves / Whole
+   journey toggle above it. There is nothing here worth persisting and certainly nothing worth
+   syncing: which week a coach is looking at is not a fact about the gym, and one coach's tap
+   moving another's screen mid-tick would be a bug, not a feature.
+
+   null means FOLLOW THE WORK: the folder opens on the earliest week with something outstanding,
+   which on most mornings is the week the day actually starts in. The moment a coach taps a tab
+   it is pinned, and it stays pinned even on a week they have just emptied — a screen that jumps
+   out from under somebody the instant they finish a card is worse than one that waits to be
+   told where to go. */
+let openWeek = null;
+function setOpenWeek(w){
+  if(BOARD_WEEKS.indexOf(w)!==-1) openWeek = w;
+  renderToday();
+  return openWeek;
+}
+function defaultOpenWeek(byWeek){
+  for(let i=0;i<byWeek.length;i++){ if(byWeek[i].length) return BOARD_WEEKS[i]; }
+  return BOARD_WEEKS[0];                       // a clear day opens on week 1
+}
+
 /* Has this week got any touchpoint at all, or is it a week the journey has not filled in yet?
    Week 6 is the second kind today — the end-of-challenge review that will live there does not
    exist yet — and that is the difference between an empty column saying "nothing here today"
@@ -2734,23 +2752,6 @@ function renderToday(){
     return;
   }
 
-  /* The board's columns — the intro sessions to run, and then the six weeks. Nothing about
-     what is DUE changed here: a card is on Today because the journey says so, exactly as
-     before, and these tests only decide which column it is placed in.
-
-     The columns used to be the three CHANNELS — texts, postcards, moments in the room — which
-     answered "what kind of job is this" for a team that already knows a postcard from a voice
-     note. Weeks answer the question a coach actually has in front of them: where is this
-     person in their six weeks, and what does this week owe them. It also retires the awkward
-     fourth column: an in-person touchpoint has a week like everything else, so nothing needs a
-     lane held open on the off-chance any more.
-
-     All seven are always on the board, empty or not. The shape of the challenge is seven
-     lanes whether or not this particular Tuesday has work in each, and a board that loses a
-     column on a quiet day stops reading as a board. */
-  const groups = [['intro','Intro sessions to run', r=>r.item.phase==='intro', 'Nothing here today']]
-    .concat(BOARD_WEEKS.map(w=>['week'+w, 'Week '+w, r=>journeyWeek(r.item)===w,
-      weekHasTouchpoints(w) ? 'Nothing here today' : 'Nothing here yet']));
   let html='';
 
   // Follow-ups sit at the top: they're the easiest thing to let slide, and there are
@@ -2835,44 +2836,96 @@ function renderToday(){
     }
   }
 
-  /* The board itself. Each column renders its own heading, its own count and its own stack of
-     cards; an empty one says so rather than disappearing. The cards are built exactly as they
-     were when this was one long list — same ids, same handlers, same buttons — they are simply
-     emitted into a column instead of under a heading. */
+  /* The day's work: the intro sessions to run, and then the six weeks.
+
+     They are laid out differently on purpose, because they ARE different. An intro is a job
+     with a checklist and a clock to start, and it has its own lane whatever else is happening.
+     The weeks are a folder: six tabs, one week open at a time, that week's cards at the FULL
+     width of the screen.
+
+     Seven side-by-side lanes is what this replaced, and the reason is width. Seven columns
+     inside even a very wide page left each card about 180px to hold a challenger's name, a
+     touchpoint title, a day, two buttons and a chevron — and a card that narrow does not wrap,
+     it shreds, a word or two per line, sometimes a letter. A folder trades seeing all six weeks
+     at once for being able to read the one you are working through, and the tabs carry the
+     counts so the five you cannot see still tell you they are waiting. */
   html += `<div class="board">`;
-  groups.forEach(([gid,label,test,emptyText])=>{
-    const g = rows.filter(test);
-    html += `<div class="board-col" data-col="${gid}">
+
+  // ── the intro lane, outside the folder and above it ──
+  const introRows = rows.filter(r=>r.item.phase==='intro');
+  html += `<div class="board-col" data-col="intro">
       <div class="board-col-head">
-        <span class="board-col-title">${label}</span>
-        <span class="gcount">${g.length}</span>
-      </div>`;
-    if(!g.length) html += `<div class="board-empty">${esc(emptyText)}</div>`;
-    g.forEach(r=>{
-      const {m,item,key,overdue}=r;
-      // still on the card as its class: it is what colours the stripe down the left edge.
-      // The CHIP that used to spell the channel out has gone — the team knows what a postcard
-      // and a check-in involve without being told on every card, and the colour carries it.
-      const chClass = item.ch==='inperson'?'inperson':item.ch;
-      const cd = currentDay(m);
-      const dayLabel = item.phase==='intro' ? 'Not started yet' : 'Day '+cd;
-      // build the expandable detail (the action, plus a checklist where there is one)
-      const cl = item.checklist ? buildChecklist(m,item) : '';
-      const seedBlock = item.seed ? `<div class="seed-line">
+        <span class="board-col-title">Intro sessions to run</span>
+        <span class="gcount">${introRows.length}</span>
+      </div>`
+    + (introRows.length ? introRows.map(todayCardHtml).join('')
+                        : `<div class="board-empty">Nothing here today</div>`)
+    + `</div>`;
+
+  // ── the weeks, as a folder ──
+  const byWeek = BOARD_WEEKS.map(w=> rows.filter(r=>journeyWeek(r.item)===w));
+  const open = openWeek || defaultOpenWeek(byWeek);
+  /* Every tab carries its own week's count whether or not that week is the one on screen —
+     that is the whole job of the tab row, and the reason a folder is allowed to hide five
+     weeks at a time. A week with nothing outstanding carries no number at all rather than a
+     zero: six greyed-out noughts is clutter that has to be read before it can be dismissed.
+     A week holding something overdue turns its count red, so the one thing you would actually
+     want to interrupt your morning for is visible from a week you are not looking at. */
+  html += `<div class="weekfolder">
+    <div class="week-tabs" role="tablist" aria-label="The six weeks of the challenge">`
+    + BOARD_WEEKS.map((w,i)=>{
+        const g = byWeek[i];
+        const late = g.some(r=>r.overdue);
+        const count = g.length
+          ? `<span class="wk-count${late?' late':''}">${g.length}</span>` : '';
+        const label = 'Week '+w + (g.length ? ', '+g.length+(late?' overdue':'')+(g.length===1?' to do':' to do') : ', nothing to do');
+        return `<button type="button" class="week-tab${w===open?' on':''}" role="tab"
+            id="wktab-${w}" aria-controls="wkpanel-${w}" aria-selected="${w===open?'true':'false'}"
+            aria-label="${esc(label)}" onclick="setOpenWeek(${w})">Week ${w}${count}</button>`;
+      }).join('')
+    + `</div>`;
+  /* Only the open week is built. Hiding the other five with CSS would leave five weeks of
+     cards in the page carrying live Done and Missed buttons and duplicate element ids, all of
+     them invisible — a folder that only LOOKS like one week is showing. */
+  const g = byWeek[open-1];
+  html += `<div class="week-panel" role="tabpanel" id="wkpanel-${open}" aria-labelledby="wktab-${open}" data-week="${open}">`
+    + (g.length ? g.map(todayCardHtml).join('')
+                : `<div class="board-empty">${esc(weekHasTouchpoints(open) ? 'Nothing here today' : 'Nothing here yet')}</div>`)
+    + `</div></div>`;
+
+  html += `</div>`;
+  list.innerHTML = html;
+}
+
+/* One card on Today's moves. Lifted out of the board's own loop when the weeks became a
+   folder, because two places now emit cards — the intro lane and the open week — and they
+   have to emit exactly the same card. Same element, same ids, same handlers, same buttons as
+   the row this has been since long before either layout. */
+function todayCardHtml(r){
+  const {m,item,key,overdue} = r;
+  // the channel is on the card as its class: it is what colours the stripe down the left edge.
+  // The CHIP that used to spell it out has gone — the team knows what a postcard and a
+  // check-in involve without being told on every card, and the colour carries it.
+  const chClass = item.ch==='inperson'?'inperson':item.ch;
+  const cd = currentDay(m);
+  const dayLabel = item.phase==='intro' ? 'Not started yet' : 'Day '+cd;
+  // the expandable detail (the action, plus a checklist where there is one)
+  const cl = item.checklist ? buildChecklist(m,item) : '';
+  const seedBlock = item.seed ? `<div class="seed-line">
         <div class="seed-label">End the voice note with this:</div>
         <div class="seed-text">“${esc(tpSeed(item))}”</div>
       </div>` : '';
-      const detail = `<div class="detail">
+  const detail = `<div class="detail">
         ${esc(tpWhatText(item))}
         ${cl}
         ${seedBlock}
       </div>`;
-      // WHERE the touchpoint stands, all on one line in the card's corner: the day it is due,
-      // and — only when it has been missed — a divider and the word Overdue in red. The two
-      // used to be separate, the day in a pill down beside the title and Overdue up here, which
-      // meant reading two places to answer one question. Together they are a status line, and
-      // the red is the only red on the card. The corner holds the chevron too.
-      html += `<div class="action ${chClass}" id="act-${m.id}-${item.id}">
+  // WHERE the touchpoint stands, all on one line in the card's corner: the day it is due, and
+  // — only when it has been missed — a divider and the word Overdue in red. The two used to be
+  // separate, the day in a pill beside the title and Overdue up here, which meant reading two
+  // places to answer one question. Together they are a status line, and the red is the only red
+  // on the card. The corner holds the chevron too.
+  return `<div class="action ${chClass}" id="act-${m.id}-${item.id}">
         <div class="card-top">
           <span class="card-status">
             <span class="status-day">${dayLabel}</span>
@@ -2892,11 +2945,6 @@ function renderToday(){
           <button class="btn sm ghost missed-btn" onclick="event.stopPropagation();markMissed('${m.id}','${key}')">Missed</button>
         </div>
       </div>`;
-    });
-    html += `</div>`;
-  });
-  html += `</div>`;
-  list.innerHTML = html;
 }
 
 /* expandable detail (fix #3) */

@@ -244,153 +244,113 @@ const rulesFor = (sel) => RULES.filter((r) => r.sel.split(",").map((s) => s.trim
     "…which sits between the conversion stats and the search box");
 }
 
-/* ---------- 10: the Today's moves board survives a narrow screen ----------
-   The board is three side-by-side columns on a desktop, which is the one shape on this page
-   that could genuinely push the layout wide: three tracks of cards, each holding names and
-   titles that do not break. Two rules keep it honest, and both are the kind that get lost in a
-   later tidy-up, so they are pinned here rather than left to a browser check.
-
-     1. Every track is minmax(0,1fr). Generic rule 2 above already refuses a bare fr anywhere
-        in the sheet; this asserts the board actually declares its tracks, so that guard has
-        something to guard.
-     2. On a phone it STACKS. Three columns squeezed into 350px would be unusable, so the
-        phone block must collapse the grid to a single track — the board becomes one column
-        above the next, which is what the screen is for. */
+/* ---------- 10: the card, and the page it is laid across ----------
+   The day's work is not columns any more — one week is open at a time and its cards run the
+   full width of the screen (see 10b). What is left to keep honest is the CARD: a row whose
+   parts stay in their places, whose expanded detail gets the whole card rather than the strip
+   beside the buttons, and which folds sensibly on a phone. Each of these is the kind of rule
+   that gets lost in a later tidy-up and produces a bug a node harness cannot see, so they are
+   pinned here rather than left to a browser check. */
 {
-  const board = rulesFor(".board");
-  assert.ok(board.length, "sanity: the Today's moves board still lays out on a grid");
-  const desktop = board.map((r) => r.body).join(";");
-  assert.ok(/display:grid/.test(desktop), "the board is a grid");
-  assert.ok(/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/.test(desktop),
-    "three equal, minimum-guarded columns on a wide screen");
-
   // the phone block, taken as text so it can be asked what it actually overrides
   const phone = CSS.slice(CSS.lastIndexOf("@media (max-width:640px)"));
-  assert.ok(/\.board\{[^}]*grid-template-columns:minmax\(0,1fr\)/.test(phone),
-    "on a phone the board collapses to ONE column and the columns stack — three of them side "
-    + "by side on a 350px screen is not a board, it is three slivers");
-  // …and the phone rule that reserves a 130px button column on an ordinary action row must not
-  // reach a board card, whose buttons are already on a line of their own
+  // the phone rule that reserves a 130px button column on an ordinary action row must not
+  // reach a board card, whose parts are laid out by the rules below
   assert.ok(!/\.board \.action \.body\{/.test(phone),
     "the phone block must not re-declare the board card's body: `.board .action .body` already "
-    + "out-specifies `.action .body`, and a flex-basis here would undo the zero basis below");
+    + "out-specifies `.action .body`, and a flex-basis here would undo display:contents");
 
-  /* The card's top rail — the chevron, plus the overdue flag when there is one — sits BESIDE
-     the body on the same flex line. Two declarations keep it there, and getting either wrong
-     produces a visible bug that a node harness cannot see, so both are pinned:
-
-       - the rail must NOT take a row of its own. It did once, and on a card with nothing to
-         flag that row was a lone chevron over a band of empty space, holding the challenger's
-         name a full 39px off the top of the card.
-       - the body's flex-basis must be ZERO, not auto. With an auto basis the body's base size
-         is its own content, so a long enough name pushed the rail off the end of the line and
-         wrapped it to the bottom of the card — the same stray row, back again by another
-         route. From zero the body grows into whatever the rail leaves, and the rail keeps its
-         corner however long the name is. */
-  // NB: [0] is deliberate — it is the BASE rule being checked. The phone block re-declares the
-  // rail on purpose (see below), and that override must not be what this assertion reads.
+  /* The card's top rail — where the touchpoint stands, plus the chevron — sits BESIDE the body
+     on the same line. It must not take a row of its own: it did once, and on a card with
+     nothing to flag that row was a lone chevron over a band of empty space, holding the
+     challenger's name a full 39px off the top of the card. */
   const rail = rulesFor(".board .action .card-top")[0];
   assert.ok(rail, "sanity: the board card still has its top rail");
   assert.ok(!/flex-basis:\s*100%/.test(rail.body) && !/flex:\s*[^;]*100%/.test(rail.body),
     "on a wide screen the rail must not claim a full-width row of its own — that is the empty "
     + "band above the name this layout exists to avoid. Found: " + rail.body.trim());
-  assert.ok(/align-self:\s*flex-start/.test(rail.body),
-    "…and it aligns to the top of the line it shares, so it reads as a corner");
 
-  /* On a phone it DOES take a row, and that is not the bug above coming back: the rail now
-     carries the day label as well as the flag, so "DAY 8 · OVERDUE" beside a name on a 350px
-     card left too little for either — the notes icon ended up orphaned on a line under the
-     name. A row with content in it is a row worth having; the empty one never was. It still
-     has to read as a corner, so it justifies to the end. */
+  /* On a phone it DOES take a row, and that is not the bug above coming back: the rail carries
+     the day label as well as the flag, so "DAY 8 · OVERDUE" beside a name on a 350px card left
+     too little for either — the notes icon ended up orphaned on a line under the name. A row
+     with content in it is a row worth having; the empty one never was. It still has to read as
+     a corner, so it justifies to the end. */
   const phoneRail = /\.board \.action \.card-top\{([^}]*)\}/.exec(phone);
   assert.ok(phoneRail, "the phone block gives the rail a row of its own");
   assert.ok(/flex-basis:100%/.test(phoneRail[1]), "…a full-width one");
   assert.ok(/justify-content:flex-end/.test(phoneRail[1]),
     "…still justified to the end, or the status line stops being a top-RIGHT corner and "
     + "silently slides to the left. Found: " + phoneRail[1].trim());
+  // …and the two buttons take the bottom of the card, half each, which is a thumb-sized target
+  const phoneBtns = /\.board \.action \.mark-btns\{([^}]*)\}/.exec(phone);
+  assert.ok(phoneBtns && /flex-basis:100%/.test(phoneBtns[1]),
+    "on a phone the mark buttons take a row of their own. Found: "
+    + (phoneBtns ? phoneBtns[1].trim() : "no rule"));
 
   /* The body's box is dissolved so its two halves become flex items of the card: the name block
-     shares the top line with the rail, and the detail takes a full-width row below.
+     shares the line with the rail and the buttons, and the detail takes a full-width row below.
 
-     This is what lets an expanded card use the whole column. While the detail lived INSIDE the
-     body, it inherited the body's width — and the body is sized to whatever the rail leaves, so
-     the checklist and the calculator were laid out in a ~210px strip inside a 335px card with
-     dead space beside them. No amount of styling inside the detail could reach past that. */
+     This is what lets an expanded card use the whole of itself. While the detail lived INSIDE
+     the body, it inherited the body's width — and the body is sized to whatever the rail and
+     the buttons leave, so the checklist and the calculator were laid out in a strip with dead
+     space beside them. No amount of styling inside the detail could reach past that. */
   const cardBody = rulesFor(".board .action .body")[0];
   assert.ok(cardBody, "sanity: the board card's body is still styled as its own thing");
   assert.ok(/display:contents/.test(cardBody.body),
     "the board card's body must dissolve its box, or the expanded detail is measured by the "
-    + "space left beside the status rail instead of the full column. Found: " + cardBody.body.trim());
+    + "space left beside the status rail instead of the whole card. Found: " + cardBody.body.trim());
 
   const detail = rulesFor(".board .action .detail")[0];
   assert.ok(detail && /flex-basis:100%/.test(detail.body),
     "…and the detail takes a full-width row of its own once it is a flex item of the card");
 
-  /* The name block is what shares the top line with the rail now, so it carries the zero basis
-     the body used to. Same reason as before: from an auto basis its base size is its own
-     content, and a long enough name pushes the rail off the line and down to the card's foot. */
-  const who = rulesFor(".board .action .who")[0];
-  assert.ok(who, "sanity: the board card's name block is still styled as its own thing");
-  assert.ok(/flex:\s*1\s+1\s+0(?![.\d])/.test(who.body),
-    "the name block needs a ZERO flex basis, or a long challenger name sets its base size and "
-    + "knocks the top rail onto a line of its own. Found: " + who.body.trim());
-  assert.ok(/min-width:0/.test(who.body),
-    "…and min-width:0, so an unbroken word wraps instead of widening the card");
-
-  /* Flex order is what actually stacks the card, and the four bands have to stay in sequence:
-     name, rail, detail, buttons. They are separate rules, so a change to one is easy to make
-     without noticing the others. */
+  /* Flex order is what puts the card's parts in their places, and the four have to stay in
+     sequence: name, rail, buttons, then the detail underneath all three. They are separate
+     rules, so a change to one is easy to make without noticing the others. */
   const orderOf = (sel) => {
     const r = rulesFor(sel).map((x) => /(?:^|;)\s*order:\s*(\d+)/.exec(x.body)).filter(Boolean);
     return r.length ? Number(r[0][1]) : null;
   };
-  const bands = ["who", "card-top", "detail", "mark-btns"].map((c) => orderOf(".board .action ." + c));
+  const bands = ["who", "card-top", "mark-btns", "detail"].map((c) => orderOf(".board .action ." + c));
   assert.deepStrictEqual(bands, [1, 2, 3, 4],
-    "the card's bands run name, rail, detail, buttons — found orders " + JSON.stringify(bands));
+    "the card reads name, rail, buttons, detail — found orders " + JSON.stringify(bands));
 
-  // a grid item's automatic minimum is min-content, the same trap as an fr track
-  const col = rulesFor(".board-col")[0];
-  assert.ok(col && /min-width:0/.test(col.body),
-    ".board-col needs min-width:0 — without it a long challenger name sets the column's "
-    + "minimum and the board pushes past the viewport");
-
-  /* The board's screen raises the page's width cap, because 1100px of reading column split
-     three ways is not enough for a board. Three things are asserted about how that is done,
-     and each of them is a way it could go wrong later:
+  /* The Today's moves screen raises the page's width cap, because 1100px of reading column is
+     narrow for a card that carries a name, a title, a status rail and two buttons on one line.
+     Three things are asserted about how that is done, and each of them is a way it could go
+     wrong later:
        - it is SCOPED to the Today view, so every other screen — the roster, the Playbook, and
          all of retention — keeps the measure it was designed at;
        - it lifts `.wrap` itself, not the board alone, so the masthead, the tabs and the
-         content all share one left edge instead of the board hanging out past them;
-       - it is a fixed cap, so a 34" monitor gets margins rather than a board stretched the
-         whole way across. */
+         content all share one left edge instead of the cards hanging out past them;
+       - it is a fixed cap, so a 34" monitor gets margins rather than a row stretched the whole
+         way across with the name at one end and the button you press at the other. */
   const wide = RULES.filter((r) => /:has\(#view-today\.active\)/.test(r.sel));
   assert.strictEqual(wide.length, 1, "exactly one rule widens the Today's moves screen");
   assert.ok(/\.wrap\s*$/.test(wide[0].sel),
     "the cap is raised on .wrap, which sets the left edge of the masthead, the tabs and the "
-    + "content together — widening the board alone leaves it hanging past all three. Found: "
+    + "content together — widening the cards alone leaves them hanging past all three. Found: "
     + wide[0].sel);
   const cap = /max-width:\s*(\d+)px/.exec(wide[0].body);
   assert.ok(cap, "…and it is a fixed pixel cap, not a percentage or a vw that would stretch "
-    + "the board edge to edge on a large monitor. Found: " + wide[0].body.trim());
-  assert.ok(Number(cap[1]) > 1100 && Number(cap[1]) <= 1600,
-    "…wider than the page's own 1100px, and still capped short of a big desktop. Found: "
-    + cap[1] + "px");
+    + "the cards edge to edge on a large monitor. Found: " + wide[0].body.trim());
+  assert.ok(Number(cap[1]) > 1100 && Number(cap[1]) <= 1400,
+    "…wider than the page's own 1100px, and no wider than a card can usefully be read across. "
+    + "Found: " + cap[1] + "px");
 
   // the page's own measure is untouched, so nothing else on either tracker moved
   assert.ok(/max-width:1100px/.test(rulesFor(".wrap")[0].body),
-    ".wrap's own cap stays at 1100px — the wider board is one screen's exception, not a "
+    ".wrap's own cap stays at 1100px — the wider Today is one screen's exception, not a "
     + "new default for the roster, the Playbook or the retention tracker");
 }
 
-/* ---------- 10b: seven lanes that fit the screen at every width ----------
-   The board is the intro sessions plus the six weeks. Seven columns is a lot to ask of a
-   laptop and far too many for a phone, so the COUNT steps down as the screen narrows and the
-   lanes wrap in reading order — rather than seven lanes getting thinner and thinner until a
-   card cannot hold its own buttons, or the board pushing the page sideways.
-
-   Asserted as properties rather than as a list of numbers, so the breakpoints can be tuned
-   without rewriting the test: never more lanes on a narrower screen, always down to one on a
-   phone, and never a track with a min-content floor. */
+/* ---------- 10b: one week at full width, at every width ----------
+   This screen was seven side-by-side lanes and the cards in them shredded — a word or two per
+   line at 180px, sometimes a letter. It is a folder now: six tabs, one week open, cards laid
+   across the whole screen. There is no layout engine here to measure that with, so what is
+   asserted is the shape of the fix — that nothing lays the cards out in columns any more, that
+   the card is a row that WRAPS rather than one that clips, and that no rule left in the sheet
+   can make a word break mid-letter when there is room for it. */
 {
   // the CSS split into its media blocks, by counting braces — @media nests, so a regex cannot
   const blocks = [];                     // {query, css}
@@ -405,57 +365,65 @@ const rulesFor = (sel) => RULES.filter((r) => r.sel.split(",").map((s) => s.trim
     blocks.push({ query: base.slice(at, open).trim(), css: base.slice(open + 1, i) });
     base = base.slice(0, at) + base.slice(i + 1);         // and lift it out of the base sheet
   }
-  const tracksIn = (css) => {
+  const boardIn = (css) => {
     const m = /\.board\s*\{([^{}]*)\}/.exec(css);
-    const t = m && /grid-template-columns:\s*([^;}]+)/.exec(m[1]);
-    return t ? t[1].trim() : null;
-  };
-  const countOf = (track) => {
-    const rep = /repeat\((\d+)\s*,/.exec(track);
-    return rep ? Number(rep[1]) : 1;                      // a bare single track is one lane
+    return m ? m[1] : null;
   };
 
-  const baseTrack = tracksIn(base);
-  assert.ok(baseTrack, "the board declares its columns");
-  assert.strictEqual(countOf(baseTrack), 7,
-    "the widest board is seven lanes — the intro sessions and the six weeks. Found: " + baseTrack);
+  // NOTHING declares columns for the day's work, at any width. That is the bug, gone.
+  for (const css of [base].concat(blocks.map((b) => b.css))) {
+    const body = boardIn(css);
+    if (!body) continue;
+    assert.ok(!/grid-template-columns/.test(body),
+      "the day's work is not laid out in columns at any width — that is what crushed the "
+      + "cards. Found: " + body.trim());
+  }
+  assert.ok(/flex-direction:\s*column/.test(boardIn(base)),
+    "…it is a stack: the intro lane, then the week folder. Found: " + boardIn(base).trim());
 
-  // every width at which the board is re-tracked, widest first
-  const steps = [{ at: Infinity, cols: countOf(baseTrack), track: baseTrack }];
-  for (const b of blocks) {
-    const track = tracksIn(b.css);
-    if (!track) continue;
-    const max = /max-width:\s*(\d+)px/.exec(b.query);
-    if (!max) continue;                                   // min-width blocks only tune the gaps
-    steps.push({ at: Number(max[1]), cols: countOf(track), track });
-  }
-  steps.sort((a, b) => b.at - a.at);
+  // the tab row wraps rather than scrolling sideways: a tab you have to swipe to find is a tab
+  // nobody presses, and a row that overflows takes the page with it
+  const tabs = rulesFor(".week-tabs")[0];
+  assert.ok(tabs && /flex-wrap:\s*wrap/.test(tabs.body),
+    ".week-tabs must wrap, so six tabs fit a phone on two lines instead of running off it. "
+    + "Found: " + (tabs ? tabs.body.trim() : "no rule"));
+  assert.ok(!/overflow-x\s*:\s*(auto|scroll)/.test(tabs.body),
+    "…and it does not scroll sideways instead");
 
-  assert.ok(steps.length >= 4,
-    "the count steps down more than once between a desktop and a phone. Found: "
-    + JSON.stringify(steps.map((s) => [s.at, s.cols])));
-  for (let i = 1; i < steps.length; i++) {
-    assert.ok(steps[i].cols <= steps[i - 1].cols,
-      "a narrower screen never gets MORE lanes: " + steps[i - 1].at + "px had "
-      + steps[i - 1].cols + ", " + steps[i].at + "px has " + steps[i].cols);
+  // the panel and the lane both have min-width:0 — a grid or flex item's automatic minimum is
+  // min-content, which is how a long challenger name pushes a container past the viewport
+  for (const sel of [".board-col", ".week-panel", ".weekfolder"]) {
+    const r = rulesFor(sel)[0];
+    assert.ok(r && /min-width:0/.test(r.body),
+      sel + " needs min-width:0 — without it a long name sets the minimum and the page goes "
+      + "wider than the screen");
   }
-  assert.strictEqual(steps[steps.length - 1].cols, 1,
-    "…and the narrowest board is a single stacked column");
-  assert.ok(steps[steps.length - 1].at <= 640,
-    "…which happens at phone width, not before");
 
-  // no track may have a min-content floor, at any width: that is what would push the board —
-  // and the page — past the viewport when a challenger has a long name
-  for (const s of steps) {
-    assert.ok(/minmax\(0\s*,/.test(s.track),
-      "every track is minmax(0,…) so a long name cannot widen the board. At "
-      + s.at + "px: " + s.track);
+  /* THE WRAPPING RULE, which is the bug itself.
+
+     `overflow-wrap:anywhere` breaks a word at any character AND counts toward the element's
+     min-content width, so in a narrow column it is what turns a name into one letter per line.
+     `break-word` breaks only a word that could not fit on a line of its own and does NOT shrink
+     min-content. The card's name block must use break-word and never anywhere. */
+  const who = rulesFor(".board .action .who")[0];
+  assert.ok(who, "the card's name block has a rule");
+  assert.ok(/overflow-wrap:\s*break-word/.test(who.body),
+    ".board .action .who must wrap with break-word. Found: " + who.body.trim());
+  for (const r of RULES.filter((x) => /^\.board|^\.week/.test(x.sel))) {
+    assert.ok(!/overflow-wrap:\s*anywhere/.test(r.body),
+      "`overflow-wrap:anywhere` is what shredded a name into one letter per line when these "
+      + "cards were in narrow columns — nothing on this screen should go back to it. Found "
+      + "on: " + r.sel);
   }
-  // and the board is never made to scroll sideways instead
-  for (const r of rulesFor(".board")) {
-    assert.ok(!/overflow-x\s*:\s*(auto|scroll)/.test(r.body),
-      "the board wraps rather than scrolling sideways. Found: " + r.body.trim());
-  }
+
+  // the card is a row that wraps onto more lines when it must, not one that clips or scrolls
+  const action = rulesFor(".board .action")[0];
+  assert.ok(action && /flex-wrap:\s*wrap/.test(action.body),
+    "the card wraps its own parts rather than squeezing them. Found: "
+    + (action ? action.body.trim() : "no rule"));
+  assert.ok(/flex:\s*1 1 240px/.test(who.body),
+    "…and the name block gives way to the rail and the buttons at 240px rather than being "
+    + "squeezed below it. Found: " + who.body.trim());
 }
 
 /* ---------- 11: the welcome message has no placeholder left to hand-edit ---------- */

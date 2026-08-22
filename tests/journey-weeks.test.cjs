@@ -123,7 +123,8 @@ function tableHtml(app) {
   assert.ok(app.html("memberList").includes("3 of 7 touchpoints done"),
     "…and it is not counted either: three of the seven that exist, not five of ten");
 
-  // day 16, so the day-14 check-in is up — under its new name, keyed by its old id
+  // day 16, so the day-14 check-in is up — under its new name, keyed by its old id. It is a
+  // week-2 touchpoint, and with nothing outstanding before it that is the week the folder opens.
   assert.ok(today.includes("Week 2 check-in"), "her due check-in is named for the week it closes");
   assert.ok(today.includes("act-old-wk3"), "…and is still the touchpoint it always was");
 
@@ -144,11 +145,14 @@ function tableHtml(app) {
   const app = boot({ members: [live("a", "Sam Live", 8), live("b", "Dee Deep", 15),
     live("c", "Ell Late", 22), live("d", "Fay Far", 29), live("e", "Gus Gone", 36)] });
 
-  const today = app.html("todayList");
-  for (const name of ["Week 1 check-in", "Week 2 check-in", "Week 3 check-in",
-                      "Week 4 check-in", "Week 5 check-in"]) {
-    assert.ok(today.includes(name), "Today's moves says " + name);
+  // one week is on screen at a time, so each is opened and read in turn
+  for (const [w, name] of [[1, "Week 1 check-in"], [2, "Week 2 check-in"], [3, "Week 3 check-in"],
+                           [4, "Week 4 check-in"], [5, "Week 5 check-in"]]) {
+    app.ctx.setOpenWeek(w);
+    assert.ok(app.html("todayList").includes(name),
+      "Today's moves says " + name + " in week " + w);
   }
+  app.ctx.setOpenWeek(1);
 
   // the table's heads follow the titles, not the ids: 'wk2' is the Week 1 check-in, so Wk1
   const heads = (tableHtml(app).match(/<th[^>]*>([^<]*)<\/th>/g) || [])
@@ -169,6 +173,7 @@ function tableHtml(app) {
   assert.ok(/You’re starting to settle in now/.test(wk3.seed), "the seed line is the seed line");
   assert.ok(pb.includes("End the voice note with this"), "…still labelled on the card");
   assert.ok(pb.includes("This is the bit we want"), "…and still printed in full");
+  app.ctx.setOpenWeek(2);          // the seed line rides the day-14 check-in, which is week 2's
   assert.ok(app.html("todayList").includes("End the voice note with this:"),
     "…and still on the card a coach reads at the time");
 }

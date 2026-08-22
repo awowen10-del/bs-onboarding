@@ -135,7 +135,10 @@ const DEFAULT_WHY_WK2 = "Name the win before they start doubting it.";
   const today = app.html("todayList");
   assert.ok(today.includes("Set them up on GoTeamUp for the 6 Week Challenge"),
     "the checklist on Ned's intro card says the same new words");
-  assert.ok(today.includes("You are settling in."), "and Sara's card carries the new seed line");
+  // Sara's day-14 check-in is week 2's, and the folder shows one week at a time
+  app.ctx.setOpenWeek(2);
+  assert.ok(app.html("todayList").includes("You are settling in."),
+    "and Sara's card carries the new seed line");
 
   // the remaining four steps are untouched, and there are still five of them
   const intro = app.ctx.__t.JOURNEY.find((it) => it.id === "intro");

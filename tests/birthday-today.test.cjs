@@ -227,12 +227,13 @@ const tabRow = (app, name) =>
   assert.ok(h.indexOf("Birthdays this week") < h.indexOf('<div class="board">'),
     "…and sits above the board rather than inside it");
 
-  // the board still has its seven columns and its cards, in order
+  // the day's work below it is unchanged: the intro lane, then the six week tabs with one
+  // week open — and a birthday is in none of them
   const board = h.slice(h.indexOf('<div class="board">'));
-  assert.deepStrictEqual((board.match(/data-col="([^"]+)"/g) || []),
-    ['data-col="intro"', 'data-col="week1"', 'data-col="week2"', 'data-col="week3"',
-     'data-col="week4"', 'data-col="week5"', 'data-col="week6"'],
-    "the columns are the intro sessions and the six weeks, and a birthday is in none of them");
+  assert.deepStrictEqual((board.match(/data-col="([^"]+)"/g) || []), ['data-col="intro"'],
+    "the intro keeps its own lane");
+  assert.strictEqual((board.match(/id="wktab-\d"/g) || []).length, 6, "…and there are six week tabs");
+  assert.strictEqual((board.match(/class="week-panel"/g) || []).length, 1, "…with one week open");
   // Tara's NAME is legitimately in a column — she is eight days into her journey and has
   // touchpoints due. What must not be there is her birthday TASK.
   assert.ok(!/-birthday"/.test(board), "no birthday task leaked into a column");

@@ -288,7 +288,9 @@ function readsAs(app) {
   const app = boot({ members: [preStart("p", "Ned New")] });
   const board = app.html("todayList").slice(app.html("todayList").indexOf('<div class="board">'));
 
-  assert.strictEqual((board.match(/<div class="board-col"/g) || []).length, 7, "still seven lanes");
+  assert.strictEqual((board.match(/<div class="board-col"/g) || []).length, 1,
+    "the intro still has its own lane, outside the week folder");
+  assert.strictEqual((board.match(/id="wktab-\d"/g) || []).length, 6, "…and the weeks are six tabs");
   assert.strictEqual((board.match(/id="act-p-/g) || []).length, 1,
     "…and one card for Ned, not five: the pack is inside his intro, not beside it");
   assert.ok(board.includes("act-p-intro"), "…which is the intro");

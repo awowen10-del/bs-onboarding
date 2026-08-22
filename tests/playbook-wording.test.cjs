@@ -54,7 +54,9 @@ function tableHtml(app) {
 // from another realm is not deepStrictEqual to one from this one.
 const ov = (app) => JSON.parse(JSON.stringify(app.ctx.__t.pbOverrides));
 
-const DEFAULT_WK2 = "Start of Week 2 check-in";
+// The day-7 check-in, which is 'wk2' underneath and titled "Week 1 check-in" on the page: the
+// id is what an override is keyed by, and the title is what an override replaces.
+const DEFAULT_WK2 = "Week 1 check-in";
 const DEFAULT_WHY_WK2 = "Name the win before they start doubting it.";
 
 /* ---------- 1: with no overrides, the app is exactly the app ----------
@@ -89,7 +91,7 @@ const DEFAULT_WHY_WK2 = "Name the win before they start doubting it.";
    the card they tap at 7am calling it something else. */
 {
   const app = boot({ members: [live("a", "Sam Live", 7)] });
-  assert.strictEqual(app.ctx.pbSetField("wk2", "title", "Week 2 — the check-in that matters"), true);
+  assert.strictEqual(app.ctx.pbSetField("wk2", "title", "Week 2 — the check-in that matters"), true);   // any words at all
   assert.strictEqual(app.ctx.pbSetField("wk2", "why", "Catch them before the doubt does."), true);
   assert.strictEqual(app.ctx.pbSetField("wk2", "what", "Voice note. Warm, specific, short."), true);
   app.ctx.renderAll();
@@ -111,7 +113,7 @@ const DEFAULT_WHY_WK2 = "Name the win before they start doubting it.";
   assert.ok(!tbl.includes(DEFAULT_WK2), "…and not the old one");
 
   // one touchpoint edited is one touchpoint edited — the rest of the deck is untouched
-  assert.ok(pb.includes("Start of Week 3 check-in — plant the seed"), "week 3 still says what the code says");
+  assert.ok(pb.includes("Week 2 check-in"), "the next check-in still says what the code says");
 }
 
 /* ---------- 3: the practical text as well as the headline ----------
@@ -252,9 +254,9 @@ const DEFAULT_WHY_WK2 = "Name the win before they start doubting it.";
   for (const it of app.ctx.__t.JOURNEY) {
     assert.ok(pb.includes(app.ctx.dayBadge(it)), it.id + ": its day badge is untouched");
   }
-  assert.ok(pb.includes('<span class="pbx-tag physical">') && pb.includes("Handwritten") === false,
-    "the postcard's channel tag survives its title being replaced");
-  assert.ok(pb.includes(">Coach<") && pb.includes(">Team<"), "both owners still named");
+  assert.ok(pb.includes('<span class="pbx-tag inperson">') && pb.includes('<span class="pbx-tag digital">'),
+    "both channel tags survive their touchpoints' titles being replaced");
+  assert.ok(pb.includes(">Coach<"), "the owner is still named");
   assert.ok(pb.includes("Named win"), "…and the named-win flag still flies");
   assert.strictEqual((pb.match(/<article class="pbx-card/g) || []).length, app.ctx.__t.JOURNEY.length,
     "the same number of cards — no touchpoint added or lost by any amount of typing");
@@ -267,14 +269,19 @@ const DEFAULT_WHY_WK2 = "Name the win before they start doubting it.";
       "pbSetField refuses `" + field + "` — it is structure, not wording");
   }
   // …and a step that does not exist cannot be brought into being by naming it
-  assert.strictEqual(app.ctx.pbSetField("intro", "step5", "a sixth step"), false,
-    "a five-step checklist has no sixth step to reword");
+  const introSteps = app.ctx.__t.JOURNEY.find((it) => it.id === "intro").checklist.length;
+  assert.strictEqual(app.ctx.pbSetField("intro", "step" + (introSteps - 1), "the last one"), true,
+    "sanity: the last step of the checklist is editable");
+  assert.strictEqual(app.ctx.pbSetField("intro", "step" + introSteps, "one more step"), false,
+    "a " + introSteps + "-step checklist has no " + (introSteps + 1) + "th step to reword");
   assert.strictEqual(app.ctx.pbSetField("wk2", "step0", "wk2 has no steps"), false,
     "a touchpoint with no checklist has no steps at all");
   assert.strictEqual(app.ctx.pbSetField("wk2", "seed", "wk2 has no seed line"), false,
     "…and no seed line either, so there is nothing to reword");
-  assert.strictEqual(app.ctx.pbSetField("d3_postcard", "why", "…"), true,
+  assert.strictEqual(app.ctx.pbSetField("d1_text", "why", "…"), true,
     "sanity: a field that DOES exist is still editable");
+  assert.strictEqual(app.ctx.pbSetField("d3_postcard", "title", "back from the dead"), false,
+    "…and a touchpoint that has been removed from the journey cannot be edited back into it");
 
   // a whole row written by hand, aimed at the structure, changes nothing
   app.ctx.__t.pbOverrides = app.ctx.migratePlaybookOverrides({
@@ -317,8 +324,8 @@ const DEFAULT_WHY_WK2 = "Name the win before they start doubting it.";
     "…and it leaves Today's moves the way it always did");
 
   // Missed too
-  app.ctx.markMissed("a", "d3_postcard");
-  assert.ok((app.find("a").missed || []).includes("d3_postcard"), "Missed still marks missed");
+  app.ctx.markMissed("a", "d1_text");
+  assert.ok((app.find("a").missed || []).includes("d1_text"), "Missed still marks missed");
 
   // and the roster's own storage never picks up a word of it
   assert.ok(!JSON.stringify(app.cached()).includes("Renamed mid-morning"),
@@ -413,8 +420,8 @@ const DEFAULT_WHY_WK2 = "Name the win before they start doubting it.";
   blur("wk3", "why", { text: "<b>Plant</b> it early." });
   assert.strictEqual(app.ctx.__t.pbOverrides.wk3.why, "Plant it early.",
     "a plain-text field stores no markup at all — a title is a title");
-  blur("d3_postcard", "what", { html: '<script>alert("boom")</script>Arrive unannounced.' });
-  assert.strictEqual(app.ctx.__t.pbOverrides.d3_postcard.what, "Arrive unannounced.",
+  blur("wk4", "what", { html: '<script>alert("boom")</script>Arrive unannounced.' });
+  assert.strictEqual(app.ctx.__t.pbOverrides.wk4.what, "Arrive unannounced.",
     "…and a script is dropped from the body copy, contents and all");
   app.ctx.renderAll();
   const deck = app.html("playbookList");

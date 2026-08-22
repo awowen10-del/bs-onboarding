@@ -78,10 +78,10 @@ const html = app.html("playbookList");
   assert.ok(html.indexOf("Before day zero") < html.indexOf("The forty-two days"), "chapters in order");
   // and each touchpoint sits under the right one
   const introAt = html.indexOf("Intro / Welcome experience");
-  const wk2At = html.indexOf("Start of Week 2 check-in");
+  const wk2At = html.indexOf("Week 1 check-in");     // the day-7 check-in, by its name now
   assert.ok(html.indexOf("Before day zero") < introAt && introAt < html.indexOf("The forty-two days"),
     "the intro sits in chapter I");
-  assert.ok(html.indexOf("The forty-two days") < wk2At, "week 2 sits in chapter II");
+  assert.ok(html.indexOf("The forty-two days") < wk2At, "the first check-in sits in chapter II");
 
   // The third chapter is GONE, not merely empty. It held the month-1 and month-2 follow-ups,
   // which now live on the retention tracker — a heading with nothing under it would read as
@@ -97,11 +97,27 @@ const html = app.html("playbookList");
 
 /* ---------- 5: channel and ownership read as tags, not colour alone ---------- */
 {
-  for (const [ch, label] of [["inperson", "In person"], ["digital", "Digital"], ["physical", "Physical"]]) {
+  // asked of the journey rather than listed here: the deck must tag whatever channels it
+  // actually has, and say nothing about ones it hasn't. It has two — the intro in the room and
+  // everything else digital — since the handwritten postcard, the last physical touchpoint on
+  // this journey, was removed.
+  const channels = [...new Set(J.map((it) => it.ch))];
+  assert.deepStrictEqual(channels.slice().sort(), ["digital", "inperson"],
+    "the onboarding journey is one in-person touchpoint and six digital ones");
+  for (const ch of channels) {
     assert.ok(new RegExp('<span class="pbx-tag ' + ch + '">').test(html), ch + " has a tag");
-    assert.ok(html.includes(label), "…labelled in words, not by colour alone: " + label);
+    assert.ok(html.includes(app.ctx.__t.CH_LABEL ? app.ctx.__t.CH_LABEL[ch] : ch),
+      "…labelled in words, not by colour alone: " + ch);
   }
-  assert.ok(html.includes(">Coach<") && html.includes(">Team<"), "both owners are named");
+  assert.ok(!/pbx-tag physical/.test(html), "and nothing on the deck is posted any more");
+  // owners, the same way: whoever the journey says owns a touchpoint is named on its card. The
+  // postcard was the only one the team owned rather than a coach, and it has gone with it.
+  const owners = [...new Set(J.map((it) => it.owner))];
+  assert.deepStrictEqual(owners, ["coach"], "every touchpoint left is a coach's own to do");
+  for (const o of owners) {
+    assert.ok(new RegExp(">" + o[0].toUpperCase() + o.slice(1) + "<").test(html),
+      "the owner is named on the card: " + o);
+  }
   assert.ok(html.includes("Named win"), "the named-win touchpoints are flagged");
 }
 
@@ -139,13 +155,11 @@ const html = app.html("playbookList");
   assert.ok(/\.pbx-card:last-child\{margin-bottom:0\}/.test(HTML),
     "…so the last card stops where the page does, with no trailing gap under it");
 
-  // the postcard touchpoint still names the services in its OWN copy — that is a coach being
-  // told how to send the thing, and it lives on the card, not in a panel underneath the deck
-  const postcard = app.ctx.__t.JOURNEY.find((it) => it.id === "d3_postcard");
-  assert.ok(/Scribeless \/ ClickSend \/ Thanks\.io/.test(postcard.what),
-    "the how-to stayed with the touchpoint it belongs to");
-  assert.ok(app.html("playbookList").includes("Scribeless / ClickSend / Thanks.io"),
-    "…and still reaches the deck through the card");
+  // the touchpoint that named those services in its own copy has since gone too — nothing is
+  // posted to a house any more — so the whole subject has left the app rather than moved
+  assert.ok(!J.some((it) => it.id === "d3_postcard"), "the postcard touchpoint is gone");
+  assert.ok(!/Scribeless|ClickSend|Thanks\.io/.test(HTML),
+    "…and with it the last mention of a print-and-post service anywhere in the app");
 }
 
 console.log("playbook.test.cjs: OK");

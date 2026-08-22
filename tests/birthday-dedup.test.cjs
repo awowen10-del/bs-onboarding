@@ -23,7 +23,7 @@ const at = (n, age) => {
 const challenger = (id, name, dob, extra) => Object.assign({
   id, name, coach: "Dan", dob, personal: "", email: "",
   day0: daysFromToday(-60), booked: daysFromToday(-60), firstSessionDone: true,
-  completed: ["intro", "d1_text", "d3_postcard", "wk2", "wk3", "wk4", "wk5", "wk6"],
+  completed: ["intro", "d1_text", "wk2", "wk3", "wk4", "wk5", "wk6"],
   doneMeta: {}, checks: {}, missed: [],
   outcome: "stayed", signedUp: true, extraDays: 0, pausedDays: 0, pausedAt: null,
   followUpOn: null, followUpStatus: null, notes: "",

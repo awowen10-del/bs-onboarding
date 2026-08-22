@@ -164,9 +164,8 @@ const hasStartTask = (app) => /id="act-c1-startclock"/.test(app.html("todayList"
   const today = app.html("todayList");
   assert.ok(hasStartTask(app), "the waiting challenger has her task");
   assert.ok(today.includes("Katie Leicester"), "…and the live challenger still has her touchpoints");
-  assert.ok(today.indexOf("Waiting on a first session") < today.indexOf("Texts &amp; Trainerize")
-    || today.indexOf("Waiting on a first session") < today.indexOf("Texts & Trainerize"),
-    "the waiting group sits above the day's channel work, where it is easy to find");
+  assert.ok(today.indexOf("Waiting on a first session") < today.indexOf('<div class="board">'),
+    "the waiting group sits above the day's board, where it is easy to find");
   // the badge counts both kinds
   assert.ok(Number(app.el("todayCount").textContent) >= 2, "both are counted");
 }

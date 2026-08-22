@@ -472,7 +472,7 @@ const classesOf = (row) => (/^([^>]*)>/.exec(row) || [, ""])[1].replace(/"/g, ""
 {
   const quiet = Object.assign(person("q", "Quiet Quinn", null), {
     day0: daysFromToday(-90), booked: daysFromToday(-90), outcome: "stayed", signedUp: true,
-    completed: ["intro", "d1_text", "d3_postcard", "wk2", "wk3", "wk4", "wk5", "wk6"],
+    completed: ["intro", "d1_text", "wk2", "wk3", "wk4", "wk5", "wk6"],
   });
   const app = boot({ members: [quiet] });
   assert.strictEqual(app.el("todayCount").textContent, "0", "nothing real is due");

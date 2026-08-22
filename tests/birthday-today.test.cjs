@@ -198,7 +198,7 @@ const tabRow = (app, name) =>
   // somebody long finished, so no journey touchpoint is due — only the birthday
   const quiet = person("q", "Quiet Quinn", at(3, 30), {
     day0: daysFromToday(-90), booked: daysFromToday(-90), outcome: "stayed", signedUp: true,
-    completed: ["intro", "d1_text", "d3_postcard", "wk2", "wk3", "wk4", "wk5", "wk6"],
+    completed: ["intro", "d1_text", "wk2", "wk3", "wk4", "wk5", "wk6"],
   });
   const app = boot({ members: [quiet] });
   assert.deepStrictEqual([...app.ctx.dueToday(app.find("q"))], [], "sanity: no touchpoint is due");
@@ -227,10 +227,12 @@ const tabRow = (app, name) =>
   assert.ok(h.indexOf("Birthdays this week") < h.indexOf('<div class="board">'),
     "…and sits above the board rather than inside it");
 
-  // the board still has its three columns and its cards, in order
+  // the board still has its seven columns and its cards, in order
   const board = h.slice(h.indexOf('<div class="board">'));
   assert.deepStrictEqual((board.match(/data-col="([^"]+)"/g) || []),
-    ['data-col="intro"', 'data-col="digital"', 'data-col="physical"'], "the columns are unchanged");
+    ['data-col="intro"', 'data-col="week1"', 'data-col="week2"', 'data-col="week3"',
+     'data-col="week4"', 'data-col="week5"', 'data-col="week6"'],
+    "the columns are the intro sessions and the six weeks, and a birthday is in none of them");
   // Tara's NAME is legitimately in a column — she is eight days into her journey and has
   // touchpoints due. What must not be there is her birthday TASK.
   assert.ok(!/-birthday"/.test(board), "no birthday task leaked into a column");

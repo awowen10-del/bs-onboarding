@@ -212,7 +212,7 @@ const onbGroup = (app) => {
   const app = boot({
     members: [challenger("c", "Chris Challenger", at(2, 30), {
       day0: daysFromToday(-90), booked: daysFromToday(-90), outcome: "stayed", signedUp: true,
-      completed: ["intro", "d1_text", "d3_postcard", "wk2", "wk3", "wk4", "wk5", "wk6"],
+      completed: ["intro", "d1_text", "wk2", "wk3", "wk4", "wk5", "wk6"],
     })],
     retention: [member("r", "Mo Member", at(2, 31))],
   });

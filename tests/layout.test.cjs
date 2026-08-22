@@ -382,6 +382,82 @@ const rulesFor = (sel) => RULES.filter((r) => r.sel.split(",").map((s) => s.trim
     + "new default for the roster, the Playbook or the retention tracker");
 }
 
+/* ---------- 10b: seven lanes that fit the screen at every width ----------
+   The board is the intro sessions plus the six weeks. Seven columns is a lot to ask of a
+   laptop and far too many for a phone, so the COUNT steps down as the screen narrows and the
+   lanes wrap in reading order — rather than seven lanes getting thinner and thinner until a
+   card cannot hold its own buttons, or the board pushing the page sideways.
+
+   Asserted as properties rather than as a list of numbers, so the breakpoints can be tuned
+   without rewriting the test: never more lanes on a narrower screen, always down to one on a
+   phone, and never a track with a min-content floor. */
+{
+  // the CSS split into its media blocks, by counting braces — @media nests, so a regex cannot
+  const blocks = [];                     // {query, css}
+  let base = CSS, at;
+  while ((at = base.indexOf("@media")) !== -1) {
+    const open = base.indexOf("{", at);
+    let depth = 0, i = open;
+    for (; i < base.length; i++) {
+      if (base[i] === "{") depth++;
+      else if (base[i] === "}" && --depth === 0) break;
+    }
+    blocks.push({ query: base.slice(at, open).trim(), css: base.slice(open + 1, i) });
+    base = base.slice(0, at) + base.slice(i + 1);         // and lift it out of the base sheet
+  }
+  const tracksIn = (css) => {
+    const m = /\.board\s*\{([^{}]*)\}/.exec(css);
+    const t = m && /grid-template-columns:\s*([^;}]+)/.exec(m[1]);
+    return t ? t[1].trim() : null;
+  };
+  const countOf = (track) => {
+    const rep = /repeat\((\d+)\s*,/.exec(track);
+    return rep ? Number(rep[1]) : 1;                      // a bare single track is one lane
+  };
+
+  const baseTrack = tracksIn(base);
+  assert.ok(baseTrack, "the board declares its columns");
+  assert.strictEqual(countOf(baseTrack), 7,
+    "the widest board is seven lanes — the intro sessions and the six weeks. Found: " + baseTrack);
+
+  // every width at which the board is re-tracked, widest first
+  const steps = [{ at: Infinity, cols: countOf(baseTrack), track: baseTrack }];
+  for (const b of blocks) {
+    const track = tracksIn(b.css);
+    if (!track) continue;
+    const max = /max-width:\s*(\d+)px/.exec(b.query);
+    if (!max) continue;                                   // min-width blocks only tune the gaps
+    steps.push({ at: Number(max[1]), cols: countOf(track), track });
+  }
+  steps.sort((a, b) => b.at - a.at);
+
+  assert.ok(steps.length >= 4,
+    "the count steps down more than once between a desktop and a phone. Found: "
+    + JSON.stringify(steps.map((s) => [s.at, s.cols])));
+  for (let i = 1; i < steps.length; i++) {
+    assert.ok(steps[i].cols <= steps[i - 1].cols,
+      "a narrower screen never gets MORE lanes: " + steps[i - 1].at + "px had "
+      + steps[i - 1].cols + ", " + steps[i].at + "px has " + steps[i].cols);
+  }
+  assert.strictEqual(steps[steps.length - 1].cols, 1,
+    "…and the narrowest board is a single stacked column");
+  assert.ok(steps[steps.length - 1].at <= 640,
+    "…which happens at phone width, not before");
+
+  // no track may have a min-content floor, at any width: that is what would push the board —
+  // and the page — past the viewport when a challenger has a long name
+  for (const s of steps) {
+    assert.ok(/minmax\(0\s*,/.test(s.track),
+      "every track is minmax(0,…) so a long name cannot widen the board. At "
+      + s.at + "px: " + s.track);
+  }
+  // and the board is never made to scroll sideways instead
+  for (const r of rulesFor(".board")) {
+    assert.ok(!/overflow-x\s*:\s*(auto|scroll)/.test(r.body),
+      "the board wraps rather than scrolling sideways. Found: " + r.body.trim());
+  }
+}
+
 /* ---------- 11: the welcome message has no placeholder left to hand-edit ---------- */
 {
   assert.ok(!/\[First Name\]/.test(HTML),

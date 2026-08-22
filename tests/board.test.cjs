@@ -2,16 +2,21 @@
 // one long stack.
 //
 // It is a board in APPEARANCE only, and that is the whole point of this file. Nothing here
-// drags, and the layout change was not allowed to touch a single thing about what is due:
-// the same journey logic decides which touchpoints appear, the same grace window keeps them
-// there, and the same two buttons resolve them. A column is the old group heading turned on
-// its side, and nothing more.
+// drags, and the layout has never been allowed to touch a single thing about what is due: the
+// same journey logic decides which touchpoints appear, the same grace window keeps them
+// there, and the same two buttons resolve them.
 //
-// So these tests are split in two. The first half is the board's SHAPE — three named columns
-// in a fixed order, each with its heading and count, empty ones still standing. The second
-// half is everything that must NOT have changed: the cards' content, their buttons, the
-// OVERDUE flag, the banner and the toggle above the board, and the retention tracker, which
-// was left on its stacked layout on purpose.
+// The columns are the SIX WEEKS now, with the intro sessions ahead of them, where they used to
+// be the three channels — texts, postcards, moments in the room. A touchpoint's column comes
+// from the day it fires and nothing else (week 1 is days 1–7, week 2 is days 8–14, …), so the
+// regrouping is a re-read of numbers that were already there. Not one day moved to do it, and
+// the ids underneath are the ids they always were: 'wk2' is the Week 1 check-in.
+//
+// So these tests are split in two. The first half is the board's SHAPE — seven named columns
+// in a fixed order, each with its heading and count, empty ones still standing, including the
+// week nothing has been written for yet. The second half is everything that must NOT have
+// changed: the cards' content, their buttons, the OVERDUE flag, the banner and the toggle
+// above the board, and the retention tracker, which was left on its stacked layout on purpose.
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -50,43 +55,78 @@ const countBadge = (colHtml) => {
 };
 const cardIds = (colHtml) => (colHtml.match(/id="act-[^"]+"/g) || []).map((s) => s.slice(4, -1));
 
-/* ---------- 1: three columns, in the order the day is worked ----------
-   Intros to run, then check-ins to write, then things to put in the post. It is a fixed
-   reading order, not anything computed off the data, so the board is the same shape every
-   morning — which is the whole reason a coach can scan it rather than read it. */
+/* ---------- 1: seven columns — the intros, then the six weeks ----------
+   The intro sessions that have to be run, and then the challenge itself, one lane per week. It
+   is a fixed reading order, not anything computed off the data, so the board is the same shape
+   every morning — which is the whole reason a coach can scan it rather than read it. */
+const WEEK_COLS = ["intro", "week1", "week2", "week3", "week4", "week5", "week6"];
 {
   const app = boot({ members: [preStart("p", "Ned New"), live("a", "Sam Live", 8)] });
-  const ids = columns(app).map((c) => c.id);
-  assert.deepStrictEqual(ids, ["intro", "digital", "physical"],
-    "three columns, in a fixed order — the board's structure is not data-dependent");
+  assert.deepStrictEqual(columns(app).map((c) => c.id), WEEK_COLS,
+    "seven columns, in a fixed order — the board's structure is not data-dependent");
 
   const titles = (board(app).match(/<span class="board-col-title">([^<]*)<\/span>/g) || [])
     .map((s) => s.replace(/<[^>]*>/g, ""));
   assert.deepStrictEqual(titles, [
     "Intro sessions to run",
-    "Texts & Trainerize check-ins",
-    "Postcards, boxes & cards",
-  ], "each column keeps the heading its stacked group used to carry");
+    "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6",
+  ], "…and they are named for the weeks of the challenge, not for the kind of job");
 
-  // and the order really is fixed: an emptier day does not reshuffle it
+  // the channel columns are gone, headings and all
+  for (const old of ["Texts & Trainerize check-ins", "Postcards, boxes & cards",
+                     "Moments in the room"]) {
+    assert.ok(!board(app).includes(old), "the channel column is gone: " + old);
+  }
+
+  // and the order really is fixed: an emptier day does not reshuffle it, and nor does a busy one
   const quiet = boot({ members: [live("c", "Katie Leicester", 1)] });
-  assert.deepStrictEqual(columns(quiet).map((c) => c.id), ["intro", "digital", "physical"],
-    "…with two of the three columns empty, the lanes are still in the same places");
+  assert.deepStrictEqual(columns(quiet).map((c) => c.id), WEEK_COLS,
+    "…with six of the seven lanes empty, they are still in the same places");
+  const busy = boot({ members: [preStart("p", "Ned New"), live("a", "Sam", 8),
+    live("b", "Dee", 15), live("c", "Ell", 22), live("d", "Fay", 29), live("e", "Gus", 36)] });
+  assert.deepStrictEqual(columns(busy).map((c) => c.id), WEEK_COLS,
+    "…and with every lane in use, the same seven in the same order");
 }
 
-/* ---------- 2: a card lands in the column its channel says it should ----------
-   This is the layout's only real job. The journey logic already knew what kind of touchpoint
-   each item was; the board just reads it. */
+/* ---------- 2: a card lands in the week its DAY puts it in ----------
+   This is the layout's only real job, and the rule is arithmetic on a number the touchpoint
+   already carried: week = ceil(day / 7). Days 1–7 are week 1, 8–14 week 2, and so on. */
 {
-  // day 8: the week-2 postcard (physical) and two texts (digital) are all due
+  // day 8, so everything from the first week is due and still inside its grace window
   const app = boot({ members: [preStart("p", "Ned New"), live("a", "Sam Live", 8)] });
 
   assert.deepStrictEqual(cardIds(column(app, "intro")), ["act-p-intro"],
-    "the intro is the intro column's, and only its");
-  assert.deepStrictEqual(cardIds(column(app, "physical")), ["act-a-d3_postcard"],
-    "the handwritten postcard is a physical touch");
-  assert.deepStrictEqual(cardIds(column(app, "digital")), ["act-a-d1_text", "act-a-wk2"],
-    "the text and the check-in are digital, and stay in journey-day order inside the column");
+    "the intro is the intro column's, and only its — it is before day zero, not in a week");
+  assert.deepStrictEqual(cardIds(column(app, "week1")), ["act-a-d1_text", "act-a-wk2"],
+    "the day-1 text and the day-7 check-in are week 1, in journey-day order inside the column");
+  for (const empty of ["week2", "week3", "week4", "week5", "week6"]) {
+    assert.deepStrictEqual(cardIds(column(app, empty)), [], empty + " holds nothing yet");
+  }
+
+  // the later check-ins land a week earlier than their old names suggested, because the name
+  // was the thing that was out by one: the day-14 check-in closes week 2
+  const spread = boot({ members: [
+    live("b", "Dee Deep", 15), live("c", "Ell Late", 22),
+    live("d", "Fay Far", 29), live("e", "Gus Gone", 36),
+  ] });
+  assert.deepStrictEqual(cardIds(column(spread, "week2")), ["act-b-wk3"], "day 14 → week 2");
+  assert.deepStrictEqual(cardIds(column(spread, "week3")), ["act-c-wk4"], "day 21 → week 3");
+  assert.deepStrictEqual(cardIds(column(spread, "week4")), ["act-d-wk5"], "day 28 → week 4");
+  assert.deepStrictEqual(cardIds(column(spread, "week5")), ["act-e-wk6"], "day 35 → week 5");
+
+  // the rule is the function, not a table somebody has to keep in step
+  const J = app.ctx.__t.JOURNEY;
+  const weekOf = (id) => app.ctx.journeyWeek(J.find((it) => it.id === id));
+  assert.strictEqual(
+    JSON.stringify(J.filter((it) => it.phase !== "intro").map((it) => [it.id, it.day, weekOf(it.id)])),
+    JSON.stringify([["d1_text", 1, 1], ["wk2", 7, 1], ["wk3", 14, 2],
+                    ["wk4", 21, 3], ["wk5", 28, 4], ["wk6", 35, 5]]),
+    "every touchpoint's week is ceil(day/7) — and every day is exactly what it always was");
+  assert.strictEqual(app.ctx.journeyWeek(J.find((it) => it.id === "intro")), 0,
+    "the intro has no week");
+  // nothing can fall off the board at either end
+  assert.strictEqual(app.ctx.journeyWeek({ day: 0, phase: "journey" }), 1, "day 0 reads as week 1");
+  assert.strictEqual(app.ctx.journeyWeek({ day: 99, phase: "journey" }), 6, "…and day 99 as week 6");
 
   // and no card is in two places at once
   const all = columns(app).flatMap((c) => cardIds(c.html));
@@ -109,24 +149,45 @@ const cardIds = (colHtml) => (colHtml.match(/id="act-[^"]+"/g) || []).map((s) =>
 }
 
 /* ---------- 4: an empty column stands there and says so ----------
-   A board that drops a column on a quiet day stops reading as a board, and the coach loses
-   the one thing the layout is for: seeing at a glance that the posting is done and the
-   texting is not. */
+   A board that drops a column on a quiet day stops reading as a board, and the coach loses the
+   one thing the layout is for: seeing at a glance which weeks are handled and which are not.
+
+   Week 6 is the interesting one. It has no touchpoint in JOURNEY at all — the end-of-challenge
+   review that will live there has not been written — so it says something slightly different
+   from a week that simply has nothing due today, and it says it every day. */
 {
   const app = boot({ members: [live("c", "Katie Leicester", 1)] });   // a day-1 text, nothing else
-  assert.strictEqual(columns(app).length, 3, "all three columns are still on the board");
-  assert.strictEqual(countBadge(column(app, "intro")), 0);
-  assert.strictEqual(countBadge(column(app, "physical")), 0);
-  for (const id of ["intro", "physical"]) {
-    assert.ok(/<div class="board-empty">Nothing here today<\/div>/.test(column(app, id)),
+  assert.strictEqual(columns(app).length, 7, "all seven columns are still on the board");
+  assert.strictEqual(countBadge(column(app, "week1")), 1, "the one due card is in week 1");
+  for (const id of ["intro", "week2", "week3", "week4", "week5", "week6"]) {
+    assert.strictEqual(countBadge(column(app, id)), 0, id + ": nothing due");
+    assert.ok(/<div class="board-empty">/.test(column(app, id)),
       id + ": an empty column shows its quiet state rather than collapsing");
   }
-  assert.ok(!/board-empty/.test(column(app, "digital")), "…and a column with work in it does not");
+  assert.ok(!/board-empty/.test(column(app, "week1")), "…and a column with work in it does not");
+
+  // a quiet week and an unwritten week do not say the same thing
+  for (const id of ["intro", "week2", "week3", "week4", "week5"]) {
+    assert.ok(/<div class="board-empty">Nothing here today<\/div>/.test(column(app, id)),
+      id + ": a lane with touchpoints in it is merely quiet today");
+  }
+  assert.ok(/<div class="board-empty">Nothing here yet<\/div>/.test(column(app, "week6")),
+    "week 6 has nothing in the journey to be quiet about — it says “yet”");
+
+  // and that is read off JOURNEY, not written down, so the day a touchpoint is added to week 6
+  // the column starts speaking like every other
+  const J = app.ctx.__t.JOURNEY;
+  assert.ok(!J.some((it) => app.ctx.journeyWeek(it) === 6),
+    "sanity: nothing in the journey falls in week 6 today");
+  assert.strictEqual(app.ctx.weekHasTouchpoints(6), false, "…which is what the column asks");
+  for (const w of [1, 2, 3, 4, 5]) {
+    assert.strictEqual(app.ctx.weekHasTouchpoints(w), true, "week " + w + " has work defined");
+  }
 }
 
 /* ---------- 5: a completely clear day is still "All caught up", not an empty board ----------
    The empty-column state is for a column with nothing in it. A day with nothing in it at all
-   already had an answer, and it is a better one than three empty wells. */
+   already had an answer, and it is a better one than seven empty wells. */
 {
   const app = boot({ members: [] });
   assert.ok(app.html("todayList").includes("All caught up"), "the clear-day message is unchanged");
@@ -134,18 +195,21 @@ const cardIds = (colHtml) => (colHtml.match(/id="act-[^"]+"/g) || []).map((s) =>
 }
 
 /* ---------- 6: what a card carries ----------
-   Everything the card is for, and nothing it is not. The channel CHIP is gone — three columns
-   already sorted by channel were telling a team that knows a postcard from a text a third
-   time — but the channel is still on the card as its class, because that is what colours the
-   stripe down its left edge. */
+   Everything the card is for, and nothing it is not. The channel CHIP is gone and stays gone —
+   it was telling a team that knows a postcard from a text something they knew — but the channel
+   is still on the card as its class, because that is what colours the stripe down its left
+   edge. The columns no longer say it, which makes the stripe the only place it is said. */
 {
   const app = boot({ members: [live("a", "Sam Live", 8)] });
   const card = /<div class="action digital" id="act-a-wk2"[\s\S]*?(?=<div class="action|<\/div><\/div>|$)/
-    .exec(column(app, "digital"))[0];
+    .exec(column(app, "week1"))[0];
 
   assert.ok(/<span class="status-day">Day 8<\/span>/.test(card), "the day label is on the card");
   assert.ok(/<span class="nm">Sam Live<\/span>/.test(card), "…as is the challenger's name");
-  assert.ok(/Start of Week 2 check-in/.test(card), "…and the touchpoint's title");
+  assert.ok(/<span class="ttl">Week 1 check-in<\/span>/.test(card),
+    "…and the touchpoint's title, which is what the day-7 check-in is called now");
+  assert.ok(!/Start of Week 2 check-in/.test(board(app)),
+    "…the old name is nowhere on the board");
   assert.ok(/toggleDone\('a','wk2',true\)/.test(card), "Done is still wired to the real handler");
   assert.ok(/markMissed\('a','wk2'\)/.test(card), "…and Missed to its own");
   assert.ok(/toggleExpand\('a','wk2'\)/.test(card), "…and the card still expands");
@@ -178,7 +242,7 @@ const cardIds = (colHtml) => (colHtml.match(/id="act-[^"]+"/g) || []).map((s) =>
 
   // a dated touchpoint still counts days as it always did
   const dated = boot({ members: [live("a", "Sam Live", 8)] });
-  assert.ok(/<span class="status-day">Day 8<\/span>/.test(column(dated, "digital")),
+  assert.ok(/<span class="status-day">Day 8<\/span>/.test(column(dated, "week1")),
     "the relabel did not touch the dated cards");
 }
 
@@ -227,7 +291,7 @@ const cardIds = (colHtml) => (colHtml.match(/id="act-[^"]+"/g) || []).map((s) =>
     new RegExp('<div class="action [a-z]+" id="' + id + '"[\\s\\S]*?(?=<div class="action|$)')
       .exec(column(app, col))[0];
 
-  const late = slice("digital", "act-a-d1_text");
+  const late = slice("week1", "act-a-d1_text");
   assert.ok(/<span class="overdue-flag">Overdue<\/span>/.test(late),
     "a touchpoint whose day has passed is flagged inside its column");
   // the whole status line, in one piece: day, hairline, Overdue — in that order
@@ -236,7 +300,7 @@ const cardIds = (colHtml) => (colHtml.match(/id="act-[^"]+"/g) || []).map((s) =>
   assert.ok(late.indexOf("card-status") < late.indexOf('class="who"'),
     "…in the top rail, above the name, rather than beside the title");
 
-  const onTime = slice("digital", "act-c-d1_text");
+  const onTime = slice("week1", "act-c-d1_text");
   assert.ok(!/overdue/.test(onTime), "a touchpoint due today carries no flag at all");
   assert.ok(!/status-sep/.test(onTime),
     "…and no divider either — on time, the status line is just the day on its own");
@@ -245,35 +309,43 @@ const cardIds = (colHtml) => (colHtml.match(/id="act-[^"]+"/g) || []).map((s) =>
   assert.ok(/class="card-top"/.test(onTime),
     "…and it keeps the rail, so the corner is in the same place on every card");
 
-  assert.ok(/overdue-flag/.test(column(app, "physical")), "the late postcard is flagged too");
-
   // the flag counts exactly the late cards on the board and nothing else, and every flag is
   // paired with exactly one divider — no divider ever appears on its own
   const brd = board(app);
   const flags = (brd.match(/overdue-flag/g) || []).length;
   const seps = (brd.match(/status-sep/g) || []).length;
-  assert.strictEqual(flags, 3, "three of the four due cards are past their day, and three are flagged");
+  assert.strictEqual(flags, 2, "two of the three due cards are past their day, and two are flagged");
   assert.strictEqual(seps, flags, "one divider per flag — the divider never shows without it");
   // …and every card has a status line, late or not
-  assert.strictEqual((brd.match(/card-status/g) || []).length, 4,
-    "all four due cards carry a status line");
+  assert.strictEqual((brd.match(/card-status/g) || []).length, 3,
+    "all three due cards carry a status line");
 }
 
-/* ---------- 8: marking a card still works, and only moves that card ---------- */
+/* ---------- 8: marking a card still works, and only moves that card ----------
+   The board is a layout. Done and Missed are the same two handlers writing the same two lists,
+   keyed by the same ids they always were — the rename above this line changed what a card is
+   CALLED and nothing about what marking it does. */
 {
-  const app = boot({ members: [live("a", "Sam Live", 8)] });
+  // Sam has the whole of week 1 due; Dee is a week further on, so the board survives Sam's
+  // lane being cleared and the empty state can be seen where it belongs
+  const app = boot({ members: [live("a", "Sam Live", 8), live("b", "Dee Deep", 15)] });
   const before = columns(app).reduce((n, c) => n + cardIds(c.html).length, 0);
+  assert.strictEqual(countBadge(column(app, "week1")), 2, "two cards in week 1 to start with");
 
   app.ctx.toggleDone("a", "wk2", true);
-  assert.ok(!column(app, "digital").includes("act-a-wk2"), "the card leaves its column when done");
-  assert.strictEqual(countBadge(column(app, "digital")), 1, "…and its column's count comes down");
-  assert.ok(column(app, "physical").includes("act-a-d3_postcard"),
-    "the other columns are untouched");
+  assert.ok(!column(app, "week1").includes("act-a-wk2"), "the card leaves its column when done");
+  assert.strictEqual(countBadge(column(app, "week1")), 1, "…and its column's count comes down");
+  assert.ok(column(app, "week1").includes("act-a-d1_text"),
+    "…while the other card in the same lane is untouched");
+  assert.ok(column(app, "week2").includes("act-b-wk3"), "…and so are the other lanes");
+  assert.ok((app.find("a").completed || []).includes("wk2"),
+    "and it is 'wk2' that was ticked — the id is what Done writes, whatever the card is called");
 
-  app.ctx.markMissed("a", "d3_postcard");
-  assert.ok(!column(app, "physical").includes("act-a-d3_postcard"), "Missed clears the card too");
-  assert.ok(/board-empty/.test(column(app, "physical")),
-    "…and the emptied column holds its place rather than vanishing");
+  app.ctx.markMissed("a", "d1_text");
+  assert.deepStrictEqual(cardIds(column(app, "week1")), [], "Missed clears its card too");
+  assert.ok(/<div class="board-empty">Nothing here today<\/div>/.test(column(app, "week1")),
+    "…and the emptied lane holds its place rather than vanishing");
+  assert.strictEqual(columns(app).length, 7, "…so the board is still seven lanes wide");
 
   const after = columns(app).reduce((n, c) => n + cardIds(c.html).length, 0);
   assert.strictEqual(after, before - 2, "exactly the two cards that were resolved are gone");

@@ -338,9 +338,8 @@
 
   /* ---------- How wide the board gets ----------
      The page is a 1100px reading column, which is right for a list, a roster or the Playbook
-     and wrong for a board: three columns inside 1060px of content leaves each one about
-     340px, and the cards spend their width wrapping while the screen sits half empty either
-     side.
+     and wrong for a board: seven columns inside 1060px of content leaves each one about
+     135px, which is not a card, it is a sliver.
 
      So the Today's moves screen — and only that screen — raises the page's cap. It is done on
      `.wrap` rather than on the board alone because .wrap is what sets the left edge of the
@@ -348,15 +347,16 @@
      out past a logo and a tab strip that stayed where they were, which reads as a mistake.
      Everything on the screen moves together, so the edges still line up.
 
-     1440px is the cap, not a percentage. Wide enough that three columns get ~450px each and a
-     card holds a name and a title without wrapping; short of the full width of a large
-     monitor, where a board stretched edge to edge becomes a neck exercise.
+     1560px is the cap, not a percentage. The board is seven lanes now — the intro sessions
+     and the six weeks — and at 1440px they came out under 200px each, which is not enough for
+     a name, a title and two buttons. Still short of the full width of a large monitor, where a
+     board stretched edge to edge becomes a neck exercise.
 
      :has() rather than a class toggled in script: which view is showing is already in the DOM,
      and a second source of truth for it would be one more thing to keep in step. Where :has()
      is not supported the rule is simply dropped and the screen stays at its old 1100px, which
      is the layout that shipped before this — no fallback needed. */
-  body:has(#view-today.active) .wrap{max-width:1440px}
+  body:has(#view-today.active) .wrap{max-width:1560px}
 
   /* ---------- Today's moves BOARD ----------
      The day's touchpoints laid out as columns instead of one long stack. It is a board in
@@ -364,18 +364,25 @@
      into their column by the same journey logic that always grouped them, so a column is
      simply the old group heading turned on its side.
 
-     One column per kind of work: the intros to run, the things that get posted, the things
-     that get typed or recorded. A column is a RECESSED well (--navy-2, the same step-down the
-     toolbars use) so the white cards inside it lift — that tone step is what makes the board
-     read as columns at a glance rather than as three lists that happen to sit side by side.
+     Seven lanes: the intro sessions to run, then week one to week six. A column is a RECESSED
+     well (--navy-2, the same step-down the toolbars use) so the white cards inside it lift —
+     that tone step is what makes the board read as columns at a glance rather than as seven
+     lists that happen to sit side by side.
+
+     Seven across is a lot of lanes, so the count steps down with the screen (see the
+     breakpoints below) rather than the lanes getting narrower and narrower until a card
+     cannot hold a button. The columns wrap onto a second row in reading order, so week 5 is
+     still after week 4 wherever the wrap lands.
 
      minmax(0,1fr) rather than 1fr: an fr track's automatic minimum is its content's
      min-content width, so a long challenger name in one column would otherwise push the whole
      board — and the page — wider than the screen. */
-  .board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start;margin-top:22px}
+  .board{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;align-items:start;margin-top:22px}
   .board-col{min-width:0;background:var(--navy-2);border:1px solid var(--line);border-radius:14px;padding:12px 12px 4px}
+  /* min-height is two lines of the title: "INTRO SESSIONS TO RUN" wraps and "WEEK 3" does not,
+     and without it the first card in each lane would start at a different height. */
   .board-col-head{display:flex;align-items:center;gap:10px;margin:2px 2px 12px;padding-bottom:11px;
-    border-bottom:1px solid var(--line)}
+    min-height:45px;border-bottom:1px solid var(--line)}
   .board-col-title{flex:1;min-width:0;font-size:12px;letter-spacing:.5px;text-transform:uppercase;
     font-weight:800;color:var(--ink);line-height:1.4}
   /* the same count pill the stacked group headings carried, on the card tone rather than the
@@ -394,9 +401,9 @@
      two mark buttons side by side along the bottom like a card's footer.
 
      The card carries no channel chip. Which channel a touchpoint is was being spelled out on
-     every card to a team that already knows a postcard from a text, and three columns that are
-     THEMSELVES sorted by channel made it a third telling. The coloured stripe down the left
-     edge still says it for anyone who wants it. */
+     every card to a team that already knows a postcard from a text. The coloured stripe down
+     the left edge still says it for anyone who wants it, and since the columns are weeks now
+     rather than channels, the stripe is the only place it is said. */
   .board .action{flex-wrap:wrap;align-items:center;row-gap:9px;padding:12px 13px;margin-bottom:8px}
 
   /* The top rail: the expand chevron, and the overdue flag when there is one, together in the
@@ -465,7 +472,8 @@
      which is inline-flex and vertical-aligned precisely for this — simply stays beside the last
      word of the name, with the title on the line below. (The day label used to sit under that
      again; it lives in the status line in the corner now.) */
-  .board .action .who{order:1;flex:1 1 0;min-width:0;display:block;line-height:1.45}
+  .board .action .who{order:1;flex:1 1 0;min-width:0;display:block;line-height:1.45;
+    overflow-wrap:anywhere}
   .board .action .who .ttl{display:block;margin-top:3px}
   .board .action .mark-btns{order:4;flex-basis:100%;flex-direction:row;gap:8px;margin-top:1px}
   .board .action .mark-btns .btn{flex:1 1 0;text-align:center}
@@ -524,6 +532,14 @@
   .checklist .ci.checked .box{background:var(--green);border-color:var(--green);color:var(--on-accent)}
   .checklist .ci.checked span{color:var(--ink-faint);text-decoration:line-through}
   .checklist-progress{margin-top:8px;font-size:11px;font-weight:700;color:var(--ink-faint);letter-spacing:.04em}
+  /* A sub-heading inside the checklist — the welcome pack, which is a pile of physical things
+     to put in somebody's hands rather than admin to click through. It is a row in the same
+     single column as the boxes, so nothing about the list's width or wrapping changes; the
+     label and its note wrap onto separate lines by themselves in a narrow board column. */
+  .checklist-group{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 8px;margin-top:6px}
+  .checklist-group:first-child{margin-top:0}
+  .cg-label{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-dim)}
+  .cg-note{font-size:11px;color:var(--ink-faint)}
 
   /* welcome message block */
   .wm{margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--navy-2)}
@@ -739,7 +755,7 @@
     overflow-wrap:break-word}
 
   /* The why, above the how. Given the accent rail and the largest body type on the card,
-     because a coach who understands the point of the postcard writes a better postcard. */
+     because a coach who understands the point of a check-in writes a better check-in. */
   .pbx-why{margin-top:18px;padding-left:18px;border-left:2px solid rgba(var(--orange-rgb),.45)}
   .pbx-why-label{display:block;font-size:10px;font-weight:800;letter-spacing:.16em;
     text-transform:uppercase;color:var(--orange-soft);margin-bottom:8px}
@@ -754,6 +770,10 @@
   /* the intro's checklist, set as numbered manual steps rather than bullets */
   .pbx-steps{margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
   .pbx-steps ol{list-style:none;counter-reset:pbx;display:grid;gap:11px}
+  /* the same grouping the card carries, in the deck's own key */
+  .pbx-substep{margin:22px 0 12px;font-size:10px;font-weight:800;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-faint)}
+  .pbx-substep:first-child{margin-top:0}
   .pbx-steps li{counter-increment:pbx;position:relative;padding-left:36px;font-size:13.5px;
     line-height:1.6;color:var(--ink-dim);overflow-wrap:break-word}
   .pbx-steps li::before{content:counter(pbx,decimal-leading-zero);position:absolute;left:0;top:-1px;
@@ -1076,25 +1096,31 @@
 
   .hide{display:none !important}
   /* Once the screen is wide enough for the raised cap to bite, the columns get a little more
-     air: a wider gap so the three lanes read as separate, and a touch more padding in the
-     well. Declared here, with the board's other breakpoints, so it lands after the base rules
-     it is overriding rather than in front of them. */
-  @media (min-width:1200px){
-    .board{gap:18px}
+     air: a wider gap so the lanes read as separate, and a touch more padding in the well.
+     Declared here, with the board's other breakpoints, so it lands after the base rules it is
+     overriding rather than in front of them. */
+  @media (min-width:1400px){
+    .board{gap:14px}
     .board-col{padding:14px 14px 6px}
   }
 
-  /* The board between phone and desktop. It keeps all THREE lanes and tightens the gaps
-     instead of dropping to two: three lanes is the shape of the day's work, and a two-column
-     board leaves the third lane stranded on a half-empty second row, which reads as a mistake
-     rather than as a layout. Below 640px it stops pretending and stacks — see the phone block
-     further down. */
+  /* Fewer lanes as the screen narrows, rather than seven lanes getting thinner until a card
+     cannot hold its two buttons. The columns wrap in reading order, so a four-wide board is
+     the intro and weeks 1–3 above weeks 4–6 — still left to right, still in order. The step
+     down is by column COUNT and not by hiding anything: every week is on the board at every
+     width, because a week that disappears on a laptop is a week somebody forgets. */
+  @media (max-width:1280px){
+    .board{grid-template-columns:repeat(4,minmax(0,1fr))}
+  }
   @media (max-width:900px){
-    .board{gap:10px}
+    .board{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
     .board-col{padding:10px 10px 2px;border-radius:12px}
     .board-col-title{font-size:11px;letter-spacing:.4px}
     .board .action{padding:11px 11px;gap:8px}
     .board .action .mark-btns{gap:6px}
+  }
+  @media (max-width:760px){
+    .board{grid-template-columns:repeat(2,minmax(0,1fr))}
   }
 
   @media (max-width:640px){
@@ -1113,9 +1139,11 @@
     .action{flex-wrap:wrap}
     .action .body{flex-basis:calc(100% - 130px)}
     /* The board stacks on a phone: one full-width column above the next, each keeping its
-       heading, its count and its empty state, so the day still reads in the same three
-       chapters rather than being squeezed into columns too narrow to use. */
+       heading, its count and its empty state, so the day still reads in the same seven
+       chapters rather than being squeezed into columns too narrow to use. Stacked, every
+       heading is one line and there is nothing to line up, so the head's min-height goes. */
     .board{grid-template-columns:minmax(0,1fr);gap:16px;margin-top:18px}
+    .board-col-head{min-height:0}
     /* On a phone the status line takes the top row of the card instead of sitting beside the
        name. Beside it, "DAY 8 · OVERDUE" and a name leave too little between them: the notes
        icon gets bumped onto a line of its own, orphaned under the name. A row of its own costs
@@ -1476,7 +1504,7 @@
 <div class="modal-bg" id="extBg">
   <div class="modal">
     <h3>Add time to the journey</h3>
-    <p class="note">Pushed back a week or two? Add the days here and <i>everything still ahead of them</i> — texts, postcards, check-ins, the box — slides along together. Touchpoints already done stay put.</p>
+    <p class="note">Pushed back a week or two? Add the days here and <i>everything still ahead of them</i> — the morning-after text and every check-in — slides along together. Touchpoints already done stay put.</p>
     <div class="field">
       <label>Days to add</label>
       <input type="number" id="ext-days" min="1" max="42" value="7">
@@ -1599,35 +1627,66 @@
 const STORE = 'bsj_v1';
 const MS_DAY = 86400000;
 
-/* ---- The journey: every touchpoint hangs off a DAY NUMBER ---- */
+/* ---- The journey: every touchpoint hangs off a DAY NUMBER ----
+   The ids are permanent and the titles are not. A check-in is named for the WEEK IT CLOSES —
+   the one on day 7 is the Week 1 check-in, the one on day 14 is Week 2 — which is how Today's
+   moves groups them and how a coach talks about them. The id underneath is whatever it has
+   always been ('wk2' is the Week 1 check-in), because every challenger's completed and missed
+   lists, every doneMeta stamp and every wording override is keyed by it. Renaming a touchpoint
+   must never mean losing a tick somebody made. */
 const JOURNEY = [
   {day:-1, id:'intro', ch:'inperson', title:'Intro / Welcome experience', owner:'coach', phase:'intro',
-   what:'Straight after the intro session, get them set up on the systems while it’s fresh.',
+   what:'Straight after the intro session, get them set up on the systems while it’s fresh — and put their welcome pack together.',
+   /* ONE FLAT LIST, and the order of it is load-bearing. A challenger's ticks are stored as an
+      array of booleans INDEXED BY POSITION (m.checks.intro), and a wording override is keyed
+      by position too ('step3'). So the welcome pack was added at the END rather than at the
+      front: prepending it would have shifted all five systems steps down by four and quietly
+      re-pointed every tick and every edit anybody has ever made at the wrong line.
+      Where they READ is a separate question, answered by checklistGroups below. */
    checklist:[
      'Add the 6 Week Challenge to their GoTeamUp account (create one if it’s not already on the system)',
      'Add their Nutrition Goals to their Trainerize app (use their InBody stats)',
      'Add the 6 Week Challenge Calendar to their Trainerize app',
      'Move their Profile Card to “Intro Session Complete” on Ontraport',
-     'Send the Welcome Message on Trainerize'
+     'Send the Welcome Message on Trainerize',
+     'Welcome booklet',
+     'InBody scan/sheet',
+     'Workout journal',
+     'Handwritten welcome card'
+   ],
+   /* The sub-headings over that flat list. Two jobs happen at an intro and they are not the
+      same kind of job: five things to click through on four systems, and four things to put
+      in somebody's hands. Grouped so a coach can see which is which at a glance, and so the
+      pack reads as a pack rather than as four more boxes on the end of an admin list. */
+   checklistGroups:[
+     {from:0, label:'On the systems'},
+     {from:5, label:'Welcome pack', note:'Handed over at the session'}
    ],
    welcomeMsg:true,
    walkthrough:'https://www.loom.com/share/084d5cdcb55e47198783d4d84803741c?sid=a5a966e2-f4c8-4666-9b38-4b54ffd3e61c'},
   {day:1,  id:'d1_text', ch:'digital',  title:'Morning-after-first-session text', owner:'coach', phase:'journey',
    what:'The morning after their <b>first session</b>. Not generic — prove we noticed them. Mention something specific from the session, something they told us, or something they did well. The hardest session is the first one — make them feel seen after it.'},
-  {day:7,  id:'d3_postcard', ch:'physical', title:'Handwritten postcard to their house', owner:'team', phase:'journey',
-   what:'Start of Week 2 — a handwritten postcard to their home. An unexpected touch. Short, warm, specific. Reinforce that they’ve made a proper start and we’re glad they’re here. Write it by hand or trigger via Scribeless / ClickSend / Thanks.io.'},
-  {day:7,  id:'wk2', ch:'digital', title:'Start of Week 2 check-in', owner:'coach', phase:'journey', win:true,
+  {day:7,  id:'wk2', ch:'digital', title:'Week 1 check-in', owner:'coach', phase:'journey', win:true,
    what:'Voice note (or text if better). Warm personal check-in, reference their effort/attendance, give a <b>named win</b>, set a focus for the week, and remind them they can ask for help before they struggle.'},
-  {day:14, id:'wk3', ch:'digital', title:'Start of Week 3 check-in — plant the seed', owner:'coach', phase:'journey', win:true,
+  {day:14, id:'wk3', ch:'digital', title:'Week 2 check-in', owner:'coach', phase:'journey', win:true,
    what:'The midpoint. Gently frame the challenge as the start of a longer routine — don’t hard-sell membership. Still give a <b>named win</b>. End the voice note with the seed line below.',
    seed:'You’re starting to settle in now. This is the bit we want — not just a 6-week push, but getting you into a routine you can actually keep. Over the next couple of weeks we’ll help you figure out what that looks like after the challenge.'},
-  {day:21, id:'wk4', ch:'digital', title:'Start of Week 4 check-in', owner:'coach', phase:'journey', win:true,
+  {day:21, id:'wk4', ch:'digital', title:'Week 3 check-in', owner:'coach', phase:'journey', win:true,
    what:'Voice note check-in. Warm, reference their effort, give a <b>named win</b>, set a focus, remind them help is there before they struggle.'},
-  {day:28, id:'wk5', ch:'digital', title:'Start of Week 5 check-in', owner:'coach', phase:'journey', win:true,
+  {day:28, id:'wk5', ch:'digital', title:'Week 4 check-in', owner:'coach', phase:'journey', win:true,
    what:'Voice note check-in. Warm, reference their effort, give a <b>named win</b>, set a focus for the week.'},
-  {day:35, id:'wk6', ch:'digital', title:'Start of Week 6 check-in', owner:'coach', phase:'journey', win:true,
-   what:'Final week check-in. Celebrate how far they’ve come, give a <b>named win</b>, and set up the where-next chat from a place of genuine care.'},
-  /* THE JOURNEY ENDS AT DAY 35. Three touchpoints used to hang off the far end of this array,
+  {day:35, id:'wk6', ch:'digital', title:'Week 5 check-in', owner:'coach', phase:'journey', win:true,
+   what:'The last check-in of the six weeks. Celebrate how far they’ve come, give a <b>named win</b>, and set up the where-next chat from a place of genuine care.'},
+  /* NOTHING IS POSTED TO A HOUSE ANY MORE. There was a handwritten postcard at day 7
+     ('d3_postcard') — the one physical touchpoint in the onboarding journey. We no longer post
+     anything to homes, and the handwritten note it stood for is meant to be handed over in
+     person in the welcome pack at the intro instead. Removed rather than left in place and
+     ignored: a touchpoint nobody does is a card a coach has to dismiss every week.
+     Its id is now dead, exactly like 'month1' and 'month2' below — anybody who ever ticked it
+     still has 'd3_postcard' sitting in their `completed`, and it stays there doing nothing,
+     because nothing reads an id that is not in this array. See migrateList.
+
+     THE JOURNEY ENDS AT DAY 35. Three touchpoints used to hang off the far end of this array,
      all of them conditional on having signed up: a welcome card at day 43, then month-1 and
      month-2 follow-ups at days 72 and 103. All three have moved to MEMBER_JOURNEY on the
      retention tracker, because none of them are about the 42 days — they are about the
@@ -1710,8 +1769,10 @@ function welcomeMsgPlainText(m){
 }
 
 /* Table column order — mirrors the Google sheet left-to-right */
-const TABLE_COLS = ['intro','d1_text','d3_postcard','wk2','wk3','wk4','wk5','wk6'];
-const COL_LABEL = {intro:'Intro',d1_text:'Text',d3_postcard:'Postcard',wk2:'Wk2',wk3:'Wk3',wk4:'Wk4',wk5:'Wk5',wk6:'Wk6'};
+const TABLE_COLS = ['intro','d1_text','wk2','wk3','wk4','wk5','wk6'];
+/* Short heads for the whole-journey table, by id — and they follow the titles, not the ids:
+   'wk2' is the Week 1 check-in, so its column says Wk1. */
+const COL_LABEL = {intro:'Intro',d1_text:'Text',wk2:'Wk1',wk3:'Wk2',wk4:'Wk3',wk5:'Wk4',wk6:'Wk5'};
 
 /* ---------------- state + persistence (Supabase-backed) ---------------- */
 let members = [];          // in-memory working copy; all journey logic uses this
@@ -1899,8 +1960,21 @@ function migrateList(arr){
     if(m.start!=null && m.day0===undefined){ m.day0=m.start; m.booked=m.start; m.firstSessionDone=true; }
     if(m.booked===undefined) m.booked = m.day0||null;
     if(m.firstSessionDone===undefined) m.firstSessionDone = !!m.day0;
-    if(m.checks===undefined) m.checks = {};
-    if(m.missed===undefined) m.missed = [];
+    if(m.checks===undefined || m.checks===null || typeof m.checks!=='object'
+       || Array.isArray(m.checks)) m.checks = {};
+    /* Journey progress, keyed by touchpoint id. The IDS NEVER CHANGE when a touchpoint is
+       renamed — 'wk2' is the same item whether it is titled Week 2 or Week 1 — so a record
+       written before the board was laid out in weeks needs nothing done to it, and every tick
+       a coach ever made still points at the touchpoint they made it on.
+       What a record CAN hold is an id JOURNEY no longer has at all: 'month1' and 'month2'
+       from the two follow-ups that moved to the retention tracker, and now 'd3_postcard' from
+       the handwritten postcard, which is not something we send any more. Those are inert,
+       because nothing reads an id that is not in JOURNEY — they are neither shown, counted nor
+       cleaned up, and clearing them would only risk taking a live id with them.
+       Both lists are normalised to arrays here rather than merely defaulted, so a hand-edited
+       or half-imported record arrives as something .includes() can be called on. */
+    if(!Array.isArray(m.completed)) m.completed = [];
+    if(!Array.isArray(m.missed)) m.missed = [];
     if(m.outcome===undefined) m.outcome = null;
     // "Left — follow up": a parked leaver we've promised to reconnect with. Absent on every
     // challenger created before this existed, so both default to null and nothing surfaces.
@@ -2492,6 +2566,44 @@ function effectiveDay(item, m){
   return item.day + (m.extraDays||0);          // all dated touchpoints ride with added time
 }
 function dayKeyFor(m,item){ return item.id; }     // stable key, never collides
+
+/* ---- Sub-headings over a flat checklist ----
+   A checklist is ONE list of steps and stays one list: the ticks a coach makes are an array
+   indexed by position, and so are the wording overrides, so nothing here nests or re-indexes
+   anything. A group is a label dropped in front of the step it starts at, and a touchpoint
+   with no groups renders exactly as it always did. Both screens that draw the checklist —
+   the card on Today's moves and the deck on the Playbook — ask this same question. */
+function checklistGroupAt(item, i){
+  const groups = (item && item.checklistGroups) || [];
+  for(let n=0;n<groups.length;n++){ if(groups[n].from===i) return groups[n]; }
+  return null;
+}
+
+/* ---- Which week of the six a touchpoint belongs to ----
+   Read off the day it FIRES, not off any challenger: week 1 is days 1–7, week 2 is days 8–14,
+   and so on to week 6 at days 36–42. Derived rather than declared, so a touchpoint carries a
+   day and nothing else and the board still knows where to put it — and so the columns can
+   never drift out of step with the days, because there is only one set of numbers.
+
+   Deliberately it.day and not effectiveDay(): added time moves when a touchpoint is DUE for
+   one challenger, and the board's columns are the shape of the challenge, not of any one
+   person's copy of it. A card whose owner has extra days still appears in the week its
+   touchpoint belongs to; which day it is due, and whether it is overdue, is untouched.
+
+   Clamped at both ends so nothing can fall off the board: a touchpoint on day 0 reads as week
+   1 and one past day 42 as week 6, rather than matching no column and quietly vanishing. */
+const BOARD_WEEKS = [1,2,3,4,5,6];
+function journeyWeek(it){
+  if(!it || it.phase==='intro') return 0;             // the intro is before day zero
+  const d = Number(it.day);
+  return Math.min(6, Math.max(1, Math.ceil((isFinite(d) ? d : 1)/7)));
+}
+/* Has this week got any touchpoint at all, or is it a week the journey has not filled in yet?
+   Week 6 is the second kind today — the end-of-challenge review that will live there does not
+   exist yet — and that is the difference between an empty column saying "nothing here today"
+   and one saying "nothing here yet". Asked of JOURNEY rather than written down, so the day a
+   touchpoint is added to week 6 the column starts speaking like every other. */
+function weekHasTouchpoints(w){ return JOURNEY.some(it=>journeyWeek(it)===w); }
 function isDone(m,key){ return (m.completed||[]).includes(key); }
 function isMissed(m,key){ return (m.missed||[]).includes(key); }
 function isHandled(m,key){ return isDone(m,key) || isMissed(m,key); }
@@ -2572,10 +2684,11 @@ function renderToday(){
     });
   });
 
-  // within each channel group, order chronologically by journey day
-  // (Day 1 text before Day 7 check-in; Day 3 postcard before Day 28 box)
-  const order = {physical:0,inperson:1,digital:2};
-  rows.sort((a,b)=> order[a.item.ch]-order[b.item.ch] || a.item.day-b.item.day);
+  // Inside a column, chronological by journey day: the day-1 text above the day-7 pair.
+  // Channel used to lead this sort, because the columns WERE the channels — with week columns
+  // it would only shuffle the cards inside a week in an order no coach could name. Ties keep
+  // the order JOURNEY declares them in, the sort being stable.
+  rows.sort((a,b)=> a.item.day-b.item.day);
 
   // Follow-ups deliberately PIERCE the inactive filter. dueToday() drops anyone who has
   // left — which is right for journey touchpoints — but the whole point of a follow-up is
@@ -2621,26 +2734,23 @@ function renderToday(){
     return;
   }
 
-  /* The board's columns — one per kind of work, and the SAME four tests that used to pick the
-     four stacked group headings. Nothing about what is due changed: these only decide which
-     column an already-due card is placed in.
+  /* The board's columns — the intro sessions to run, and then the six weeks. Nothing about
+     what is DUE changed here: a card is on Today because the journey says so, exactly as
+     before, and these tests only decide which column it is placed in.
 
-     ORDER IS THE ORDER OF THE DAY, left to right: the intro sessions that have to be run,
-     then the check-ins to write, then the things to put in the post. It is a fixed reading
-     order rather than anything computed — the board should be in the same shape every morning.
+     The columns used to be the three CHANNELS — texts, postcards, moments in the room — which
+     answered "what kind of job is this" for a team that already knows a postcard from a voice
+     note. Weeks answer the question a coach actually has in front of them: where is this
+     person in their six weeks, and what does this week owe them. It also retires the awkward
+     fourth column: an in-person touchpoint has a week like everything else, so nothing needs a
+     lane held open on the off-chance any more.
 
-     Three columns are always on the board, empty or not, because a board that loses a column
-     on a quiet day stops reading as a board. The fourth is the exception: no touchpoint in
-     JOURNEY is in-person except the intro, so 'Moments in the room' has nothing to hold and
-     would be a permanently empty column. It is kept as a test rather than deleted so a future
-     in-person touchpoint still lands somewhere named instead of falling off Today, and it is
-     marked `whenUsed` — rendered only if it actually catches a card. */
-  const groups = [
-    ['intro','Intro sessions to run', r=>r.item.phase==='intro'],
-    ['digital','Texts & Trainerize check-ins', r=>r.item.phase!=='intro' && r.item.ch==='digital'],
-    ['physical','Postcards, boxes & cards', r=>r.item.phase!=='intro' && r.item.ch==='physical'],
-    ['inperson','Moments in the room', r=>r.item.phase!=='intro' && r.item.ch==='inperson', 'whenUsed'],
-  ];
+     All seven are always on the board, empty or not. The shape of the challenge is seven
+     lanes whether or not this particular Tuesday has work in each, and a board that loses a
+     column on a quiet day stops reading as a board. */
+  const groups = [['intro','Intro sessions to run', r=>r.item.phase==='intro', 'Nothing here today']]
+    .concat(BOARD_WEEKS.map(w=>['week'+w, 'Week '+w, r=>journeyWeek(r.item)===w,
+      weekHasTouchpoints(w) ? 'Nothing here today' : 'Nothing here yet']));
   let html='';
 
   // Follow-ups sit at the top: they're the easiest thing to let slide, and there are
@@ -2704,12 +2814,13 @@ function renderToday(){
     });
   }
 
-  /* Birthdays this week. Their own group rather than a fourth column: the board's columns are
-     the three CHANNELS a touchpoint goes out through, and a birthday is not sent through any
-     of them — it is a card written by hand and balloons tied to a squat rack. Dropping it into
-     the board would mean either a column that is not a channel or a birthday filed under
-     "Postcards", and both make the board harder to read every other day of the week. Stacked
-     rows also need no help to stack on a phone.
+  /* Birthdays this week. Its own group rather than an eighth column: the board's columns are
+     the six WEEKS OF THE CHALLENGE, and a birthday belongs to none of them — it hangs off the
+     day somebody was born, not off the day they started, and it comes round for members who
+     have no challenge left to be in a week of. Dropping it into the board would mean either a
+     column that is not a week or a birthday filed under whichever week it happened to land in,
+     and both make the board harder to read every other day of the week. Stacked rows also need
+     no help to stack on a phone.
 
      Placed after the two other state groups and directly above the board, so the day still
      reads follow-ups, then who is waiting to start, then what is coming, then today's work. */
@@ -2729,15 +2840,14 @@ function renderToday(){
      were when this was one long list — same ids, same handlers, same buttons — they are simply
      emitted into a column instead of under a heading. */
   html += `<div class="board">`;
-  groups.forEach(([gid,label,test,whenUsed])=>{
+  groups.forEach(([gid,label,test,emptyText])=>{
     const g = rows.filter(test);
-    if(whenUsed && !g.length) return;
     html += `<div class="board-col" data-col="${gid}">
       <div class="board-col-head">
         <span class="board-col-title">${label}</span>
         <span class="gcount">${g.length}</span>
       </div>`;
-    if(!g.length) html += `<div class="board-empty">Nothing here today</div>`;
+    if(!g.length) html += `<div class="board-empty">${esc(emptyText)}</div>`;
     g.forEach(r=>{
       const {m,item,key,overdue}=r;
       // still on the card as its class: it is what colours the stripe down the left edge.
@@ -2832,9 +2942,17 @@ function buildChecklist(m,item){
       // step 2 = "Add their Nutrition Goals" -> calculator sits under it
       if(/nutrition goals/i.test(label)) inlineTool = nutriBlock;
       // step 5 = "Send the Welcome Message" -> message sits under it
+      // (matched on the whole phrase, so "Handwritten welcome card" in the pack below is not
+      //  handed the Trainerize message by accident)
       else if(/welcome message/i.test(label)) inlineTool = msgBlock;
     }
-    return `<div class="ci ${checked?'checked':''}" onclick="event.stopPropagation();toggleCheck('${m.id}','${item.id}',${i})">
+    // the sub-heading, where one starts here. It is a label in the flow of the list, not a
+    // container round it, so every box below stays in the same single column.
+    const g = checklistGroupAt(item, i);
+    const head = g ? `<div class="checklist-group">
+        <span class="cg-label">${esc(g.label)}</span>${g.note?`<span class="cg-note">${esc(g.note)}</span>`:''}
+      </div>` : '';
+    return head + `<div class="ci ${checked?'checked':''}" onclick="event.stopPropagation();toggleCheck('${m.id}','${item.id}',${i})">
         <span class="box">✓</span><span>${esc(shown[i])}</span>
       </div>${inlineTool?`<div class="ci-tool">${inlineTool}</div>`:''}`;
   }).join('');
@@ -3018,7 +3136,14 @@ function toggleCheck(mid,iid,i){
   const m=members.find(x=>x.id===mid); if(!m) return;
   m.checks = m.checks||{};
   const item = JOURNEY.find(j=>j.id===iid);
-  m.checks[iid] = m.checks[iid]||new Array(item.checklist.length).fill(false);
+  const want = (item && item.checklist) ? item.checklist.length : 0;
+  // Grown to fit, rather than created only when absent. A challenger saved before the welcome
+  // pack existed carries five booleans for a nine-step checklist, and ticking the ninth would
+  // otherwise leave two holes in the middle of the array — which read back as `null` through
+  // the cloud and are one JSON round trip from being somebody else's problem.
+  const state = Array.isArray(m.checks[iid]) ? m.checks[iid] : [];
+  while(state.length < want) state.push(false);
+  m.checks[iid] = state;
   m.checks[iid][i] = !m.checks[iid][i];
   save();
   // re-render only this row's detail so the panel doesn't collapse
@@ -5067,9 +5192,12 @@ function removeRetMember(id){
 }
 
 /* ---------------- PLAYBOOK view ---------------- */
+/* The day a touchpoint fires, read off the touchpoint. There used to be a hard-coded
+   exception here that badged wk4 as 'Day 28' while it fires on day 21 — a leftover from an
+   older set of days that made the Playbook disagree with Today's moves about that one card,
+   and which would now put it in the wrong week as well. The badge is the data again. */
 function dayBadge(it){
   if(it.phase==='intro') return 'Before Day 0';
-  if(it.id==='wk4') return 'Day 28';
   return 'Day '+it.day;
 }
 /* The philosophy layer — the one piece of copy this screen owns.
@@ -5088,11 +5216,10 @@ function dayBadge(it){
 const PB_WHY = {
   intro:       'Everything set up before they have to ask for it.',
   d1_text:     'The hardest session is the first one.',
-  d3_postcard: 'Arrive somewhere we were never expected.',
   wk2:         'Name the win before they start doubting it.',
   wk3:         'Plant the seed. Don’t make the pitch.',
   wk4:         'Help offered early beats help asked for late.',
-  wk5:         'Week five is where quiet people go quiet.',
+  wk5:         'This is where quiet people go quiet.',
   wk6:         'Finish the six weeks like they mattered.'
 };
 
@@ -5188,6 +5315,28 @@ function pbResetAndRender(id, field){
   setTimeout(()=>{ pbSuppressBlur = false; }, 0);
 }
 
+/* The steps, as one numbered list per group. Each list picks the numbering up where the last
+   one left off — counter-reset:pbx N makes the next item N+1 — so the steps read 01 to 09
+   straight down the card however many headings are dropped between them. A touchpoint with no
+   groups is a single <ol> with no reset, which is the markup this has always emitted. */
+function pbStepLists(it){
+  const shown = tpSteps(it);
+  const groups = ((it.checklistGroups||[]).slice()).sort((a,b)=>a.from-b.from);
+  const runs = (groups.length && groups[0].from===0) ? groups : [{from:0}].concat(groups);
+  return runs.map((g,n)=>{
+    const end = n+1 < runs.length ? runs[n+1].from : shown.length;
+    if(g.from >= end) return '';
+    const items = shown.slice(g.from, end).map((c,k)=>{
+      const i = g.from + k;
+      return `<li>${pbEditMode
+        ? `<span${pbFieldCls('')}${pbEd(it.id,'step'+i)}>${esc(c)}</span>${pbResetBtn(it,'step'+i)}`
+        : esc(c)}</li>`;
+    }).join('');
+    const head = g.label ? `<div class="pbx-substep">${esc(g.label)}</div>` : '';
+    return head + `<ol${g.from ? ` style="counter-reset:pbx ${g.from}"` : ''}>${items}</ol>`;
+  }).join('');
+}
+
 function playbookCardHtml(it){
   const ch = it.ch==='inperson' ? 'inperson' : it.ch;
   const why = tpWhy(it);
@@ -5195,12 +5344,9 @@ function playbookCardHtml(it){
       <span class="pbx-why-label">Why this matters</span>
       <p${pbFieldCls('')}${pbEd(it.id,'why')}>${esc(why)}</p>${pbResetBtn(it,'why')}
     </div>` : '';
-  const shown = tpSteps(it);
   const steps = it.checklist ? `<div class="pbx-steps">
       <div class="pbx-sub">How it’s done</div>
-      <ol>${shown.map((c,i)=>`<li>${pbEditMode
-        ? `<span${pbFieldCls('')}${pbEd(it.id,'step'+i)}>${esc(c)}</span>${pbResetBtn(it,'step'+i)}`
-        : esc(c)}</li>`).join('')}</ol>
+      ${pbStepLists(it)}
     </div>` : '';
   const seed = it.seed ? `<figure class="pbx-seed">
       <div class="pbx-sub">End the voice note with this</div>

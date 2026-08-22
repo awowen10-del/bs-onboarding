@@ -223,8 +223,9 @@ const dueIds = (app, m) => [...app.ctx.memberDueToday(m)].map((it) => it.id);
 
   // The onboarding journey is now the 42 days and nothing after them. The welcome card left
   // first; the month-1 and month-2 follow-ups followed it to the retention side for the same
-  // reason — they hang off the day somebody JOINED, not off their day 0.
-  const ONBOARDING = ["intro", "d1_text", "d3_postcard", "wk2", "wk3", "wk4", "wk5", "wk6"];
+  // reason — they hang off the day somebody JOINED, not off their day 0. The handwritten
+  // postcard has gone too, for a different reason: nothing is posted to a house any more.
+  const ONBOARDING = ["intro", "d1_text", "wk2", "wk3", "wk4", "wk5", "wk6"];
   assert.deepStrictEqual([...app.ctx.__t.JOURNEY].map((it) => it.id), ONBOARDING,
     "the onboarding journey ends at week 6");
   assert.deepStrictEqual([...app.ctx.__t.TABLE_COLS], ONBOARDING,
@@ -259,7 +260,7 @@ const dueIds = (app, m) => [...app.ctx.memberDueToday(m)].map((it) => it.id);
   // past the end of the 42 days — has an empty Today rather than a follow-up.
   const late = boot({ members: [{
     id: "late", name: "Lena Late", coach: "Dan", day0: daysFromToday(-75), booked: daysFromToday(-75),
-    firstSessionDone: true, completed: ["intro", "d1_text", "d3_postcard", "wk2", "wk3", "wk4", "wk5", "wk6"],
+    firstSessionDone: true, completed: ["intro", "d1_text", "wk2", "wk3", "wk4", "wk5", "wk6"],
     doneMeta: {}, checks: {}, missed: [], outcome: "stayed", signedUp: true,
     extraDays: 0, pausedDays: 0, pausedAt: null,
   }] });
@@ -274,8 +275,8 @@ const dueIds = (app, m) => [...app.ctx.memberDueToday(m)].map((it) => it.id);
   assert.strictEqual(late.find("late").signedUp, true, "signedUp still records the decision");
   late.ctx.setMemberFilter("stayed");
   assert.ok(late.html("memberList").includes("Stayed ✓"), "…and still reads as stayed");
-  assert.ok(late.html("memberList").includes("8 of 8 touchpoints done"),
-    "the touchpoint count is the 42 days, all eight of them");
+  assert.ok(late.html("memberList").includes("7 of 7 touchpoints done"),
+    "the touchpoint count is the 42 days, all seven of them");
 }
 
 /* ---------- 8: existing members do not error, and the tab exists ---------- */

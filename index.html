@@ -713,6 +713,8 @@
      card that lifts under the cursor promises an interaction that does not exist. */
   .pbx-card{position:relative;margin-bottom:16px;padding:28px 30px;background:var(--card);
     border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  /* the deck is the last thing on the page, so the last card is where it stops */
+  .pbx-card:last-child{margin-bottom:0}
   .pbx-card::before{content:"";position:absolute;left:-35px;top:32px;width:10px;height:10px;
     border-radius:50%;background:var(--card);border:2px solid var(--line);box-shadow:0 0 0 5px var(--navy)}
   .pbx-card.physical::before{border-color:var(--orange)}
@@ -772,10 +774,6 @@
     border-bottom:1px solid rgba(var(--orange-rgb),.3);padding-bottom:2px}
   .pbx-link:hover{color:var(--orange);border-bottom-color:var(--orange)}
 
-  .pbx-footnote{margin-top:36px;padding:22px 24px;border:1px dashed var(--line);
-    border-radius:var(--radius);background:var(--card-2)}
-  .pbx-footnote p{max-width:74ch;font-size:13px;line-height:1.7;color:var(--ink-dim);overflow-wrap:break-word}
-  .pbx-footnote b{color:var(--ink);font-weight:700}
   /* editing the wording: a pen in the corner, dashed rules round what a coach owns.
      The eyebrow gives the pen its room rather than running underneath it. */
   .pbx-eyebrow{padding-right:170px}
@@ -1145,7 +1143,6 @@
     .pbx-title{font-size:17px}
     .pbx-why p{font-size:15px}
     .pbx-seed{padding:18px 18px}
-    .pbx-footnote{padding:20px}
     /* on a phone the pen is just a pen — the words beside it would push the eyebrow onto a
        second line for no gain, and the button still says what it is to a screen reader */
     .pbx-edit-toggle{top:12px;right:12px;padding:7px 10px;font-size:12px}
@@ -1353,8 +1350,9 @@
 
   <!-- ===== PLAYBOOK =====
        A training manual, not a reference list: an opening statement, then one card per
-       touchpoint down a hairline spine. The deck itself is rendered by renderPlaybook() out
-       of JOURNEY; the statement and the printing note are static copy and live here. -->
+       touchpoint down a hairline spine, and that is where the page stops. The deck is
+       rendered by renderPlaybook() out of JOURNEY; the opening statement is static copy and
+       lives here. -->
   <section class="view" id="view-playbook" data-tracker="onboarding">
     <div class="pbx-hero">
       <!-- The pen. The wording on this page is the team's; the shape of the journey is not,
@@ -1375,13 +1373,6 @@
         happens and who does it are fixed in the app and are not editable here.</p>
     </div>
     <div class="pbx-deck" id="playbookList"></div>
-    <div class="pbx-footnote">
-      <div class="pbx-sub">Printing &amp; posting</div>
-      <p>For the posted touchpoints, UK services that print &amp; mail for you: <b>ClickSend</b> (no minimums,
-        pay-as-you-go), <b>Thanks.io</b> (handwriting + one all-in price), or <b>Scribeless</b> (UK facility,
-        handwriting styles). Any of them can eventually be triggered straight from this tracker once it&rsquo;s
-        on a shared backend.</p>
-    </div>
   </section>
 
   <!-- ============================================================

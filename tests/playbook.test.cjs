@@ -3,7 +3,11 @@
 // quietly become a change to the journey, and every touchpoint has to survive the trip onto
 // a card. Nothing in here asserts on colour or spacing; it asserts on what a coach can read.
 const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
 const { boot } = require("./lib/env.cjs");
+
+const HTML = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 
 const app = boot({ members: [] });
 const J = app.ctx.__t.JOURNEY;
@@ -116,6 +120,32 @@ const html = app.html("playbookList");
   // re-rendering is idempotent — the deck is rebuilt, not appended to
   assert.strictEqual((app.html("playbookList").match(/<article class="pbx-card/g) || []).length,
     J.length, "a second render replaces the deck rather than doubling it");
+}
+
+/* ---------- 7: the deck is the last thing on the page ----------
+   There used to be a dashed panel under it about ClickSend, Thanks.io and Scribeless — which
+   UK service to use to get a postcard printed and posted. It has gone, and gone properly:
+   the element is not in the page rather than sitting there empty, so there is no box, no
+   border and no gap left behind it. Whatever the touchpoints say, the Playbook now ends on
+   the last one of them. */
+{
+  for (const gone of ["pbx-footnote", "Printing &amp; posting", "ClickSend</b>", "Thanks.io</b>", "Scribeless</b>",
+                     "print &amp; mail for you", "handwriting styles"]) {
+    assert.ok(!HTML.includes(gone), "the printing note is gone from the page: " + gone);
+  }
+  // …and the deck is what the section now closes on
+  assert.ok(/<div class="pbx-deck" id="playbookList"><\/div>\s*<\/section>/.test(HTML),
+    "nothing follows the deck inside the Playbook view");
+  assert.ok(/\.pbx-card:last-child\{margin-bottom:0\}/.test(HTML),
+    "…so the last card stops where the page does, with no trailing gap under it");
+
+  // the postcard touchpoint still names the services in its OWN copy — that is a coach being
+  // told how to send the thing, and it lives on the card, not in a panel underneath the deck
+  const postcard = app.ctx.__t.JOURNEY.find((it) => it.id === "d3_postcard");
+  assert.ok(/Scribeless \/ ClickSend \/ Thanks\.io/.test(postcard.what),
+    "the how-to stayed with the touchpoint it belongs to");
+  assert.ok(app.html("playbookList").includes("Scribeless / ClickSend / Thanks.io"),
+    "…and still reaches the deck through the card");
 }
 
 console.log("playbook.test.cjs: OK");

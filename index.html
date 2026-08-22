@@ -2754,6 +2754,63 @@ function renderToday(){
 
   let html='';
 
+  /* THE ORDER OF THE DAY, top to bottom:
+
+       1. Birthdays this week, when there are any — and nothing at all when there are not
+       2. Intro sessions to run
+       3. Follow-ups, and who is waiting on a first session
+       4. The check-ins, as a folder of weeks
+
+     Deadline first, then the day's work in the order it gets done. A birthday is the only thing
+     here that expires — it is either today's or it is an apology — so it leads whenever it
+     exists and is absent entirely when it does not, rather than standing there empty saying
+     nobody has a birthday this week. Then the intros, which are the jobs that start somebody's
+     clock; then the two standing states, which are people to chase rather than work to do; and
+     last the check-ins, which is the longest section and the one a coach settles into.
+
+     Each block keeps the show/hide rule it already had: follow-ups and the waiting rows appear
+     only when somebody is in them, and the intro lane and the open week say "nothing here
+     today" rather than vanishing, because a lane that disappears is a lane you stop checking. */
+
+  /* Birthdays this week. Its own group rather than an eighth column: the board's columns are
+     the six WEEKS OF THE CHALLENGE, and a birthday belongs to none of them — it hangs off the
+     day somebody was born, not off the day they started, and it comes round for members who
+     have no challenge left to be in a week of. Dropping it into the board would mean either a
+     column that is not a week or a birthday filed under whichever week it happened to land in,
+     and both make the board harder to read every other day of the week. Stacked rows also need
+     no help to stack on a phone.
+
+     And it goes FIRST, above everything else, on the days it exists at all. A birthday is the
+     one thing on this screen that cannot be done tomorrow: a check-in a day late is still a
+     check-in, a card that arrives the day after is an apology. Everything below it keeps. */
+  if(bdayRows.length || egRows.length){
+    // the count is the REAL birthdays and only those. The examples sit under their own line
+    // below, so a number that says 1 with three rows under it never happens.
+    html += `<div class="group-label">Birthdays this week<span class="gcount">${bdayRows.length}</span></div>`;
+    html += bdayRows.map(m=>birthdayTaskHtml(m,'onboarding',false)).join('');
+    if(egRows.length){
+      html += `<div class="today-example-label">Example — for showing the team</div>`;
+      html += egRows.map(x=>birthdayTaskHtml(x,'onboarding',true)).join('');
+    }
+  }
+
+  /* Intro sessions to run. Its own recessed block: an intro is a job with a checklist and a
+     clock to start, and it is not a week's work — it is what happens before the weeks begin. */
+  html += `<div class="board">`;
+
+  // ── the intro lane, outside the folder and above it ──
+  const introRows = rows.filter(r=>r.item.phase==='intro');
+  html += `<div class="board-col" data-col="intro">
+      <div class="board-col-head">
+        <span class="board-col-title">Intro sessions to run</span>
+        <span class="gcount">${introRows.length}</span>
+      </div>`
+    + (introRows.length ? introRows.map(todayCardHtml).join('')
+                        : `<div class="board-empty">Nothing here today</div>`)
+    + `</div>`;
+
+  html += `</div>`;
+
   // Follow-ups sit at the top: they're the easiest thing to let slide, and there are
   // rarely more than one or two.
   if(fuRows.length){
@@ -2815,52 +2872,16 @@ function renderToday(){
     });
   }
 
-  /* Birthdays this week. Its own group rather than an eighth column: the board's columns are
-     the six WEEKS OF THE CHALLENGE, and a birthday belongs to none of them — it hangs off the
-     day somebody was born, not off the day they started, and it comes round for members who
-     have no challenge left to be in a week of. Dropping it into the board would mean either a
-     column that is not a week or a birthday filed under whichever week it happened to land in,
-     and both make the board harder to read every other day of the week. Stacked rows also need
-     no help to stack on a phone.
+  /* The check-ins: six weeks as a folder, one week open at a time.
 
-     Placed after the two other state groups and directly above the board, so the day still
-     reads follow-ups, then who is waiting to start, then what is coming, then today's work. */
-  if(bdayRows.length || egRows.length){
-    // the count is the REAL birthdays and only those. The examples sit under their own line
-    // below, so a number that says 1 with three rows under it never happens.
-    html += `<div class="group-label">Birthdays this week<span class="gcount">${bdayRows.length}</span></div>`;
-    html += bdayRows.map(m=>birthdayTaskHtml(m,'onboarding',false)).join('');
-    if(egRows.length){
-      html += `<div class="today-example-label">Example — for showing the team</div>`;
-      html += egRows.map(x=>birthdayTaskHtml(x,'onboarding',true)).join('');
-    }
-  }
-
-  /* The day's work: the intro sessions to run, and then the six weeks.
-
-     They are laid out differently on purpose, because they ARE different. An intro is a job
-     with a checklist and a clock to start, and it has its own lane whatever else is happening.
-     The weeks are a folder: six tabs, one week open at a time, that week's cards at the FULL
-     width of the screen.
-
-     Seven side-by-side lanes is what this replaced, and the reason is width. Seven columns
-     inside even a very wide page left each card about 180px to hold a challenger's name, a
-     touchpoint title, a day, two buttons and a chevron — and a card that narrow does not wrap,
-     it shreds, a word or two per line, sometimes a letter. A folder trades seeing all six weeks
-     at once for being able to read the one you are working through, and the tabs carry the
-     counts so the five you cannot see still tell you they are waiting. */
+     Last on the screen because it is the longest section and the one a coach settles into, and
+     because everything above it is either time-critical or a handful of rows. Seven side-by-side
+     lanes is what this replaced, and the reason is width: seven columns inside even a very wide
+     page left each card about 180px to hold a challenger's name, a touchpoint title, a day, two
+     buttons and a chevron — and a card that narrow does not wrap, it shreds. A folder trades
+     seeing all six weeks at once for being able to read the one you are working through, and
+     the tabs carry the counts so the five you cannot see still tell you they are waiting. */
   html += `<div class="board">`;
-
-  // ── the intro lane, outside the folder and above it ──
-  const introRows = rows.filter(r=>r.item.phase==='intro');
-  html += `<div class="board-col" data-col="intro">
-      <div class="board-col-head">
-        <span class="board-col-title">Intro sessions to run</span>
-        <span class="gcount">${introRows.length}</span>
-      </div>`
-    + (introRows.length ? introRows.map(todayCardHtml).join('')
-                        : `<div class="board-empty">Nothing here today</div>`)
-    + `</div>`;
 
   // ── the weeks, as a folder ──
   const byWeek = BOARD_WEEKS.map(w=> rows.filter(r=>journeyWeek(r.item)===w));

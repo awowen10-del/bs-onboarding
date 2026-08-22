@@ -164,8 +164,12 @@ const hasStartTask = (app) => /id="act-c1-startclock"/.test(app.html("todayList"
   const today = app.html("todayList");
   assert.ok(hasStartTask(app), "the waiting challenger has her task");
   assert.ok(today.includes("Katie Leicester"), "…and the live challenger still has her touchpoints");
-  assert.ok(today.indexOf("Waiting on a first session") < today.indexOf('<div class="board">'),
-    "the waiting group sits above the day's board, where it is easy to find");
+  // The waiting group sits between the intro lane and the check-ins: below the intros, which
+  // are what create the people in it, and above the six weeks, which is the long section.
+  assert.ok(today.indexOf("Intro sessions to run") < today.indexOf("Waiting on a first session"),
+    "the waiting group sits under the intro sessions");
+  assert.ok(today.indexOf("Waiting on a first session") < today.indexOf('class="week-tabs"'),
+    "…and above the check-ins, where it is easy to find");
   // the badge counts both kinds
   assert.ok(Number(app.el("todayCount").textContent) >= 2, "both are counted");
 }

@@ -46,7 +46,17 @@ function board(app) {
   const i = html.indexOf('<div class="board">');
   return i === -1 ? "" : html.slice(i);
 }
-const introLane = (app) => board(app).split('<div class="weekfolder">')[0];
+/* The intro lane is its own recessed block, and the standing rows now sit BETWEEN it and the
+   folder — so the lane is sliced at its own element and ends at whatever comes next, which is
+   either a stacked group heading or the tab row. */
+const introLane = (app) => {
+  const b = board(app);
+  const from = b.indexOf('<div class="board-col" data-col="intro">');
+  if (from < 0) return "";
+  const ends = ['<div class="group-label">', 'class="week-tabs"']
+    .map((m) => b.indexOf(m, from)).filter((i) => i >= 0);
+  return b.slice(from, ends.length ? Math.min.apply(null, ends) : b.length);
+};
 const folder = (app) => (board(app).split('<div class="weekfolder">')[1] || "");
 const panel = (app) => (folder(app).split('<div class="week-panel"')[1] || "");
 const openWeek = (app) => {
@@ -360,14 +370,15 @@ const countBadge = (html) => {
       id + ": the name-and-title block says nothing about the day any more");
   }
 
-  // the pill class itself is untouched — the standing rows above the board still use it
+  // the pill class itself is untouched — the standing rows still use it
   const standing = boot({ members: [{ ...preStart("w", "Priya R"), completed: ["intro"] }] });
   const above = standing.html("todayList");
-  const before = above.slice(0, above.indexOf('<div class="board">'));
-  assert.ok(/Waiting on a first session/.test(before), "sanity: the waiting row is rendered");
-  assert.ok(/<span class="day">/.test(before),
-    "the waiting-to-start row above the board keeps its own day pill");
-  assert.ok(!/status-day/.test(before), "…and none of the status-line treatment leaked into it");
+  const at = above.indexOf("Waiting on a first session");
+  assert.ok(at > 0, "sanity: the waiting row is rendered");
+  const row = above.slice(at, above.indexOf('class="week-tabs"'));
+  assert.ok(/<span class="day">/.test(row),
+    "the waiting-to-start row keeps its own day pill");
+  assert.ok(!/status-day/.test(row), "…and none of the status-line treatment leaked into it");
 }
 
 /* ---------- 9: OVERDUE, in the card's corner and on the week's tab ----------
@@ -427,7 +438,14 @@ const countBadge = (html) => {
   assert.strictEqual(tabs(app).length, 6, "…and the row is still six tabs");
 }
 
-/* ---------- 11: the standing rows still sit ABOVE all of it ---------- */
+/* ---------- 11: the order of the day ----------
+   Deadline first, then the day's work in the order it gets done: birthdays this week (only
+   when there are any), the intro sessions, the two standing states — follow-ups and who is
+   waiting on a first session — and last the check-ins, which is the longest section.
+
+   Follow-ups and the waiting rows are not touchpoints, have no week, and are not week work.
+   They keep their stacked rows between the intros and the folder rather than being cards in
+   it. */
 {
   const leaver = {
     id: "fin", name: "Kelly Finished", coach: "Grace", day0: daysFromToday(-60),
@@ -436,18 +454,70 @@ const countBadge = (html) => {
     pausedAt: null, followUpOn: daysFromToday(0), followUpStatus: "pending",
   };
   const waiting = { ...preStart("w", "Priya Raghunathan"), completed: ["intro"] };
-  const app = boot({ members: [leaver, waiting, live("a", "Sam Live", 8)] });
-  const today = app.html("todayList");
+  // a challenger whose birthday is this week, so every section is on the screen at once
+  const today = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const dob = "1990-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate());
+  const app = boot({ members: [
+    leaver, waiting, preStart("p", "Ned New"), { ...live("a", "Sam Live", 8), dob },
+  ] });
 
-  assert.ok(today.includes("Follow-ups to make"), "the follow-up group is still rendered");
-  assert.ok(today.includes("Waiting on a first session"), "…as is the waiting-to-start group");
-  assert.ok(today.indexOf("Follow-ups to make") < today.indexOf('<div class="board">'),
-    "follow-ups lead the screen");
-  assert.ok(today.indexOf("Waiting on a first session") < today.indexOf('<div class="board">'),
-    "…and the waiting rows sit between them and the day's work");
+  // where each section starts, read off the rendered screen
+  const html = app.html("todayList");
+  const at = (needle) => {
+    const i = html.indexOf(needle);
+    assert.ok(i >= 0, "sanity: the screen has " + needle);
+    return i;
+  };
+  const order = [
+    ["Birthdays this week", at(">Birthdays this week<")],
+    ["Intro sessions to run", at(">Intro sessions to run<")],
+    ["Follow-ups to make", at(">Follow-ups to make<")],
+    ["Waiting on a first session", at(">Waiting on a first session<")],
+    ["the check-ins", at('class="week-tabs"')],
+  ];
+  assert.deepStrictEqual(
+    order.slice().sort((x, y) => x[1] - y[1]).map((x) => x[0]),
+    order.map((x) => x[0]),
+    "the screen reads: birthdays, intros, follow-ups, waiting, check-ins — found "
+    + JSON.stringify(order.slice().sort((x, y) => x[1] - y[1]).map((x) => x[0])));
 
-  assert.ok(!board(app).includes("act-fin-followup"), "a follow-up is not week work");
-  assert.ok(!board(app).includes("act-w-startclock"), "…and neither is a waiting-to-start row");
+  // neither standing row is a card in a week
+  assert.ok(!folder(app).includes("act-fin-followup"), "a follow-up is not week work");
+  assert.ok(!folder(app).includes("act-w-startclock"), "…and neither is a waiting-to-start row");
+  assert.ok(!introLane(app).includes("act-fin-followup"), "…nor an intro to run");
+}
+
+/* ---------- 11b: birthdays lead the day, and only on the days there are any ----------
+   The one section that appears and disappears. A birthday is the only thing on this screen
+   that expires — it is either today's or it is an apology — so it goes above everything when
+   it exists, and when it does not it is absent rather than an empty box saying so. */
+{
+  const today = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const dob = "1990-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate());
+
+  const none = boot({ members: [preStart("p", "Ned New"), live("a", "Sam Live", 8)] });
+  const quiet = none.html("todayList");
+  assert.ok(!quiet.includes("Birthdays this week"),
+    "no birthday this week: the section is not on the screen at all");
+  assert.ok(quiet.indexOf(">Intro sessions to run<") < quiet.indexOf('class="week-tabs"'),
+    "…and the day opens on the intro sessions");
+
+  const some = boot({ members: [preStart("p", "Ned New"), { ...live("a", "Sam Live", 8), dob }] });
+  const busy = some.html("todayList");
+  assert.ok(busy.includes("Birthdays this week"), "a birthday this week: the section appears");
+  assert.strictEqual(busy.indexOf(">Birthdays this week<"),
+    Math.min(busy.indexOf(">Birthdays this week<"), busy.indexOf(">Intro sessions to run<"),
+             busy.indexOf('class="week-tabs"')),
+    "…at the very top, above every other section");
+  assert.ok(/<div class="group-label">Birthdays this week<span class="gcount">1<\/span>/.test(busy),
+    "…counted, as it always was");
+
+  // and the section is unchanged inside: same rows, same handlers, still no Missed
+  assert.ok(/id="act-a-birthday"/.test(busy), "the birthday row is the row it was");
+  assert.ok(!/act-a-birthday[\s\S]{0,600}?markMissed/.test(busy),
+    "…with no Missed on it: the day happens whether or not you act");
 }
 
 /* ---------- 12: the banner is the date, and the sub-view toggle is unchanged ---------- */

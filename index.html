@@ -2,7 +2,14 @@
 <html lang="en-GB">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- viewport-fit=cover lets the page fill a notched screen edge to edge, which is what makes
+     env(safe-area-inset-*) resolve to anything other than 0. The sheet already asks for the
+     top one on the masthead and asked in vain without this; the banner, the gate and the
+     landscape gutters ask for the rest. On any screen without a notch — every desktop, every
+     older phone — the insets are 0px and nothing moves. Note there is deliberately no
+     user-scalable=no: pinch-zoom stays available to anyone who needs it, and the iOS
+     zoom-on-focus problem is solved properly, with 16px controls, further down the sheet. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Bodysculpt - Client Journey</title>
 <link rel="icon" type="image/png" href="data:image/png;base64,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">
 <style>
@@ -1205,6 +1212,42 @@
     .mast-inner{padding-top:20px;padding-bottom:14px;gap:12px}
     .brand{gap:10px}
     .homebtn{padding:8px 11px;font-size:12px}
+
+    /* ---- Dialogs on a phone ----
+       Every one of these was a 460px card being asked to sit inside 320px of screen, with
+       20px of scrim padding and 24px of card padding eating a quarter of what was left. It
+       keeps its shape and gives up the padding it cannot afford.
+
+       The buttons are the real fix. `.modal-acts` tucks them into the bottom-right corner at
+       their own intrinsic size — a 34px-tall "Save" about 60px wide, in the far corner of the
+       screen, and it is the last thing you do in every one of these dialogs. They take the
+       row instead, half each, at a height a thumb can actually land on.
+
+       And dvh rather than vh, which is the one that stops a dialog being unusable outright:
+       iOS resolves vh against the viewport as it would be with the URL bar HIDDEN, so on a
+       phone that is currently showing its URL bar a 90vh card is TALLER than the space it has
+       been given — the Save button sits below the fold, and because the card itself is what
+       scrolls there is no way to reach it. dvh is the height the viewport actually has right
+       now. The vh line is left in front of it for anything too old to know the keyword. */
+    .modal-bg{padding:14px}
+    .modal{padding:20px 18px;max-height:92vh;max-height:92dvh}
+    .modal h3{font-size:18px}
+    .modal-acts{gap:8px}
+    .modal-acts .btn{flex:1 1 0;padding:12px 14px;font-size:14px;text-align:center}
+    /* two fields sharing a row have about one field's worth of room between them at this
+       width, so they stop sharing it */
+    .field-row{flex-wrap:wrap}
+    .field-row .field{flex:1 1 100%}
+    /* the notes dialog is mostly editor, so it takes back the height the padding gave up */
+    .notes-ed{min-height:150px;max-height:38vh;max-height:38dvh}
+
+    /* ---- The journey grid ----
+       The name column is frozen to the left while the touchpoints scroll underneath it, so on
+       a 360px screen it was spending 140–160px — near half the width — on the one column that
+       does NOT move. Pulled in, and the cell padding with it, so more of the grid you came to
+       read is on screen per swipe. The table still scrolls; it just starts further along. */
+    table.journey th.who,table.journey td.who{min-width:104px;max-width:118px}
+    table.journey th,table.journey td{padding:8px 5px}
   }
 
   /* ---------- Password gate ---------- */
@@ -1226,6 +1269,108 @@
   .sync-banner.err{background:var(--red);color:var(--on-accent)}
   .sync-banner.warn{background:var(--amber);color:var(--on-amber)}
   .sync-banner.ok{background:var(--green);color:var(--on-green)}
+
+  /* ===================== TOUCH =====================
+     Keyed on the POINTER rather than on the width, and that distinction is the whole safety
+     argument for this block: a desktop browser driven by a mouse reports `pointer:fine` and
+     `hover:hover`, so it matches none of these queries at ANY window size and renders exactly
+     what it rendered before — not "near enough", not "only when maximised". Nothing below
+     moves an element, renames a class, or is reachable from the script.
+
+     What is in here is the short list of things a finger gets wrong that a cursor never does:
+     controls that make the browser zoom, targets sized for a pointer that lands on a single
+     pixel, and a :hover state with no way to leave it. */
+
+  @media (pointer:coarse){
+    /* ---- iOS Safari's zoom-on-focus ----
+       This is the worst thing about the app on a phone, and it is invisible from a desktop.
+       Safari zooms THE WHOLE PAGE in whenever you focus a form control whose font-size is
+       under 16px, and it does not zoom back out when you leave the field. Every control in
+       this sheet is 13–15px, so tapping the password box on the way in, the challenger
+       search, a start date or the notes editor leaves a coach on a page half again too big
+       for the screen and panned off to one side, to be pinched back by hand — every time.
+
+       16px is Safari's threshold and raising these to it is the whole fix. The other way out
+       is user-scalable=no on the viewport, which buys the same thing by taking pinch-zoom
+       away from everybody who needs it, so it is not a real option.
+
+       Nothing shifts as a result: every one of these is sized by its padding, not by its
+       text, so the boxes stay exactly where they are and only the type inside them grows. */
+    .field input,.field select,.field textarea,
+    .toolbar input[type=search],
+    .nut-grid input,.nut-grid select,
+    .gate-box input,
+    .startblock .sb-date,
+    .action.awaiting .await-date,
+    .import-modal input[type=file],
+    .notes-ed{font-size:16px}
+
+    /* ---- Targets sized for a thumb ----
+       The grid cell is the one that matters. "Tap a cell to cycle done → missed → clear" is
+       the main gesture on the journey table and the legend under it says so, but the cell was
+       a 24px square — smaller than the pad of a finger, in a grid where every neighbour is a
+       different person's touchpoint, so a near miss is not a miss, it is marking the wrong
+       thing done. The table already scrolls sideways, so the handful of px this adds to its
+       width costs nothing that was not already true of it; the tighter cell padding set in the
+       phone block above buys most of it back regardless.
+       The quiet chips on a birthday row and the small ghost buttons get the same treatment. */
+    .cell{width:32px;height:32px;border-radius:8px;font-size:14px}
+    .btn.sm{padding:9px 13px}
+    .bday-act{padding:8px 12px}
+    .notes-btn{min-width:38px;min-height:38px}
+    table.journey td.who .notes-btn{min-width:32px;min-height:32px}
+    .pb-reset{padding:6px 11px}
+    .bday-examples-toggle button{padding:6px 0}
+
+    /* A sideways swipe inside the grid is a swipe inside the grid. Without this, running off
+       the end of the scroll hands the gesture to the browser, which reads it as Back — losing
+       the screen halfway through reading somebody's journey. */
+    .tbl-scroll{overscroll-behavior-x:contain}
+    /* …and a flick that runs past the end of an open dialog does not carry on scrolling the
+       page behind it, which is what makes a scrolled-away dialog feel broken */
+    .modal{overscroll-behavior:contain}
+
+    /* The notch and the home indicator, now that the viewport is told to fill the screen.
+       The banner is fixed to the very top of the display, so on a notched phone it is the one
+       thing that would otherwise paint underneath the status bar; the gate is the first screen
+       anyone sees and holds the only control on it. max(), so a phone without a notch keeps
+       exactly the padding these already had rather than losing it to a 0px inset. */
+    .sync-banner{padding-top:calc(7px + env(safe-area-inset-top))}
+    .gate{padding-left:max(24px,env(safe-area-inset-left));
+      padding-right:max(24px,env(safe-area-inset-right))}
+  }
+
+  /* Landscape puts a notched phone's inset beside the content instead of above it, and
+     .wrap's 20px gutter is not wide enough to clear it. On body rather than on .wrap: .wrap
+     is declared exactly once on purpose — it is what lines the masthead, the tabs and the
+     content up on one left edge — and a second copy of it is the kind of thing that drifts. */
+  @media (pointer:coarse) and (orientation:landscape){
+    body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+  }
+
+  /* ---- Hover states, where there is no pointer to move away ----
+     A touch browser fires :hover on tap and then LEAVES IT THERE until something else is
+     tapped, so on a phone every hover state in this sheet is really a "the last thing I
+     touched" state. For most of them that is a border going one shade darker and nobody
+     notices. Two are not: the home cards, which stay lifted, re-bordered and with their badge
+     inverted after you have already left the screen — the tracker you picked last time still
+     looks picked — and the grid cell, which stays scaled up over the neighbours it overlaps.
+
+     Each one is reset to precisely what its base rule paints, and :active is restated
+     AFTERWARDS so that pressing something still answers back: during a tap both pseudo-classes
+     match at once, and these rules are later in the sheet than the originals, so without the
+     restatement the reset would swallow the press feedback too. */
+  @media (hover:none){
+    .home-card:hover{transform:none;border-color:var(--line);box-shadow:var(--shadow)}
+    .home-card:hover .hicon{background:rgba(var(--accent-rgb),.13);
+      border-color:rgba(var(--accent-rgb),.30);color:var(--accent)}
+    .home-card:hover .harrow{transform:none}
+    .home-card:active{transform:translateY(-1px)}
+    .cell:hover{transform:none}
+    /* the row highlight and the frozen name column behind it, back to their base tones */
+    table.journey tr:hover td{background:transparent}
+    table.journey tr:hover td.who{background:var(--card)}
+  }
 </style>
 
 <!-- ============================================================ -->

@@ -78,7 +78,7 @@ const html = app.html("playbookList");
   assert.ok(html.indexOf("Before day zero") < html.indexOf("The forty-two days"), "chapters in order");
   // and each touchpoint sits under the right one
   const introAt = html.indexOf("Intro / Welcome experience");
-  const wk2At = html.indexOf("Week 1 check-in");     // the day-7 check-in, by its name now
+  const wk2At = html.indexOf("Week 2 check-in");     // the day-7 check-in, by its name now
   assert.ok(html.indexOf("Before day zero") < introAt && introAt < html.indexOf("The forty-two days"),
     "the intro sits in chapter I");
   assert.ok(html.indexOf("The forty-two days") < wk2At, "the first check-in sits in chapter II");

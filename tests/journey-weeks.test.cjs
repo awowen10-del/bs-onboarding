@@ -1,15 +1,23 @@
-// The check-ins are named for the WEEK THEY CLOSE, and that is all that changed.
+// The check-ins are named for the WEEK THEY OPEN, and that is all that changed.
 //
-// Today's moves is laid out in weeks now, so the names had to agree with the columns: the
-// check-in on day 7 is the Week 1 check-in, the one on day 14 is Week 2, and so on down to
-// day 35. Five touchpoints were relabelled and nothing else about them was touched.
+// DAY 0 IS THE FIRST DAY OF WEEK 1. The first session is a day they trained, not a spare day
+// in front of the clock, so week 1 is days 0–6, week 2 is days 7–13, and the check-in on day 7
+// opens week 2. The names and the board's week tabs both say so.
 //
-// Which makes this file mostly a list of things that must NOT have moved. A rename is the
-// cheapest change in the app to make and the most expensive to get wrong, because the tick a
-// coach made last Tuesday is stored against an ID, not a title — if 'wk2' stopped meaning the
-// day-7 check-in, every challenger on the roster would silently lose a touchpoint and gain an
-// unfinished one. So: the ids are pinned, the days are pinned, what is due on a given morning
-// is pinned, and a record written before any of this happened is opened and read.
+// They briefly said the opposite. Today's moves was laid out in weeks and the check-ins were
+// renamed to match the columns — day 7 the "Week 1 check-in", day 14 "Week 2", down to day 35
+// as "Week 5" — on the reading that a check-in closes the week behind it. That takes week 1 to
+// be days 1–7, which drops the first session out of its own week, and since every check-in
+// sits exactly on a multiple of 7 it put every one of them a week out. The head coach spotted
+// it within the week: a card reading "Week 5 check-in" was the day-35 one, which opens week 6.
+//
+// Nothing about WHEN anything fires has ever changed, through either rename, and this file is
+// mostly the list of things that must NOT have moved. A rename is the cheapest change in the
+// app to make and the most expensive to get wrong, because the tick a coach made last Tuesday
+// is stored against an ID, not a title — if 'wk2' stopped meaning the day-7 check-in, every
+// challenger on the roster would silently lose a touchpoint and gain an unfinished one. So:
+// the ids are pinned, the days are pinned, what is due on a given morning is pinned, the week
+// each one lands in is pinned, and a record written before any of it is opened and read.
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -34,8 +42,10 @@ function tableHtml(app) {
 
 /* ---------- 1: the ids are the ids, and the days are the days ----------
    The one thing a rename is not allowed to be is a re-keying. Written as the full table
-   rather than as a spot check, because "wk2 is the Week 1 check-in" is exactly the sort of
-   fact that reads like a typo to whoever comes next and gets helpfully corrected. */
+   rather than as a spot check, because the id/day/title triple is exactly the sort of thing
+   that reads like a typo to whoever comes next and gets helpfully corrected. The ids happen to
+   read straight again now — 'wk2' is the Week 2 check-in — but that is a convenience, not the
+   rule: the rule is that an id never moves, whatever the title above it says. */
 {
   const app = boot({ members: [] });
   const J = app.ctx.__t.JOURNEY;
@@ -44,13 +54,20 @@ function tableHtml(app) {
     JSON.stringify([
       ["intro", -1, "Intro / Welcome experience"],
       ["d1_text", 1, "Morning-after-first-session text"],
-      ["wk2", 7, "Week 1 check-in"],
-      ["wk3", 14, "Week 2 check-in"],
-      ["wk4", 21, "Week 3 check-in"],
-      ["wk5", 28, "Week 4 check-in"],
-      ["wk6", 35, "Week 5 check-in"],
+      ["wk2", 7, "Week 2 check-in"],
+      ["wk3", 14, "Week 3 check-in"],
+      ["wk4", 21, "Week 4 check-in"],
+      ["wk5", 28, "Week 5 check-in"],
+      ["wk6", 35, "Week 6 check-in"],
     ]),
     "seven touchpoints, the same seven ids, the same seven days — five of them renamed");
+
+  // and each one is filed under the week it opens, which is the whole point of the numbers
+  assert.strictEqual(
+    JSON.stringify(J.filter((it) => it.phase !== "intro")
+      .map((it) => [it.day, app.ctx.journeyWeek(it)])),
+    JSON.stringify([[1, 1], [7, 2], [14, 3], [21, 4], [28, 5], [35, 6]]),
+    "day 0 is week 1's first day, so a check-in on day 7N opens week N+1 and is tabbed there");
 
   // the weeks did not add or remove anything; the postcard did, and it is the only one
   assert.strictEqual(J.length, 7, "seven touchpoints");
@@ -64,6 +81,11 @@ function tableHtml(app) {
                      "Start of Week 6 check-in"]) {
     assert.ok(!HTML.includes(old), "the old title is gone: " + old);
   }
+  // nor the week-behind set, which is the one that put a coach on the phone
+  assert.ok(!HTML.includes("Week 1 check-in"),
+    "no check-in is named for a week it closes — there is no Week 1 check-in, day 7 opens week 2");
+  assert.ok(!/Math\.ceil\([^)]*\/7/.test(HTML),
+    "…and the sum that produced it is gone: a week is not ceil(day/7)");
 }
 
 /* ---------- 2: what is due on a given morning is exactly what was due before ----------
@@ -108,7 +130,7 @@ function tableHtml(app) {
   const m = app.find("old");
 
   assert.ok(app.ctx.isDone(m, "wk2"),
-    "the tick made against 'wk2' is still a tick against the day-7 check-in, now called Week 1");
+    "the tick made against 'wk2' is still a tick against the day-7 check-in, now called Week 2");
   assert.ok(m.completed.includes("month1") && m.completed.includes("d3_postcard")
     && m.missed.includes("month2"),
     "the ids the journey no longer has are left exactly where they were — inert, not tidied");
@@ -123,9 +145,9 @@ function tableHtml(app) {
   assert.ok(app.html("memberList").includes("3 of 7 touchpoints done"),
     "…and it is not counted either: three of the seven that exist, not five of ten");
 
-  // day 16, so the day-14 check-in is up — under its new name, keyed by its old id. It is a
-  // week-2 touchpoint, and with nothing outstanding before it that is the week the folder opens.
-  assert.ok(today.includes("Week 2 check-in"), "her due check-in is named for the week it closes");
+  // day 16, so the day-14 check-in is up — under its new name, keyed by its old id. It opens
+  // week 3, and with nothing outstanding before it that is the week the folder opens on.
+  assert.ok(today.includes("Week 3 check-in"), "her due check-in is named for the week it opens");
   assert.ok(today.includes("act-old-wk3"), "…and is still the touchpoint it always was");
 
   // a record with the lists missing or malformed opens rather than throwing
@@ -146,26 +168,26 @@ function tableHtml(app) {
     live("c", "Ell Late", 22), live("d", "Fay Far", 29), live("e", "Gus Gone", 36)] });
 
   // one week is on screen at a time, so each is opened and read in turn
-  for (const [w, name] of [[1, "Week 1 check-in"], [2, "Week 2 check-in"], [3, "Week 3 check-in"],
-                           [4, "Week 4 check-in"], [5, "Week 5 check-in"]]) {
+  for (const [w, name] of [[2, "Week 2 check-in"], [3, "Week 3 check-in"], [4, "Week 4 check-in"],
+                           [5, "Week 5 check-in"], [6, "Week 6 check-in"]]) {
     app.ctx.setOpenWeek(w);
     assert.ok(app.html("todayList").includes(name),
       "Today's moves says " + name + " in week " + w);
   }
   app.ctx.setOpenWeek(1);
 
-  // the table's heads follow the titles, not the ids: 'wk2' is the Week 1 check-in, so Wk1
+  // the table's heads follow the titles: 'wk2' is the Week 2 check-in, so Wk2
   const heads = (tableHtml(app).match(/<th[^>]*>([^<]*)<\/th>/g) || [])
     .map((h) => h.replace(/<[^>]*>/g, ""));
   assert.deepStrictEqual(heads,
-    ["Challenger", "Day", "Intro", "Text", "Wk1", "Wk2", "Wk3", "Wk4", "Wk5"],
-    "the table's week columns are Wk1 to Wk5, in journey order — and there is no Postcard");
-  assert.ok(tableHtml(app).includes("Sam Live · Week 1 check-in · due"),
+    ["Challenger", "Day", "Intro", "Text", "Wk2", "Wk3", "Wk4", "Wk5", "Wk6"],
+    "the table's week columns are Wk2 to Wk6, in journey order — and there is no Postcard");
+  assert.ok(tableHtml(app).includes("Sam Live · Week 2 check-in · due"),
     "…and a cell names its touchpoint the same way the card does");
 
   const pb = app.html("playbookList");
-  for (const name of ["Week 1 check-in", "Week 2 check-in", "Week 3 check-in",
-                      "Week 4 check-in", "Week 5 check-in"]) {
+  for (const name of ["Week 2 check-in", "Week 3 check-in", "Week 4 check-in",
+                      "Week 5 check-in", "Week 6 check-in"]) {
     assert.ok(pb.includes(name), "the Playbook says " + name);
   }
   // the seed line came through the rename untouched — it is the whole reason that card exists
@@ -173,7 +195,7 @@ function tableHtml(app) {
   assert.ok(/You’re starting to settle in now/.test(wk3.seed), "the seed line is the seed line");
   assert.ok(pb.includes("End the voice note with this"), "…still labelled on the card");
   assert.ok(pb.includes("This is the bit we want"), "…and still printed in full");
-  app.ctx.setOpenWeek(2);          // the seed line rides the day-14 check-in, which is week 2's
+  app.ctx.setOpenWeek(3);          // the seed line rides the day-14 check-in, which opens week 3
   assert.ok(app.html("todayList").includes("End the voice note with this:"),
     "…and still on the card a coach reads at the time");
 }
@@ -204,17 +226,18 @@ function tableHtml(app) {
 {
   const app = boot({ members: [live("a", "Sam Live", 8)] });
   const wk2 = app.ctx.__t.JOURNEY.find((it) => it.id === "wk2");
-  assert.strictEqual(app.ctx.tpTitle(wk2), "Week 1 check-in", "the default is the new name");
+  assert.strictEqual(app.ctx.tpTitle(wk2), "Week 2 check-in", "the default is the new name");
 
-  app.ctx.pbSetField("wk2", "title", "First-week catch-up");
+  app.ctx.setOpenWeek(2);          // the day-7 check-in's own week, so its card is on screen
+  app.ctx.pbSetField("wk2", "title", "Second-week catch-up");
   app.ctx.renderAll();
-  assert.ok(app.html("playbookList").includes("First-week catch-up"), "an override still applies");
-  assert.ok(app.html("todayList").includes("First-week catch-up"), "…on the board too");
-  assert.ok(!app.html("todayList").includes("Week 1 check-in"), "…in place of the default");
+  assert.ok(app.html("playbookList").includes("Second-week catch-up"), "an override still applies");
+  assert.ok(app.html("todayList").includes("Second-week catch-up"), "…on the board too");
+  assert.ok(!app.html("todayList").includes("Week 2 check-in"), "…in place of the default");
 
   app.ctx.pbResetField("wk2", "title");
   app.ctx.renderAll();
-  assert.ok(app.html("todayList").includes("Week 1 check-in"),
+  assert.ok(app.html("todayList").includes("Week 2 check-in"),
     "…and Reset hands it back to the new name, which is the one in the code");
 }
 

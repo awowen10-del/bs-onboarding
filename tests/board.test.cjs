@@ -124,8 +124,8 @@ const countBadge = (html) => {
   assert.strictEqual(openWeek(app), 1, "week 1 is open");
   assert.strictEqual((folder(app).match(/class="week-panel"/g) || []).length, 1,
     "exactly one panel is rendered");
-  assert.deepStrictEqual(cardIds(panel(app)), ["act-a-d1_text", "act-a-wk2"],
-    "…holding week 1's cards, in journey-day order");
+  assert.deepStrictEqual(cardIds(panel(app)), ["act-a-d1_text"],
+    "…holding week 1's card, which is the day-1 text");
   for (const hidden of ["act-b-wk3", "act-c-wk4"]) {
     assert.ok(!board(app).includes(hidden),
       hidden + " is in another week, so it is not in the page at all");
@@ -134,8 +134,8 @@ const countBadge = (html) => {
   // and opening another week swaps what is there, rather than adding to it
   assert.strictEqual(app.ctx.setOpenWeek(2), 2, "the tab reports the week it opened");
   assert.strictEqual(openWeek(app), 2);
-  assert.deepStrictEqual(cardIds(panel(app)), ["act-b-wk3"], "week 2's card, and only its");
-  assert.ok(!board(app).includes("act-a-wk2"), "…week 1's have gone from the page");
+  assert.deepStrictEqual(cardIds(panel(app)), ["act-a-wk2"], "week 2's card, and only its");
+  assert.ok(!board(app).includes("act-a-d1_text"), "…week 1's has gone from the page");
   assert.strictEqual((folder(app).match(/class="week-panel"/g) || []).length, 1,
     "still exactly one panel — the folder does not accumulate");
   assert.strictEqual(tab(app, 2).open, true, "the tab that was pressed is the one lit");
@@ -159,7 +159,8 @@ const countBadge = (html) => {
 
 /* ---------- 3: a card is in the week its DAY puts it in ----------
    Unchanged by the layout, and the rule is arithmetic on a number the touchpoint already
-   carried: week = ceil(day / 7). Asserted by opening each week and reading it. */
+   carried: week = floor(day / 7) + 1, because day 0 is the first day of week 1. Asserted by
+   opening each week and reading it. */
 {
   const app = boot({ members: [
     live("a", "Sam Live", 8), live("b", "Dee Deep", 15), live("c", "Ell Late", 22),
@@ -167,25 +168,28 @@ const countBadge = (html) => {
   ] });
   const inWeek = (w) => { app.ctx.setOpenWeek(w); return cardIds(panel(app)); };
 
-  assert.deepStrictEqual(inWeek(1), ["act-a-d1_text", "act-a-wk2"], "days 1 and 7 → week 1");
-  assert.deepStrictEqual(inWeek(2), ["act-b-wk3"], "day 14 → week 2");
-  assert.deepStrictEqual(inWeek(3), ["act-c-wk4"], "day 21 → week 3");
-  assert.deepStrictEqual(inWeek(4), ["act-d-wk5"], "day 28 → week 4");
-  assert.deepStrictEqual(inWeek(5), ["act-e-wk6"], "day 35 → week 5");
-  assert.deepStrictEqual(inWeek(6), [], "and nothing fires in week 6 yet");
+  assert.deepStrictEqual(inWeek(1), ["act-a-d1_text"], "day 1 → week 1, with day 0 in front of it");
+  assert.deepStrictEqual(inWeek(2), ["act-a-wk2"], "day 7 → week 2, which is the week it opens");
+  assert.deepStrictEqual(inWeek(3), ["act-b-wk3"], "day 14 → week 3");
+  assert.deepStrictEqual(inWeek(4), ["act-c-wk4"], "day 21 → week 4");
+  assert.deepStrictEqual(inWeek(5), ["act-d-wk5"], "day 28 → week 5");
+  assert.deepStrictEqual(inWeek(6), ["act-e-wk6"], "day 35 → week 6");
 
   // the rule is the function, not a table somebody has to keep in step
   const J = app.ctx.__t.JOURNEY;
   const weekOf = (id) => app.ctx.journeyWeek(J.find((it) => it.id === id));
   assert.strictEqual(
     JSON.stringify(J.filter((it) => it.phase !== "intro").map((it) => [it.id, it.day, weekOf(it.id)])),
-    JSON.stringify([["d1_text", 1, 1], ["wk2", 7, 1], ["wk3", 14, 2],
-                    ["wk4", 21, 3], ["wk5", 28, 4], ["wk6", 35, 5]]),
-    "every touchpoint's week is ceil(day/7) — and every day is exactly what it always was");
+    JSON.stringify([["d1_text", 1, 1], ["wk2", 7, 2], ["wk3", 14, 3],
+                    ["wk4", 21, 4], ["wk5", 28, 5], ["wk6", 35, 6]]),
+    "every touchpoint's week is floor(day/7)+1 — and every day is exactly what it always was");
   assert.strictEqual(app.ctx.journeyWeek(J.find((it) => it.id === "intro")), 0,
     "the intro has no week, which is why it has a lane");
-  assert.strictEqual(app.ctx.journeyWeek({ day: 0, phase: "journey" }), 1, "day 0 reads as week 1");
-  assert.strictEqual(app.ctx.journeyWeek({ day: 99, phase: "journey" }), 6, "…and day 99 as week 6");
+  assert.strictEqual(app.ctx.journeyWeek({ day: 0, phase: "journey" }), 1,
+    "day 0 reads as week 1 — the first session is the first day of it, not the day before it");
+  assert.strictEqual(app.ctx.journeyWeek({ day: 6, phase: "journey" }), 1, "…and so does day 6");
+  assert.strictEqual(app.ctx.journeyWeek({ day: 41, phase: "journey" }), 6, "day 41 is week 6's last");
+  assert.strictEqual(app.ctx.journeyWeek({ day: 99, phase: "journey" }), 6, "…and day 99 clamps to it");
 
   // no card is in two places, across all six weeks and the lane
   const all = [1, 2, 3, 4, 5, 6].reduce((acc, w) => acc.concat(inWeek(w)), [])
@@ -197,18 +201,22 @@ const countBadge = (html) => {
    This is what makes hiding five weeks defensible. A count on every week that has work, no
    count at all on a week that does not, and red the moment a week is holding something late. */
 {
-  // Sam is on day 8 — both his week-1 touchpoints are past their day. Dee is exactly on day 14
-  // with her first week already handled, so her week-2 check-in is due today and not late.
+  // Sam is on day 8 with nothing ticked past his intro, so his day-1 text and his day-7
+  // check-in are both past their day — and they sit in different weeks, because day 0 is the
+  // first day of week 1 and the check-in seven days later opens week 2. Dee is exactly on day
+  // 14 with her first fortnight handled, so her day-14 check-in opens week 3, due and not late.
   // Nothing else is due anywhere.
   const caughtUp = (id, name, day) =>
     Object.assign(live(id, name, day), { completed: ["intro", "d1_text", "wk2"] });
   const app = boot({ members: [live("a", "Sam Live", 8), caughtUp("b", "Dee Deep", 14)] });
 
-  assert.strictEqual(tab(app, 1).count, 2, "week 1 is carrying two");
-  assert.strictEqual(tab(app, 1).late, true, "…and both are past their day, so it is red");
-  assert.strictEqual(tab(app, 2).count, 1, "week 2 is carrying one");
-  assert.strictEqual(tab(app, 2).late, false, "…due today, not late, so it is not red");
-  for (const w of [3, 4, 5, 6]) {
+  assert.strictEqual(tab(app, 1).count, 1, "week 1 is carrying the day-1 text");
+  assert.strictEqual(tab(app, 1).late, true, "…which is past its day, so it is red");
+  assert.strictEqual(tab(app, 2).count, 1, "week 2 is carrying the day-7 check-in");
+  assert.strictEqual(tab(app, 2).late, true, "…also past its day, so it is red too");
+  assert.strictEqual(tab(app, 3).count, 1, "week 3 is carrying Dee's day-14 check-in");
+  assert.strictEqual(tab(app, 3).late, false, "…due today, not late, so it is not red");
+  for (const w of [4, 5, 6]) {
     assert.strictEqual(tab(app, w).count, null,
       "week " + w + " has nothing outstanding, so it carries no count at all — not a zero");
   }
@@ -216,19 +224,19 @@ const countBadge = (html) => {
 
   // the count is the week's own work, and it is right whichever week is open
   app.ctx.setOpenWeek(5);
-  assert.strictEqual(tab(app, 1).count, 2, "week 1 still says two from a week away");
+  assert.strictEqual(tab(app, 1).count, 1, "week 1 still says one from four weeks away");
   assert.strictEqual(tab(app, 1).late, true, "…and still says it in red");
 
   // marking the work takes the count down rather than leaving a zero behind. Two in the week so
   // the board survives it — on a day with nothing left anywhere the screen is "All caught up".
   const fresh = boot({ members: [caughtUp("b", "Dee Deep", 14), live("a", "Sam Live", 8)] });
-  assert.strictEqual(tab(fresh, 2).count, 1, "sanity: one in week 2");
-  assert.strictEqual(tab(fresh, 2).late, false, "…and nothing late in it");
+  assert.strictEqual(tab(fresh, 3).count, 1, "sanity: one in week 3");
+  assert.strictEqual(tab(fresh, 3).late, false, "…and nothing late in it");
   fresh.ctx.toggleDone("b", "wk3", true);
-  assert.strictEqual(tab(fresh, 2).count, null, "done: the count goes");
+  assert.strictEqual(tab(fresh, 3).count, null, "done: the count goes");
 
   // and a tab says its state in words too, for anyone who cannot see the red
-  assert.ok(/aria-label="Week 1, 2 overdue to do"/.test(folder(app)),
+  assert.ok(/aria-label="Week 1, 1 overdue to do"/.test(folder(app)),
     "the tab spells its state out rather than leaving it to the colour");
 }
 
@@ -237,21 +245,21 @@ const countBadge = (html) => {
    screen that jumps out from under somebody the moment they finish a card is worse than one
    that waits to be told. */
 {
-  // nothing in week 1; the earliest outstanding work is week 3
+  // nothing in weeks 1–3; the earliest outstanding work is week 4
   const app = boot({ members: [live("c", "Ell Late", 22), live("e", "Gus Gone", 36)] });
-  assert.strictEqual(openWeek(app), 3, "it opens on week 3, the earliest week with anything in it");
+  assert.strictEqual(openWeek(app), 4, "it opens on week 4, the earliest week with anything in it");
 
-  // finish week 3 and, untouched, it follows the work forward
+  // finish week 4 and, untouched, it follows the work forward
   app.ctx.toggleDone("c", "wk4", true);
-  assert.strictEqual(openWeek(app), 5, "…and moves to week 5 when week 3 empties");
+  assert.strictEqual(openWeek(app), 6, "…and moves to week 6 when week 4 empties");
 
   // but a coach's own choice is pinned, including onto a week they then empty
   const pinned = boot({ members: [live("a", "Sam Live", 8), live("e", "Gus Gone", 36)] });
   assert.strictEqual(openWeek(pinned), 1, "opens on week 1");
-  pinned.ctx.setOpenWeek(5);
-  assert.strictEqual(openWeek(pinned), 5, "…moves where it is told");
+  pinned.ctx.setOpenWeek(6);
+  assert.strictEqual(openWeek(pinned), 6, "…moves where it is told");
   pinned.ctx.toggleDone("e", "wk6", true);
-  assert.strictEqual(openWeek(pinned), 5,
+  assert.strictEqual(openWeek(pinned), 6,
     "…and stays there on the week just emptied, rather than jumping to the next job");
   assert.ok(/board-empty/.test(panel(pinned)), "…which is showing its empty state");
 
@@ -270,9 +278,12 @@ const countBadge = (html) => {
 }
 
 /* ---------- 6: an empty week stands there and says so ----------
-   Week 6 is the interesting one: it has no touchpoint in JOURNEY at all — the end-of-challenge
-   review that will live there has not been written — so it says something slightly different
-   from a week that simply has nothing due today, and it says it every day. */
+   Two different quiets, and the panel tells them apart: a week with work defined and none of
+   it due today, and a week the journey has not filled in at all. Week 6 used to be the second
+   kind, back when the weeks were counted with day 0 thrown away and the day-35 check-in was
+   filed under Week 5. Counting from day 0 put it where it belongs, so all six weeks hold
+   something now and only the first quiet is reachable from the board. The second is still
+   asked of JOURNEY rather than written down, and still answers. */
 {
   const app = boot({ members: [live("c", "Katie Leicester", 1)] });
   app.ctx.setOpenWeek(3);
@@ -281,12 +292,14 @@ const countBadge = (html) => {
     "…and the panel says so rather than collapsing");
 
   app.ctx.setOpenWeek(6);
-  assert.ok(/<div class="board-empty">Nothing here yet<\/div>/.test(panel(app)),
-    "week 6 has nothing in the journey to be quiet about — it says “yet”");
-  assert.strictEqual(app.ctx.weekHasTouchpoints(6), false, "…which is what the panel asks");
-  for (const w of [1, 2, 3, 4, 5]) {
+  assert.deepStrictEqual(cardIds(panel(app)), [], "nothing due in week 6 either");
+  assert.ok(/<div class="board-empty">Nothing here today<\/div>/.test(panel(app)),
+    "…and week 6 says the same as the rest, because it holds the day-35 check-in now");
+  for (const w of [1, 2, 3, 4, 5, 6]) {
     assert.strictEqual(app.ctx.weekHasTouchpoints(w), true, "week " + w + " has work defined");
   }
+  assert.strictEqual(app.ctx.weekHasTouchpoints(7), false,
+    "…and a week the journey does not reach still reads as unfilled");
 
   // the intro lane has the same manners
   assert.strictEqual(countBadge(introLane(app)), 0, "no intro to run today");
@@ -307,12 +320,13 @@ const countBadge = (html) => {
    down its left edge. */
 {
   const app = boot({ members: [live("a", "Sam Live", 8)] });
+  app.ctx.setOpenWeek(2);          // the day-7 check-in opens week 2, so that is its tab
   const card = /<div class="action digital" id="act-a-wk2"[\s\S]*?(?=<div class="action|<\/div><\/div>|$)/
     .exec(panel(app))[0];
 
   assert.ok(/<span class="status-day">Day 8<\/span>/.test(card), "the day label is on the card");
   assert.ok(/<span class="nm">Sam Live<\/span>/.test(card), "…as is the challenger's name");
-  assert.ok(/<span class="ttl">Week 1 check-in<\/span>/.test(card), "…and the touchpoint's title");
+  assert.ok(/<span class="ttl">Week 2 check-in<\/span>/.test(card), "…and the touchpoint's title");
   assert.ok(/toggleDone\('a','wk2',true\)/.test(card), "Done is still wired to the real handler");
   assert.ok(/markMissed\('a','wk2'\)/.test(card), "…and Missed to its own");
   assert.ok(/toggleExpand\('a','wk2'\)/.test(card), "…and the card still expands");
@@ -357,6 +371,7 @@ const countBadge = (html) => {
 /* ---------- 8c: the day label lives in the status line, and only there ---------- */
 {
   const app = boot({ members: [live("a", "Sam Live", 8), preStart("p", "Ned New")] });
+  app.ctx.setOpenWeek(2);          // the day-7 check-in's week, so its card is the one on screen
   const brd = board(app);
 
   assert.ok(/<span class="card-status">\s*<span class="status-day">Day 8<\/span>/.test(brd),
@@ -418,17 +433,21 @@ const countBadge = (html) => {
 /* ---------- 10: marking a card still works, and only moves that card ---------- */
 {
   const app = boot({ members: [live("a", "Sam Live", 8), live("b", "Dee Deep", 15)] });
-  app.ctx.setOpenWeek(1);        // a coach working through week 1, as they would be
-  assert.strictEqual(tab(app, 1).count, 2, "two cards in week 1 to start with");
+  app.ctx.setOpenWeek(2);        // a coach working through week 2, where the day-7 check-in is
+  assert.strictEqual(tab(app, 2).count, 1, "Sam's check-in is the one card in week 2");
+  assert.strictEqual(tab(app, 1).count, 1, "…his day-1 text is the one in week 1");
+  assert.strictEqual(tab(app, 3).count, 1, "…and Dee's check-in the one in week 3");
 
   app.ctx.toggleDone("a", "wk2", true);
   assert.ok(!panel(app).includes("act-a-wk2"), "the card leaves the panel when done");
-  assert.strictEqual(tab(app, 1).count, 1, "…and its week's count comes down");
-  assert.ok(panel(app).includes("act-a-d1_text"), "…while the other card in the week is untouched");
-  assert.strictEqual(tab(app, 2).count, 1, "…and so are the other weeks");
+  assert.strictEqual(tab(app, 2).count, null, "…and its week stops carrying a count");
+  assert.strictEqual(tab(app, 1).count, 1, "…while the other weeks are untouched");
+  assert.strictEqual(tab(app, 3).count, 1, "…both of them");
   assert.ok((app.find("a").completed || []).includes("wk2"),
     "and it is 'wk2' that was ticked — the id is what Done writes, whatever the card is called");
 
+  app.ctx.setOpenWeek(1);
+  assert.ok(panel(app).includes("act-a-d1_text"), "his day-1 text is still there to be marked");
   app.ctx.markMissed("a", "d1_text");
   assert.deepStrictEqual(cardIds(panel(app)), [], "Missed clears its card too");
   assert.strictEqual(tab(app, 1).count, null, "…and the week stops carrying a count");

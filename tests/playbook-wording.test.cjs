@@ -20,11 +20,14 @@ const { boot, daysFromToday, settle } = require("./lib/env.cjs");
 
 const HTML = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 
-// a live challenger, n days into their journey (intro already done)
+// A live challenger, n days into their journey, with the intro and the morning-after text
+// already done — so on day 7 the day-7 check-in is the only thing outstanding and the week
+// folder opens on the week that holds it. Which is week 2: day 0 is the first day of week 1,
+// so the check-in seven days later opens the second week rather than closing the first.
 const live = (id, name, day) => ({
   id, name, coach: "Grace",
   day0: daysFromToday(-day), booked: daysFromToday(-day), firstSessionDone: true,
-  completed: ["intro"], doneMeta: {}, checks: {}, missed: [],
+  completed: ["intro", "d1_text"], doneMeta: {}, checks: {}, missed: [],
   outcome: null, signedUp: false, extraDays: 0, pausedDays: 0, pausedAt: null,
 });
 // somebody whose intro is still to run — the challenger whose card carries the checklist
@@ -54,9 +57,9 @@ function tableHtml(app) {
 // from another realm is not deepStrictEqual to one from this one.
 const ov = (app) => JSON.parse(JSON.stringify(app.ctx.__t.pbOverrides));
 
-// The day-7 check-in, which is 'wk2' underneath and titled "Week 1 check-in" on the page: the
+// The day-7 check-in, which is 'wk2' underneath and titled "Week 2 check-in" on the page: the
 // id is what an override is keyed by, and the title is what an override replaces.
-const DEFAULT_WK2 = "Week 1 check-in";
+const DEFAULT_WK2 = "Week 2 check-in";
 const DEFAULT_WHY_WK2 = "Name the win before they start doubting it.";
 
 /* ---------- 1: with no overrides, the app is exactly the app ----------
@@ -113,7 +116,7 @@ const DEFAULT_WHY_WK2 = "Name the win before they start doubting it.";
   assert.ok(!tbl.includes(DEFAULT_WK2), "…and not the old one");
 
   // one touchpoint edited is one touchpoint edited — the rest of the deck is untouched
-  assert.ok(pb.includes("Week 2 check-in"), "the next check-in still says what the code says");
+  assert.ok(pb.includes("Week 3 check-in"), "the next check-in still says what the code says");
 }
 
 /* ---------- 3: the practical text as well as the headline ----------
@@ -135,8 +138,8 @@ const DEFAULT_WHY_WK2 = "Name the win before they start doubting it.";
   const today = app.html("todayList");
   assert.ok(today.includes("Set them up on GoTeamUp for the 6 Week Challenge"),
     "the checklist on Ned's intro card says the same new words");
-  // Sara's day-14 check-in is week 2's, and the folder shows one week at a time
-  app.ctx.setOpenWeek(2);
+  // Sara's day-14 check-in opens week 3, and the folder shows one week at a time
+  app.ctx.setOpenWeek(3);
   assert.ok(app.html("todayList").includes("You are settling in."),
     "and Sara's card carries the new seed line");
 

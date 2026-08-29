@@ -1683,12 +1683,24 @@ const STORE = 'bsj_v1';
 const MS_DAY = 86400000;
 
 /* ---- The journey: every touchpoint hangs off a DAY NUMBER ----
-   The ids are permanent and the titles are not. A check-in is named for the WEEK IT CLOSES —
-   the one on day 7 is the Week 1 check-in, the one on day 14 is Week 2 — which is how Today's
-   moves groups them and how a coach talks about them. The id underneath is whatever it has
-   always been ('wk2' is the Week 1 check-in), because every challenger's completed and missed
-   lists, every doneMeta stamp and every wording override is keyed by it. Renaming a touchpoint
-   must never mean losing a tick somebody made. */
+   The ids are permanent and the titles are not. A check-in is named for the WEEK IT OPENS,
+   and DAY 0 IS THE FIRST DAY OF WEEK 1 — the first session is a day they trained, not a spare
+   day sitting in front of the clock. So week 1 is days 0–6, week 2 is days 7–13, and the
+   check-in on day 7 opens week 2. That is how Today's moves groups them and how a coach talks
+   about them.
+
+   They were briefly named for the week they CLOSED instead, which reads as reasonable and was
+   off by one: it takes week 1 to be days 1–7, which quietly drops the first session out of the
+   week it belongs to. Every check-in sits exactly on a multiple of 7, so that one discarded day
+   tipped every one of them into the week before the one they land in, and the board's tabs went
+   with them — a card reading "Week 5 check-in" was the day-35 one, which opens week 6. Nothing
+   about WHEN a card appeared was ever wrong, and none of it changed when this was put back; the
+   name and the tab were a week behind the client, and only those.
+
+   The id underneath is whatever it has always been, and it now reads straight: 'wk2' is the
+   Week 2 check-in. The ids matter more than the names, because every challenger's completed and
+   missed lists, every doneMeta stamp and every wording override is keyed by them. Renaming a
+   touchpoint must never mean losing a tick somebody made. */
 const JOURNEY = [
   {day:-1, id:'intro', ch:'inperson', title:'Intro / Welcome experience', owner:'coach', phase:'intro',
    what:'Straight after the intro session, get them set up on the systems while it’s fresh — and put their welcome pack together.',
@@ -1721,16 +1733,16 @@ const JOURNEY = [
    walkthrough:'https://www.loom.com/share/084d5cdcb55e47198783d4d84803741c?sid=a5a966e2-f4c8-4666-9b38-4b54ffd3e61c'},
   {day:1,  id:'d1_text', ch:'digital',  title:'Morning-after-first-session text', owner:'coach', phase:'journey',
    what:'The morning after their <b>first session</b>. Not generic — prove we noticed them. Mention something specific from the session, something they told us, or something they did well. The hardest session is the first one — make them feel seen after it.'},
-  {day:7,  id:'wk2', ch:'digital', title:'Week 1 check-in', owner:'coach', phase:'journey', win:true,
+  {day:7,  id:'wk2', ch:'digital', title:'Week 2 check-in', owner:'coach', phase:'journey', win:true,
    what:'Voice note (or text if better). Warm personal check-in, reference their effort/attendance, give a <b>named win</b>, set a focus for the week, and remind them they can ask for help before they struggle.'},
-  {day:14, id:'wk3', ch:'digital', title:'Week 2 check-in', owner:'coach', phase:'journey', win:true,
+  {day:14, id:'wk3', ch:'digital', title:'Week 3 check-in', owner:'coach', phase:'journey', win:true,
    what:'The midpoint. Gently frame the challenge as the start of a longer routine — don’t hard-sell membership. Still give a <b>named win</b>. End the voice note with the seed line below.',
    seed:'You’re starting to settle in now. This is the bit we want — not just a 6-week push, but getting you into a routine you can actually keep. Over the next couple of weeks we’ll help you figure out what that looks like after the challenge.'},
-  {day:21, id:'wk4', ch:'digital', title:'Week 3 check-in', owner:'coach', phase:'journey', win:true,
+  {day:21, id:'wk4', ch:'digital', title:'Week 4 check-in', owner:'coach', phase:'journey', win:true,
    what:'Voice note check-in. Warm, reference their effort, give a <b>named win</b>, set a focus, remind them help is there before they struggle.'},
-  {day:28, id:'wk5', ch:'digital', title:'Week 4 check-in', owner:'coach', phase:'journey', win:true,
+  {day:28, id:'wk5', ch:'digital', title:'Week 5 check-in', owner:'coach', phase:'journey', win:true,
    what:'Voice note check-in. Warm, reference their effort, give a <b>named win</b>, set a focus for the week.'},
-  {day:35, id:'wk6', ch:'digital', title:'Week 5 check-in', owner:'coach', phase:'journey', win:true,
+  {day:35, id:'wk6', ch:'digital', title:'Week 6 check-in', owner:'coach', phase:'journey', win:true,
    what:'The last check-in of the six weeks. Celebrate how far they’ve come, give a <b>named win</b>, and set up the where-next chat from a place of genuine care.'},
   /* NOTHING IS POSTED TO A HOUSE ANY MORE. There was a handwritten postcard at day 7
      ('d3_postcard') — the one physical touchpoint in the onboarding journey. We no longer post
@@ -1825,9 +1837,10 @@ function welcomeMsgPlainText(m){
 
 /* Table column order — mirrors the Google sheet left-to-right */
 const TABLE_COLS = ['intro','d1_text','wk2','wk3','wk4','wk5','wk6'];
-/* Short heads for the whole-journey table, by id — and they follow the titles, not the ids:
-   'wk2' is the Week 1 check-in, so its column says Wk1. */
-const COL_LABEL = {intro:'Intro',d1_text:'Text',wk2:'Wk1',wk3:'Wk2',wk4:'Wk3',wk5:'Wk4',wk6:'Wk5'};
+/* Short heads for the whole-journey table, by id. They follow the titles — and now that a
+   check-in is named for the week it opens, the titles and the ids agree: 'wk2' is the Week 2
+   check-in, so its column says Wk2. */
+const COL_LABEL = {intro:'Intro',d1_text:'Text',wk2:'Wk2',wk3:'Wk3',wk4:'Wk4',wk5:'Wk5',wk6:'Wk6'};
 
 /* ---------------- state + persistence (Supabase-backed) ---------------- */
 let members = [];          // in-memory working copy; all journey logic uses this
@@ -2665,8 +2678,14 @@ function checklistGroupAt(item, i){
 }
 
 /* ---- Which week of the six a touchpoint belongs to ----
-   Read off the day it FIRES, not off any challenger: week 1 is days 1–7, week 2 is days 8–14,
-   and so on to week 6 at days 36–42. Derived rather than declared, so a touchpoint carries a
+   Read off the day it FIRES, not off any challenger: DAY 0 IS THE FIRST DAY OF WEEK 1, so week
+   1 is days 0–6, week 2 is days 7–13, and so on to week 6 at days 35–41. The first session is a
+   day they trained and it counts — a week is seven days beginning with it.
+
+   This was ceil(day/7) once, which is the same sum with day 0 thrown away, making week 1 days
+   1–7. Every check-in falls exactly on a multiple of 7, so that one discarded day filed every
+   one of them under the week BEFORE the one it lands in: the day-35 check-in, which opens week
+   6, sat under Week 5. Derived rather than declared, so a touchpoint carries a
    day and nothing else and the board still knows where to put it — and so the columns can
    never drift out of step with the days, because there is only one set of numbers.
 
@@ -2675,13 +2694,14 @@ function checklistGroupAt(item, i){
    person's copy of it. A card whose owner has extra days still appears in the week its
    touchpoint belongs to; which day it is due, and whether it is overdue, is untouched.
 
-   Clamped at both ends so nothing can fall off the board: a touchpoint on day 0 reads as week
-   1 and one past day 42 as week 6, rather than matching no column and quietly vanishing. */
+   Clamped at both ends so nothing can fall off the board: a touchpoint on a negative day reads
+   as week 1 and one on day 42 or later as week 6, rather than matching no column and quietly
+   vanishing. */
 const BOARD_WEEKS = [1,2,3,4,5,6];
 function journeyWeek(it){
   if(!it || it.phase==='intro') return 0;             // the intro is before day zero
   const d = Number(it.day);
-  return Math.min(6, Math.max(1, Math.ceil((isFinite(d) ? d : 1)/7)));
+  return Math.min(6, Math.max(1, Math.floor((isFinite(d) ? d : 1)/7) + 1));
 }
 /* ---- Which week the folder has open ----
    In memory, for this tab, for as long as it is open — exactly like the Today's moves / Whole
@@ -2706,10 +2726,12 @@ function defaultOpenWeek(byWeek){
 }
 
 /* Has this week got any touchpoint at all, or is it a week the journey has not filled in yet?
-   Week 6 is the second kind today — the end-of-challenge review that will live there does not
-   exist yet — and that is the difference between an empty column saying "nothing here today"
-   and one saying "nothing here yet". Asked of JOURNEY rather than written down, so the day a
-   touchpoint is added to week 6 the column starts speaking like every other. */
+   That is the difference between an empty column saying "nothing here today" and one saying
+   "nothing here yet". All six hold something now — the morning-after text in week 1 and a
+   check-in in each of the other five — so the second answer is one nothing currently gives.
+   Week 6 used to be the empty one, and stopped being it the moment the weeks were counted from
+   day 0 and the day-35 check-in landed where it belongs. Kept, and still asked of JOURNEY
+   rather than written down: drop a touchpoint and the column speaks for itself again. */
 function weekHasTouchpoints(w){ return JOURNEY.some(it=>journeyWeek(it)===w); }
 function isDone(m,key){ return (m.completed||[]).includes(key); }
 function isMissed(m,key){ return (m.missed||[]).includes(key); }

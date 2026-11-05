@@ -13,7 +13,10 @@
  *   '6wc lapsed'        a week after finishing, with no membership: Trainerize is deactivated
  *                       and the tag puts them on the lapsed list.
  *
- * Skipped: not started, paused, left, or (for emails) joined. Joining is the GHL tag 'member'
+ * The first email goes the morning after a coach presses Done on their Intro. The rest run from
+ * the start date.
+ *
+ * Skipped: Intro not done, paused, left, or (for emails) joined. Joining is the GHL tag 'member'
  * or outcome 'stayed' on the tracker.
  *
  * SAFE BY DEFAULT. Nothing is written unless CHALLENGE_LIVE=1 and the request is not a dry run.
@@ -38,22 +41,27 @@ function today0(now = new Date()) {
   const d = new Date(now.toLocaleString('en-GB', { timeZone: 'Europe/London', hour12: false }).replace(/(\d+)\/(\d+)\/(\d+),.*/, '$3-$2-$1') + 'T00:00:00Z');
   return d.getTime();
 }
-/* Stored dates are local midnights, so round to the nearest day when comparing with UTC. */
+/* Stored dates are local midnights, so round to the nearest day when comparing with UTC.
+   The clock runs from day0 once it's started, or from the booked first session until then.
+   Null means no date yet; a date still to come gives a negative day. */
 function currentDay(m, t0) {
-  if (!m.firstSessionDone || !m.day0) return null;
-  let e = Math.round((t0 - m.day0) / MS_DAY);
+  const start = m.day0 || m.booked;
+  if (!start) return null;
+  let e = Math.round((t0 - start) / MS_DAY);
   e -= m.pausedDays || 0;
   if (m.pausedAt) e -= Math.round((t0 - m.pausedAt) / MS_DAY);
-  return Math.max(0, e);
+  return e;
 }
+const introDone = (m) => (m.completed || []).includes('intro') || !!m.firstSessionDone;
 const totalDays = (m) => 42 + (m.extraDays || 0);
 
 /* What this person is due today. Pure, so it can be tested without the outside world. */
 function plan(m, tags, t0, fromMs) {
   if (!norm(m.email) || m.outcome === 'left' || m.pausedAt) return { skip: 'not eligible' };
+  if (!introDone(m)) return { skip: 'intro not done' };
   const day = currentDay(m, t0);
-  if (day === null) return { skip: 'not started' };
-  if (fromMs && m.day0 < fromMs - MS_DAY / 2) return { skip: 'started before launch' };
+  const start = m.day0 || m.booked;
+  if (fromMs && start && start < fromMs - MS_DAY / 2) return { skip: 'started before launch' };
   const has = (t) => tags.includes(t);
   const joined = has('member') || m.outcome === 'stayed';
   const add = [];
@@ -63,14 +71,15 @@ function plan(m, tags, t0, fromMs) {
   if (!joined) {
     const sent = tags.map((t) => /^6wc day (\d+)$/.exec(t)).filter(Boolean).map((x) => Number(x[1]));
     const last = sent.length ? Math.max(...sent) : -1;
-    const due = EMAIL_DAYS.find((d) => d > last && day >= d);          // the next unsent, one a day
+    const due = EMAIL_DAYS.find((d) => d > last && (d === 0 || (day !== null && day >= d)));   // Day 0 goes on the Intro being done; the next unsent, one a day
     if (due !== undefined) {
       add.push('6wc day ' + due);
       sent.forEach((d) => remove.push('6wc day ' + d));
     }
   }
-  if (day >= totalDays(m) && !has('6wc finished')) add.push('6wc finished');
-  if (!joined && day >= totalDays(m) + LAPSE_AFTER && !has('6wc lapsed')) { add.push('6wc lapsed'); lapse = true; }
+  const running = !!m.firstSessionDone && !!m.day0;
+  if (running && day >= totalDays(m) && !has('6wc finished')) add.push('6wc finished');
+  if (running && !joined && day >= totalDays(m) + LAPSE_AFTER && !has('6wc lapsed')) { add.push('6wc lapsed'); lapse = true; }
   return { day, add, remove, lapse };
 }
 

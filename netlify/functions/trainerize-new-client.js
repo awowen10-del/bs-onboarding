@@ -109,10 +109,10 @@ async function findClientByEmail(email) {
 
 async function findTrainerID() {
   if (process.env.TRAINERIZE_TRAINER_ID) return Number(process.env.TRAINERIZE_TRAINER_ID);
-  const r = await tz('/trainer/getList', { start: 0, count: 100 });
-  const t = (r.trainers || []).find(t => `${t.firstName} ${t.lastName}`.trim() === COACH_NAME);
+  const r = await tz('/user/getTrainerList', { view: 'all', start: 0, count: 100 });
+  const t = (r.users || []).find(t => `${t.firstName} ${t.lastName}`.trim() === COACH_NAME);
   if (!t) throw new Error(`Coach "${COACH_NAME}" not found in Trainerize`);
-  return t.userID || t.id;
+  return t.id;
 }
 
 async function findUserGroupID() {

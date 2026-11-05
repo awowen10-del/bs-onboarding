@@ -1,12 +1,11 @@
 /**
  * challenge-tick.js — Netlify serverless function, run once a morning by challenge-tick-daily.js
  *
- * The tracker owns the clock. Each challenger's day number comes from the roster, using the same
- * sum as currentDay() in index.html, so a moved date, an Undo or a pause all move the emails too.
- * This function only tells GHL what is due, by adding a tag. Each tag starts its own email
- * workflow in GHL, so the wording stays in GHL where Ash can see it.
+ * The tracker starts the clock. This function tells GHL when, by adding a tag. The emails are
+ * one GHL workflow with timers, so the wording and timing stay in GHL where Ash can see them.
  *
- *   '6wc day N'         the email for day N is due. The tag is also the record that it went.
+ *   '6wc started'       their first session is marked done, so the email workflow starts.
+ *   'member'            outcome 'stayed' on the tracker. GHL takes them out of the emails.
  *   '6wc finished'      their six weeks are up. A member's membership emails wait for this.
  *   '6wc lapsed'        a week after finishing, with no membership: Trainerize is deactivated
  *                       and the tag puts them on the lapsed list.
@@ -23,7 +22,6 @@
  */
 
 const MS_DAY = 86400000;
-const EMAIL_DAYS = [0, 2, 7, 14, 21, 28, 35, 37, 39, 41];
 const LAPSE_AFTER = 7;
 const GHL = 'https://services.leadconnectorhq.com';
 const LOCATION = process.env.GHL_LOCATION_ID || 'I88mpb966qBRVCCDbEx5';
@@ -56,10 +54,8 @@ function plan(m, tags, t0, fromMs) {
   const joined = has('member') || m.outcome === 'stayed';
   const add = [];
   let lapse = false;
-  if (!joined) {
-    const due = EMAIL_DAYS.find((d) => day >= d && !has('6wc day ' + d));   // earliest unsent, one a day
-    if (due !== undefined) add.push('6wc day ' + due);
-  }
+  if (!joined && !has('6wc started')) add.push('6wc started');
+  if (m.outcome === 'stayed' && !has('member')) add.push('member');
   if (day >= totalDays(m) && !has('6wc finished')) add.push('6wc finished');
   if (!joined && day >= totalDays(m) + LAPSE_AFTER && !has('6wc lapsed')) { add.push('6wc lapsed'); lapse = true; }
   return { day, add, lapse };

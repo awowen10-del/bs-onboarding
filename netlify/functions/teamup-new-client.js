@@ -22,7 +22,7 @@
  */
 
 const API = 'https://goteamup.com/api/v2';
-const TOKEN = process.env.TEAMUP_TOKEN;
+const TOKEN = (process.env.TEAMUP_TOKEN || '').trim();
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 
 exports.handler = async (event) => {
@@ -87,19 +87,26 @@ async function findCustomerByEmail(email) {
   return (r.results || []).find(c => String(c.email || '').trim().toLowerCase() === email) || null;
 }
 
+/* TeamUp's M2M guide says "Token <token>" and its API reference says "Bearer <token>", so a
+   refusal on one gets a single try with the other. */
 async function tu(path, opts = {}) {
-  const res = await fetch(API + path, {
+  let res = await call(path, opts, 'Bearer');
+  if (res.status === 401) res = await call(path, opts, 'Token');
+  const text = await res.text();
+  if (!res.ok) throw new Error(`${opts.method || 'GET'} ${path.split('?')[0]} ${res.status}: ${text.slice(0, 300)} (token length ${TOKEN.length})`);
+  return text ? JSON.parse(text) : {};
+}
+
+function call(path, opts, prefix) {
+  return fetch(API + path, {
     method: opts.method || 'GET',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + TOKEN,
+      Authorization: prefix + ' ' + TOKEN,
       'TeamUp-Request-Mode': 'provider',
     },
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`${opts.method || 'GET'} ${path.split('?')[0]} ${res.status}: ${text.slice(0, 300)}`);
-  return text ? JSON.parse(text) : {};
 }
 
 function resp(status, body) {

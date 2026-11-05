@@ -11,7 +11,7 @@
  *
  * ENVIRONMENT VARIABLES (Netlify → Site settings → Environment variables):
  *   TRAINERIZE_GROUP_ID    the Group ID Trainerize sends with the API token
- *   TRAINERIZE_API_TOKEN   the API token
+ *   TRAINERIZE_API_ACCESS  the API token (TRAINERIZE_API_TOKEN also works)
  *   WEBHOOK_SECRET         the same secret new-challenger.js uses
  *   TRAINERIZE_TRAINER_ID  optional: skip the lookup of "Bodysculpt Support" by name
  *   TRAINERIZE_USERGROUP_ID optional: skip the lookup of "Important Announcements" by name
@@ -22,7 +22,7 @@
 
 const API = 'https://api.trainerize.com/v03';
 const TZ_GROUP_ID = process.env.TRAINERIZE_GROUP_ID;
-const TZ_TOKEN = process.env.TRAINERIZE_API_TOKEN;
+const TZ_TOKEN = process.env.TRAINERIZE_API_TOKEN || process.env.TRAINERIZE_API_ACCESS;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const COACH_NAME = 'Bodysculpt Support';
 const USERGROUP_NAME = 'Important Announcements';

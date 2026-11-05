@@ -19,13 +19,14 @@
  * part way through don't get a run of old emails.
  *
  * ENVIRONMENT VARIABLES: SUPABASE_URL, SUPABASE_SERVICE_KEY, WEBHOOK_SECRET, GHL_TOKEN,
- * GHL_LOCATION_ID, TRAINERIZE_GROUP_ID, TRAINERIZE_API_ACCESS, CHALLENGE_LIVE, CHALLENGE_FROM
+ * TRAINERIZE_GROUP_ID, TRAINERIZE_API_ACCESS, CHALLENGE_LIVE, CHALLENGE_FROM
  */
 
 const MS_DAY = 86400000;
 const EMAIL_DAYS = [0, 2, 7, 14, 21, 28, 35, 37, 39, 41];
 const LAPSE_AFTER = 7;
 const GHL = 'https://services.leadconnectorhq.com';
+const LOCATION = process.env.GHL_LOCATION_ID || 'I88mpb966qBRVCCDbEx5';
 const TZ_API = 'https://api.trainerize.com/v03';
 
 const norm = (s) => String(s == null ? '' : s).trim().toLowerCase();
@@ -75,7 +76,7 @@ const ghlHeaders = () => ({
   Version: '2021-07-28', 'Content-Type': 'application/json', Accept: 'application/json',
 });
 async function findContact(email) {
-  const q = `${GHL}/contacts/?locationId=${encodeURIComponent(process.env.GHL_LOCATION_ID)}&query=${encodeURIComponent(email)}&limit=20`;
+  const q = `${GHL}/contacts/?locationId=${encodeURIComponent(LOCATION)}&query=${encodeURIComponent(email)}&limit=20`;
   const r = await json(q, { headers: ghlHeaders() });
   return (r.contacts || []).find((c) => norm(c.email) === norm(email)) || null;
 }

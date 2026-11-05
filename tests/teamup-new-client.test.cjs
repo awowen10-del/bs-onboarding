@@ -44,7 +44,7 @@ const ev = (body, secret = "s3cret") => ({
   assert.equal(res.statusCode, 200);
   assert.equal(calls.length, 2);
   assert.ok(calls[0].url.includes("query=sarah%40example.com"));
-  assert.equal(calls[0].headers.Authorization, "Token tok");
+  assert.equal(calls[0].headers.Authorization, "Bearer tok");
   assert.deepEqual(calls[1].body, { first_name: "Sarah", last_name: "Doyle", email: "sarah@example.com" });
   assert.ok(calls[1].url.endsWith("/customers"));
 

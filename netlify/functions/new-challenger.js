@@ -12,6 +12,11 @@
  *   SUPABASE_SERVICE_KEY  the Supabase SECRET key (server-only, never in the browser)
  *   WEBHOOK_SECRET        a long random string you also put in the Ontraport webhook URL
  *
+ * A payer from GHL arrives with an email, so this also sets them up in Trainerize and TeamUp,
+ * using the same event. Ontraport's webhook sends a name only, and those two refuse it. If
+ * either app fails it is logged and the tracker result still stands: nobody loses their place
+ * on the tracker because an app was down, and a repeat webhook is safe in all three.
+ *
  * Ontraport posts to:
  *   https://<your-site>.netlify.app/.netlify/functions/new-challenger?secret=WEBHOOK_SECRET
  */
@@ -21,7 +26,22 @@ const SERVICE_KEY  = process.env.SUPABASE_SERVICE_KEY;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const ROW_KEY = 'roster';
 
+const trainerize = require('./trainerize-new-client');
+const teamup = require('./teamup-new-client');
+
 exports.handler = async (event) => {
+  const res = await addToTracker(event);
+  if (res.statusCode === 200) {
+    const apps = await Promise.allSettled([trainerize.handler(event), teamup.handler(event)]);
+    ['trainerize', 'teamup'].forEach((app, i) => {
+      const r = apps[i];
+      console.log(`APP ${app}: ` + (r.status === 'fulfilled' ? `${r.value.statusCode} ${r.value.body}` : String(r.reason)));
+    });
+  }
+  return res;
+};
+
+async function addToTracker(event) {
   // 1. Only accept POST
   if (event.httpMethod !== 'POST') {
     return resp(405, { error: 'Method not allowed' });
@@ -152,7 +172,7 @@ exports.handler = async (event) => {
     console.log('ERROR during read/write: ' + String(e.message || e));
     return resp(500, { error: String(e.message || e) });
   }
-};
+}
 
 function authHeaders() {
   return { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };

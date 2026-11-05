@@ -2,3 +2,7 @@
 [build]
   publish = "."
   functions = "netlify/functions"
+
+# 6 Week Challenge emails: every morning at 08:00 UTC (08:00 or 09:00 in Warrington)
+[functions."challenge-tick-daily"]
+  schedule = "0 8 * * *"

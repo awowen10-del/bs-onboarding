@@ -147,6 +147,12 @@ exports.handler = async (event) => {
   }
   const dryRun = (event.queryStringParameters || {}).dry_run !== '0';
   try {
+    // ?check=<email>: confirm the GHL token works and show that contact's 6WC tags. Reads only.
+    const check = (event.queryStringParameters || {}).check;
+    if (check) {
+      const c = await findContact(check);
+      return { statusCode: 200, body: JSON.stringify({ found: !!c, tags: c ? (c.tags || []).filter((t) => /6wc|member/i.test(t)) : [] }) };
+    }
     return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(await run({ dryRun })) };
   } catch (e) {
     console.log('ERROR ' + e.message);

@@ -1,11 +1,14 @@
 /**
  * challenge-tick.js — Netlify serverless function, run once a morning by challenge-tick-daily.js
  *
- * The tracker starts the clock. This function tells GHL when, by adding a tag. The emails are
- * one GHL workflow with timers, so the wording and timing stay in GHL where Ash can see them.
+ * The tracker owns the clock. Each challenger's day number comes from the roster, using the same
+ * sum as currentDay() in index.html, so a moved date, an Undo or a pause all move the emails too.
+ * This function only tells GHL what is due, by adding a tag. Each tag starts its own email
+ * workflow in GHL, so the wording stays in GHL where Ash can see it.
  *
- *   '6wc started'       their first session is marked done, so the email workflow starts.
- *   'member'            outcome 'stayed' on the tracker. GHL takes them out of the emails.
+ *   '6wc day N'         the email for day N is due. Only the latest stays on the contact: the
+ *                       one before comes off, and the one left is the record of how far they got.
+ *   'member'            outcome 'stayed' on the tracker. No more challenge emails.
  *   '6wc finished'      their six weeks are up. A member's membership emails wait for this.
  *   '6wc lapsed'        a week after finishing, with no membership: Trainerize is deactivated
  *                       and the tag puts them on the lapsed list.
@@ -22,6 +25,7 @@
  */
 
 const MS_DAY = 86400000;
+const EMAIL_DAYS = [0, 2, 7, 14, 21, 28, 35, 37, 39, 41];
 const LAPSE_AFTER = 7;
 const GHL = 'https://services.leadconnectorhq.com';
 const LOCATION = process.env.GHL_LOCATION_ID || 'I88mpb966qBRVCCDbEx5';
@@ -54,11 +58,20 @@ function plan(m, tags, t0, fromMs) {
   const joined = has('member') || m.outcome === 'stayed';
   const add = [];
   let lapse = false;
-  if (!joined && !has('6wc started')) add.push('6wc started');
+  const remove = [];
   if (m.outcome === 'stayed' && !has('member')) add.push('member');
+  if (!joined) {
+    const sent = tags.map((t) => /^6wc day (\d+)$/.exec(t)).filter(Boolean).map((x) => Number(x[1]));
+    const last = sent.length ? Math.max(...sent) : -1;
+    const due = EMAIL_DAYS.find((d) => d > last && day >= d);          // the next unsent, one a day
+    if (due !== undefined) {
+      add.push('6wc day ' + due);
+      sent.forEach((d) => remove.push('6wc day ' + d));
+    }
+  }
   if (day >= totalDays(m) && !has('6wc finished')) add.push('6wc finished');
   if (!joined && day >= totalDays(m) + LAPSE_AFTER && !has('6wc lapsed')) { add.push('6wc lapsed'); lapse = true; }
-  return { day, add, lapse };
+  return { day, add, remove, lapse };
 }
 
 async function json(url, opts) {
@@ -78,6 +91,9 @@ async function findContact(email) {
 }
 async function addTags(id, tags) {
   return json(`${GHL}/contacts/${id}/tags`, { method: 'POST', headers: ghlHeaders(), body: JSON.stringify({ tags }) });
+}
+async function removeTags(id, tags) {
+  return json(`${GHL}/contacts/${id}/tags`, { method: 'DELETE', headers: ghlHeaders(), body: JSON.stringify({ tags }) });
 }
 async function deactivateTrainerize(email) {
   const token = process.env.TRAINERIZE_API_TOKEN || process.env.TRAINERIZE_API_ACCESS;
@@ -113,6 +129,7 @@ async function run({ dryRun }) {
       if (live) {
         if (p.lapse) await deactivateTrainerize(m.email);
         await addTags(c.id, p.add);
+        if (p.remove.length) await removeTags(c.id, p.remove);
       }
       report.actions.push({ name: m.name, day: p.day, add: p.add });
     } catch (e) {

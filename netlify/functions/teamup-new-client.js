@@ -92,7 +92,7 @@ async function tu(path, opts = {}) {
     method: opts.method || 'GET',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + TOKEN,
+      Authorization: 'Token ' + TOKEN,   // TeamUp's M2M guide says Token; its API reference says Bearer
       'TeamUp-Request-Mode': 'provider',
     },
     body: opts.body ? JSON.stringify(opts.body) : undefined,

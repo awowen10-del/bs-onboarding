@@ -44,7 +44,10 @@ exports.handler = async (event) => {
   // 3. Make sure Trainerize is configured (the token comes from Trainerize support)
   if (!TZ_GROUP_ID || !TZ_TOKEN) {
     console.log('REJECT: TRAINERIZE_GROUP_ID / TRAINERIZE_API_TOKEN not set yet');
-    return resp(503, { error: 'Trainerize API not configured yet' });
+    return resp(503, {
+      error: 'Trainerize API not configured yet',
+      missing: [!TZ_GROUP_ID && 'TRAINERIZE_GROUP_ID', !TZ_TOKEN && 'TRAINERIZE_API_TOKEN'].filter(Boolean),
+    });
   }
 
   // 4. Parse the payload. GHL's webhook sends JSON with first_name / last_name / email.

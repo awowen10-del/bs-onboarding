@@ -12,6 +12,14 @@
  *   '6wc finished'      their six weeks are up. A member's membership emails wait for this.
  *   '6wc lapsed'        a week after finishing, with no membership: Trainerize is deactivated
  *                       and the tag puts them on the lapsed list.
+ *   '6wc guide ...'     that guide is in their Trainerize attachments, so it's never added twice.
+ *
+ *   '6wc guide failed'  a guide couldn't be added. The tag starts a text to Ash in GHL.
+ *
+ * The guides go on as soon as a coach presses Done on the Intro (guides-now-background.js). The
+ * morning run catches anyone that missed, and adds them before the email, as the email tells
+ * people they're there. If one fails, that person gets no email and the next morning carries on
+ * from the guide it stopped at.
  *
  * The first email goes the morning after a coach presses Done on their Intro. The rest run from
  * the start date.
@@ -33,6 +41,12 @@ const LAPSE_AFTER = 7;
 const GHL = 'https://services.leadconnectorhq.com';
 const LOCATION = process.env.GHL_LOCATION_ID || 'I88mpb966qBRVCCDbEx5';
 const TZ_API = 'https://api.trainerize.com/v03';
+const GUIDE_FAILED = '6wc guide failed';
+const GUIDES = [
+  { tag: '6wc guide welcome', name: 'Bodysculpt Welcome Guide.pdf', path: 'guides/Bodysculpt-Welcome-Guide.pdf' },
+  { tag: '6wc guide nutracheck', name: 'Bodysculpt Nutracheck Guide.pdf', path: 'guides/Bodysculpt-Nutracheck-Guide.pdf' },
+  { tag: '6wc guide myfitnesspal', name: 'Bodysculpt MyFitnessPal Guide.pdf', path: 'guides/Bodysculpt-MyFitnessPal-Guide.pdf' },
+];
 
 const norm = (s) => String(s == null ? '' : s).trim().toLowerCase();
 
@@ -80,7 +94,7 @@ function plan(m, tags, t0, fromMs) {
   const running = !!m.firstSessionDone && !!m.day0;
   if (running && day >= totalDays(m) && !has('6wc finished')) add.push('6wc finished');
   if (running && !joined && day >= totalDays(m) + LAPSE_AFTER && !has('6wc lapsed')) { add.push('6wc lapsed'); lapse = true; }
-  return { day, add, remove, lapse };
+  return { day, add, remove, lapse, guides: GUIDES.filter((g) => !has(g.tag)) };
 }
 
 async function json(url, opts) {
@@ -104,15 +118,70 @@ async function addTags(id, tags) {
 async function removeTags(id, tags) {
   return json(`${GHL}/contacts/${id}/tags`, { method: 'DELETE', headers: ghlHeaders(), body: JSON.stringify({ tags }) });
 }
-async function deactivateTrainerize(email) {
+function tzAuth() {
   const token = process.env.TRAINERIZE_API_TOKEN || process.env.TRAINERIZE_API_ACCESS;
-  const auth = 'Basic ' + Buffer.from(`${process.env.TRAINERIZE_GROUP_ID}:${token}`).toString('base64');
-  const headers = { 'Content-Type': 'application/json', Authorization: auth };
-  const r = await json(TZ_API + '/user/find', { method: 'POST', headers, body: JSON.stringify({ searchTerm: email, view: 'allClient', start: 0, count: 10 }) });
-  const u = (r.users || []).find((x) => norm(x.email) === norm(email));
+  return 'Basic ' + Buffer.from(`${process.env.TRAINERIZE_GROUP_ID}:${token}`).toString('base64');
+}
+const tzHeaders = () => ({ 'Content-Type': 'application/json', Authorization: tzAuth() });
+async function findTrainerize(email) {
+  const r = await json(TZ_API + '/user/find', { method: 'POST', headers: tzHeaders(), body: JSON.stringify({ searchTerm: email, view: 'allClient', start: 0, count: 10 }) });
+  return (r.users || []).find((x) => norm(x.email) === norm(email)) || null;
+}
+async function deactivateTrainerize(email) {
+  const u = await findTrainerize(email);
   if (!u) return 'not on Trainerize';
-  await json(TZ_API + '/user/setStatus', { method: 'POST', headers, body: JSON.stringify({ userID: u.id, accountStatus: 'deactivated' }) });
+  await json(TZ_API + '/user/setStatus', { method: 'POST', headers: tzHeaders(), body: JSON.stringify({ userID: u.id, accountStatus: 'deactivated' }) });
   return 'deactivated';
+}
+/* Adds one guide to a client's Trainerize attachments. The PDFs are served by this site. */
+async function uploadGuide(userID, guide) {
+  const pdf = await fetch(`${process.env.URL}/${guide.path}`);
+  if (!pdf.ok) throw new Error(`${guide.path} ${pdf.status}`);
+  const form = new FormData();
+  form.append('data', JSON.stringify({ fileName: guide.name, attachType: 'userAttachment', attachTo: userID }));
+  form.append('file', new Blob([await pdf.arrayBuffer()], { type: 'application/pdf' }), guide.name);
+  const r = await json(TZ_API + '/file/upload', { method: 'POST', headers: { Authorization: tzAuth() }, body: form });
+  if (!r.id) throw new Error(`${guide.name} not added: ${JSON.stringify(r).slice(0, 200)}`);
+}
+/* Guides first: the tag goes on after each one, so a failure part way picks up where it stopped. */
+async function addGuides(email, contact, guides) {
+  if (!guides.length) return;
+  const failedBefore = (contact.tags || []).map(norm).includes(GUIDE_FAILED);
+  try {
+    const u = await findTrainerize(email);
+    if (!u) throw new Error('not on Trainerize, so no guides or email today');
+    for (const g of guides) {
+      await uploadGuide(u.id, g);
+      await addTags(contact.id, [g.tag]);
+    }
+    if (failedBefore) await removeTags(contact.id, [GUIDE_FAILED]);
+  } catch (e) {
+    if (!failedBefore) await addTags(contact.id, [GUIDE_FAILED]).catch(() => {});   // one text, not one a day
+    throw e;
+  }
+}
+/* A coach has just pressed Done on this person's Intro. Anyone can call this, as all it can ever
+   do is what the morning run would have done anyway: the roster and the tags decide. */
+async function guidesNow(id) {
+  if (process.env.CHALLENGE_LIVE !== '1') return 'not live';
+  const fromMs = process.env.CHALLENGE_FROM ? Date.parse(process.env.CHALLENGE_FROM + 'T00:00:00Z') : null;
+  const t0 = today0();
+  const m = (await roster()).find((x) => x.id === id);
+  if (!m) return 'not on the roster';
+  const pre = plan(m, [], t0, fromMs);
+  if (pre.skip) return pre.skip;
+  const c = await findContact(m.email);
+  if (!c) throw new Error(`no GHL contact for ${m.name}`);
+  const p = plan(m, (c.tags || []).map(norm), t0, fromMs);
+  await addGuides(m.email, c, p.guides);
+  return `${p.guides.length} added`;
+}
+/* A test run on one person: adds all the guides and sets no tags. */
+async function testGuides(email) {
+  const u = await findTrainerize(email);
+  if (!u) throw new Error('not on Trainerize');
+  for (const g of GUIDES) await uploadGuide(u.id, g);
+  return { userID: u.id, added: GUIDES.length };
 }
 async function roster() {
   const url = `${process.env.SUPABASE_URL}/rest/v1/bodysculpt?key=eq.roster&select=value`;
@@ -134,13 +203,14 @@ async function run({ dryRun }) {
       const c = await findContact(m.email);
       if (!c) { report.errors.push(`no GHL contact for ${m.name}`); continue; }
       const p = plan(m, (c.tags || []).map(norm), t0, fromMs);
-      if (!p.add.length) continue;
+      if (!p.add.length && !p.guides.length) continue;
       if (live) {
+        await addGuides(m.email, c, p.guides);
         if (p.lapse) await deactivateTrainerize(m.email);
         await addTags(c.id, p.add);
         if (p.remove.length) await removeTags(c.id, p.remove);
       }
-      report.actions.push({ name: m.name, day: p.day, add: p.add });
+      report.actions.push({ name: m.name, day: p.day, add: p.add, guides: p.guides.map((g) => g.tag) });
     } catch (e) {
       report.errors.push(`${m.name}: ${e.message}`);
     }
@@ -170,4 +240,6 @@ exports.handler = async (event) => {
 };
 exports.run = run;
 exports.plan = plan;
+exports.testGuides = testGuides;
+exports.guidesNow = guidesNow;
 exports.currentDay = currentDay;

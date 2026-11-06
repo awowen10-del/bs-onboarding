@@ -2357,9 +2357,21 @@ async function pushToCloud(){
       .upsert({ key: ROW_KEY, value: members, updated_at: stamp }, { onConflict: 'key' });
     if(error) throw error;
     showSync('ok','Saved ✓', true);
+    sendIntroDone();
   }catch(e){
     showSync('err','Couldn’t save to the cloud — your changes are stored on this device and will retry. ('+(e.message||e)+')');
   }
+}
+/* Intro marked Done: the server adds their Trainerize guides. It reads the saved roster, so this
+   waits for the save. If this call is lost, the morning run picks them up. */
+const introDoneQueue = new Set();
+function sendIntroDone(){
+  introDoneQueue.forEach(id=>{
+    introDoneQueue.delete(id);
+    if(typeof fetch!=='function') return;
+    fetch('/.netlify/functions/guides-now-background',
+      { method:'POST', keepalive:true, body:JSON.stringify({id}) }).catch(()=>{});
+  });
 }
 
 /* The retention list's half of the same mechanism — its own cache, its own debounce, its own
@@ -3487,6 +3499,7 @@ function markTouchpointDone(m,key,val){
   m.doneMeta = m.doneMeta||{};
   m.missed = m.missed||[];
   if(val){
+    if(key==='intro' && !m.completed.includes(key)) introDoneQueue.add(m.id);
     if(!m.completed.includes(key)) m.completed.push(key);
     m.doneMeta[key] = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'});
     m.missed = m.missed.filter(k=>k!==key);   // done overrides missed (did it late)

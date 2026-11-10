@@ -14,8 +14,9 @@
  *                       emails carry on to the end of their six weeks.
  *   '6wc joined'        they've joined (paid, or a coach marked them stayed on). The Day 28 and 35
  *                       emails check it in GHL to leave out the "have a look at our memberships" line.
- *   'member start'      a joiner's challenge has ended (or the membership start date a coach typed
- *                       has arrived). This is what starts the members automation in GHL.
+ *   'member start'      their membership has started. This is what starts the members automation in
+ *                       GHL. A challenger gets it when their challenge ends (or on the start date a coach
+ *                       typed). Anyone else with 'members' gets it the next morning (see startSweep).
  *   '6wc finished'      their six weeks are up.
  *   '6wc lapsed'        a week after finishing, with no membership: Trainerize is deactivated
  *                       and the tag puts them on the lapsed list.
@@ -131,6 +132,29 @@ async function findContact(email) {
   const q = `${GHL}/contacts/?locationId=${encodeURIComponent(LOCATION)}&query=${encodeURIComponent(email)}&limit=20`;
   const r = await json(q, { headers: ghlHeaders() });
   return (r.contacts || []).find((c) => norm(c.email) === norm(email)) || null;
+}
+/* Everyone in GHL with a tag. GHL pages its search at 100. */
+async function contactsWithTag(tag) {
+  const out = [];
+  for (let page = 1; page <= 20; page++) {
+    const r = await json(`${GHL}/contacts/search`, { method: 'POST', headers: ghlHeaders(), body: JSON.stringify({ locationId: LOCATION, page, pageLimit: 100, filters: [{ field: 'tags', operator: 'contains', value: [tag] }] }) });
+    const got = r.contacts || [];
+    out.push(...got);
+    if (got.length < 100) break;
+  }
+  return out;
+}
+/* Someone has paid for a membership ('members'). Should their membership start now?
+   'wait' while they're still on a challenge on the tracker (their end date adds it instead, in
+   plan()), 'start' for anyone else: they joined straight off the website, or their challenge is over. */
+function startDecision(c, m, t0) {
+  const tags = (c.tags || []).map(norm);
+  if (tags.includes('member start')) return 'done';
+  if (!m || m.outcome === 'left') return 'start';
+  if (m.memberStart) return t0 >= m.memberStart - MS_DAY / 2 ? 'start' : 'wait';
+  if (!m.firstSessionDone || !m.day0 || m.pausedAt) return 'wait';
+  const day = currentDay(m, t0);
+  return day >= totalDays(m) ? 'start' : 'wait';
 }
 async function addTags(id, tags) {
   return json(`${GHL}/contacts/${id}/tags`, { method: 'POST', headers: ghlHeaders(), body: JSON.stringify({ tags }) });
@@ -260,6 +284,22 @@ async function run({ dryRun }) {
     }
   }
   if (live && flagsChanged) await writeFlags(flags);
+  /* startSweep: 'member start' for everyone who has paid and isn't waiting on a challenge. */
+  report.started = []; report.waiting = [];
+  try {
+    const list = await roster();
+    for (const c of await contactsWithTag('members')) {
+      const m = list.find((x) => norm(x.email) && norm(x.email) === norm(c.email));
+      const d = startDecision(c, m, t0);
+      const who = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email;
+      if (d === 'wait') report.waiting.push(who);
+      if (d !== 'start') continue;
+      if (live) await addTags(c.id, ['member start']);
+      report.started.push(who);
+    }
+  } catch (e) {
+    report.errors.push('start sweep: ' + e.message);
+  }
   console.log('TICK ' + JSON.stringify(report));
   return report;
 }
@@ -288,3 +328,4 @@ exports.plan = plan;
 exports.testGuides = testGuides;
 exports.guidesNow = guidesNow;
 exports.currentDay = currentDay;
+exports.startDecision = startDecision;

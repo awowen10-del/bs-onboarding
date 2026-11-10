@@ -51,6 +51,19 @@ assert.deepEqual(plan(m(1), [G[0]], t0).guides.map((g) => g.tag), G.slice(1));
 assert.deepEqual(plan(m(1), G, t0).guides, []);
 assert.equal(plan({ email: "a@b.c", completed: [] }, [], t0).guides, undefined);            // no Intro, no guides
 
+// Member start for anyone who has paid: now, unless they're still on a challenge on the tracker.
+const { startDecision } = require("../netlify/functions/challenge-tick.js");
+const paidC = (extra = []) => ({ tags: ["members", ...extra] });
+assert.equal(startDecision(paidC(), undefined, t0), "start");                                // joined straight off the website
+assert.equal(startDecision(paidC(["member start"]), undefined, t0), "done");                // once
+assert.equal(startDecision(paidC(), m(20), t0), "wait");                                     // mid-challenge: the end date does it
+assert.equal(startDecision(paidC(), m(42), t0), "start");                                    // challenge over
+assert.equal(startDecision(paidC(), m(42, { extraDays: 7 }), t0), "wait");                   // added days
+assert.equal(startDecision(paidC(), m(20, { pausedAt: t0 - DAY }), t0), "wait");            // paused
+assert.equal(startDecision(paidC(), m(20, { memberStart: t0 }), t0), "start");              // a typed date has arrived
+assert.equal(startDecision(paidC(), m(20, { outcome: "left" }), t0), "start");              // marked left but paid: they're a member
+assert.equal(startDecision(paidC(), { email: "a@b.c", completed: ["intro"] }, t0), "wait"); // clock not started yet
+
 // The morning run, against pretend services.
 const tick = require("../netlify/functions/challenge-tick.js");
 async function morning({ tags = [], onTrainerize = true, failOn = null }) {
@@ -61,6 +74,7 @@ async function morning({ tags = [], onTrainerize = true, failOn = null }) {
   global.fetch = async (url, opts = {}) => {
     if (url.includes("/rest/v1/")) return ok([{ value: [{ id: "1", name: "A", email: "a@b.c", completed: ["intro"] }] }]);
     if (url.includes("/contacts/?")) return ok({ contacts: [{ id: "c1", email: "a@b.c", tags }] });
+    if (url.endsWith("/contacts/search")) return ok({ contacts: tags.includes("members") ? [{ id: "c1", email: "a@b.c", tags }] : [] });
     if (url.endsWith("/contacts/c1/tags")) { log.push(opts.method + " " + JSON.parse(opts.body).tags.join()); return ok({}); }
     if (url.endsWith("/user/find")) return ok({ users: onTrainerize ? [{ id: 7, email: "a@b.c" }] : [] });
     if (url.endsWith(".pdf")) return new Response("pdf", { status: 200 });

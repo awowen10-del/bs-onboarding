@@ -608,7 +608,7 @@ async function cloudTests() {
   // the overrides ride the same table and the same channel as the rosters — no second backend
   assert.ok(/const PB_ROW_KEY = 'playbook_overrides'/.test(HTML), "one dedicated key, named plainly");
   assert.ok(HTML.includes("filter:'key=eq.'+PB_ROW_KEY"), "…subscribed to on the existing channel");
-  assert.ok(/\.in\('key', \[ROW_KEY, RET_ROW_KEY, PB_ROW_KEY, 'seeded'\]\)/.test(HTML),
+  assert.ok(/\.in\('key', \[ROW_KEY, RET_ROW_KEY, PB_ROW_KEY, 'seeded'(, FLAGS_ROW_KEY)?\]\)/.test(HTML),
     "…and pulled in the same round trip as everything else at boot");
   // JOURNEY is still a const the app only ever reads
   assert.ok(/const JOURNEY = \[/.test(HTML), "the journey is still defined in code");

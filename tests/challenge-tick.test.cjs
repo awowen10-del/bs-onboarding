@@ -3,7 +3,7 @@ const assert = require("assert");
 const { plan } = require("../netlify/functions/challenge-tick.js");
 const DAY = 86400000, t0 = Date.UTC(2026, 10, 30);
 const m = (d, o = {}) => Object.assign({ email: "a@b.c", completed: ["intro"], firstSessionDone: true, day0: t0 - d * DAY }, o);
-const F = "6wc finished", L = "6wc day 41";
+const F = "6wc finished", L = "6wc day 41", J = "6wc joined";
 assert.deepEqual(plan(m(0), [], t0).add, ["6wc day 0"]);
 assert.deepEqual(plan(m(1), ["6wc day 0"], t0).add, []);
 let p = plan(m(7), ["6wc day 2"], t0);
@@ -17,13 +17,31 @@ assert.deepEqual(plan({ email: "a@b.c", completed: ["intro"], booked: t0 - 49 * 
 assert.equal(plan(m(9, { pausedAt: t0 - DAY }), [], t0).skip, "not eligible");
 assert.equal(plan(m(9, { outcome: "left" }), [], t0).skip, "not eligible");
 assert.deepEqual(plan(m(14, { pausedDays: 7 }), ["6wc day 2"], t0).add, ["6wc day 7"]);     // a banked pause moves the email
-assert.deepEqual(plan(m(14), ["member", "6wc day 7"], t0).add, []);                         // joined: no more emails
-assert.deepEqual(plan(m(14, { outcome: "stayed" }), ["6wc day 7"], t0).add, ["member"]);
-assert.deepEqual(plan(m(42), [L, "member"], t0).add, [F]);                                  // the finish still fires
+// Joined: the coaching emails carry on, the sign-up emails (37, 39, 41) don't.
+assert.deepEqual(plan(m(14), ["members", "6wc day 7"], t0).add, ["6wc joined", "6wc day 14"]); // paid through the link: tagged joined first
+assert.deepEqual(plan(m(14, { outcome: "stayed" }), [J, "6wc day 7"], t0).add, ["6wc day 14"]); // a coach marked them stayed on
+assert.deepEqual(plan(m(14), [J, "member", "6wc day 7"], t0).add, ["6wc day 14"]);          // the old tag still counts
+assert.deepEqual(plan(m(14, { outcome: "stayed" }), ["6wc day 7"], t0).add, [J, "6wc day 14"]); // a coach marking them stayed on tags them too
+assert.deepEqual(plan(m(37), ["6wc day 35"], t0).add, ["6wc day 37"]);                      // not joined: the sign-up email goes
+assert.deepEqual(plan(m(37), [J, "members", "6wc day 35"], t0).add, []);                       // joined: it doesn't
+assert.deepEqual(plan(m(41, { outcome: "stayed" }), [J, "6wc day 35"], t0).add, []);
+// Their membership starts the day the challenge ends: that's 'member start'.
+assert.deepEqual(plan(m(42), [J, L, "members"], t0).add, [F, "member start"]);                 // the finish still fires, and they move across
+assert.deepEqual(plan(m(42), [J, "6wc day 35", "members", F, "member start"], t0).add, []);     // once
+assert.deepEqual(plan(m(41, { outcome: "stayed" }), ["6wc day 35"], t0).add.includes("member start"), false);
+assert.deepEqual(plan(m(42, { outcome: "stayed", pausedDays: 3 }), [J, "6wc day 35"], t0).add, []); // a pause moves it
+assert.deepEqual(plan(m(30, { outcome: "stayed", memberStart: t0 }), [J, "6wc day 28"], t0).add, ["member start"]); // a date a coach typed wins
+assert.deepEqual(plan(m(30, { outcome: "stayed", memberStart: t0 + DAY }), [J, "6wc day 28"], t0).add, []);
+assert.deepEqual(plan(m(42), [L], t0).add, [F]);                                            // not joined: no member start
+// Paid through the link part way through, before a coach marked them stayed on: the coach gets a task.
+assert.equal(plan(m(30), ["members", "6wc day 28"], t0).paidMidChallenge, true);
+assert.equal(plan(m(30, { outcome: "stayed" }), ["members", "6wc day 28"], t0).paidMidChallenge, false); // a coach set it up
+assert.equal(plan(m(42), ["members", L], t0).paidMidChallenge, false);                      // first payment on the end date
+assert.equal(plan(m(30), ["6wc day 28"], t0).paidMidChallenge, false);
 assert.deepEqual(plan(m(42, { extraDays: 7 }), [L], t0).add, []);                           // an extension moves the end
 assert.deepEqual(plan(m(48), [L, F], t0).add, []);
 p = plan(m(49), [L, F], t0); assert.deepEqual(p.add, ["6wc lapsed"]); assert.equal(p.lapse, true);
-assert.deepEqual(plan(m(49), [L, F, "member"], t0).add, []);
+assert.deepEqual(plan(m(49), [J, L, F, "members", "member start"], t0).add, []);                // joined: never lapsed
 assert.equal(plan(m(3), [], t0, t0).skip, "started before launch");
 
 // Guides: all three are due once the Intro is done, and a tag stops one being added twice.

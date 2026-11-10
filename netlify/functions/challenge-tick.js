@@ -8,8 +8,15 @@
  *
  *   '6wc day N'         the email for day N is due. Only the latest stays on the contact: the
  *                       one before comes off, and the one left is the record of how far they got.
- *   'member'            outcome 'stayed' on the tracker. No more challenge emails.
- *   '6wc finished'      their six weeks are up. A member's membership emails wait for this.
+ *   'members'           added by GHL's "Membership - Paid" workflow when they pay for a membership
+ *                       (read here, never added). With outcome 'stayed' on the tracker, it means
+ *                       they've JOINED: the sign-up emails (days 37, 39, 41) stop, the coaching
+ *                       emails carry on to the end of their six weeks.
+ *   '6wc joined'        they've joined (paid, or a coach marked them stayed on). The Day 28 and 35
+ *                       emails check it in GHL to leave out the "have a look at our memberships" line.
+ *   'member start'      a joiner's challenge has ended (or the membership start date a coach typed
+ *                       has arrived). This is what starts the members automation in GHL.
+ *   '6wc finished'      their six weeks are up.
  *   '6wc lapsed'        a week after finishing, with no membership: Trainerize is deactivated
  *                       and the tag puts them on the lapsed list.
  *   '6wc guide ...'     that guide is in their Trainerize attachments, so it's never added twice.
@@ -24,8 +31,11 @@
  * The first email goes the morning after a coach presses Done on their Intro. The rest run from
  * the start date.
  *
- * Skipped: Intro not done, paused, left, or (for emails) joined. Joining is the GHL tag 'member'
- * or outcome 'stayed' on the tracker.
+ * Skipped: Intro not done, paused or left. Joined people skip only the sign-up emails.
+ *
+ * Someone who paid through the memberships link DURING their challenge, before a coach marked
+ * them as stayed on, is written to the 'challenge-flags' row so the tracker gives the coach a task
+ * to move their next payment in GHL. Only this job writes that row.
  *
  * SAFE BY DEFAULT. Nothing is written unless CHALLENGE_LIVE=1 and the request is not a dry run.
  * Nobody whose clock started before CHALLENGE_FROM (YYYY-MM-DD) is touched, so people already
@@ -37,6 +47,7 @@
 
 const MS_DAY = 86400000;
 const EMAIL_DAYS = [0, 2, 7, 14, 21, 28, 35, 37, 39, 41];
+const SIGN_UP_DAYS = [37, 39, 41];   // the "join here" emails: nobody who has joined gets these
 const LAPSE_AFTER = 7;
 const GHL = 'https://services.leadconnectorhq.com';
 const LOCATION = process.env.GHL_LOCATION_ID || 'I88mpb966qBRVCCDbEx5';
@@ -77,24 +88,33 @@ function plan(m, tags, t0, fromMs) {
   const start = m.day0 || m.booked;
   if (fromMs && start && start < fromMs - MS_DAY / 2) return { skip: 'started before launch' };
   const has = (t) => tags.includes(t);
-  const joined = has('member') || m.outcome === 'stayed';
+  const paid = has('members') || has('member');
+  const joined = paid || m.outcome === 'stayed';
   const add = [];
   let lapse = false;
   const remove = [];
-  if (m.outcome === 'stayed' && !has('member')) add.push('member');
-  if (!joined) {
+  if (joined && !has('6wc joined')) add.push('6wc joined');   // first, so it's on before that day's email
+  {
     const sent = tags.map((t) => /^6wc day (\d+)$/.exec(t)).filter(Boolean).map((x) => Number(x[1]));
     const last = sent.length ? Math.max(...sent) : -1;
-    const due = EMAIL_DAYS.find((d) => d > last && (d === 0 || (day !== null && day >= d)));   // Day 0 goes on the Intro being done; the next unsent, one a day
+    const days = joined ? EMAIL_DAYS.filter((d) => !SIGN_UP_DAYS.includes(d)) : EMAIL_DAYS;
+    const due = days.find((d) => d > last && (d === 0 || (day !== null && day >= d)));   // Day 0 goes on the Intro being done; the next unsent, one a day
     if (due !== undefined) {
       add.push('6wc day ' + due);
       sent.forEach((d) => remove.push('6wc day ' + d));
     }
   }
   const running = !!m.firstSessionDone && !!m.day0;
-  if (running && day >= totalDays(m) && !has('6wc finished')) add.push('6wc finished');
+  const ended = running && day >= totalDays(m);
+  if (ended && !has('6wc finished')) add.push('6wc finished');
+  /* Membership starts the day the challenge ends, or on the date a coach typed on the tracker. */
+  const startDue = m.memberStart ? t0 >= m.memberStart - MS_DAY / 2 : ended;
+  if (joined && startDue && !has('member start')) add.push('member start');
+  /* Paid through the link mid-challenge, before a coach marked them stayed on: the coach needs to
+     move their next payment. Someone a coach signed up pays on the end date, after 'stayed'. */
+  const paidMidChallenge = paid && m.outcome !== 'stayed' && !ended;
   if (running && !joined && day >= totalDays(m) + LAPSE_AFTER && !has('6wc lapsed')) { add.push('6wc lapsed'); lapse = true; }
-  return { day, add, remove, lapse, guides: GUIDES.filter((g) => !has(g.tag)) };
+  return { day, add, remove, lapse, paidMidChallenge, guides: GUIDES.filter((g) => !has(g.tag)) };
 }
 
 async function json(url, opts) {
@@ -190,11 +210,30 @@ async function roster() {
   return (rows[0] && Array.isArray(rows[0].value)) ? rows[0].value : [];
 }
 
+const FLAGS_KEY = 'challenge-flags';
+async function readFlags() {
+  const url = `${process.env.SUPABASE_URL}/rest/v1/bodysculpt?key=eq.${FLAGS_KEY}&select=value`;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  const rows = await json(url, { headers: { apikey: key, Authorization: 'Bearer ' + key } });
+  const v = rows[0] && rows[0].value;
+  return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+}
+async function writeFlags(value) {
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  await json(`${process.env.SUPABASE_URL}/rest/v1/bodysculpt`, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+    body: JSON.stringify({ key: FLAGS_KEY, value, updated_at: new Date().toISOString() }),
+  });
+}
+
 async function run({ dryRun }) {
   const live = process.env.CHALLENGE_LIVE === '1' && !dryRun;
   const fromMs = process.env.CHALLENGE_FROM ? Date.parse(process.env.CHALLENGE_FROM + 'T00:00:00Z') : null;
   const t0 = today0();
-  const report = { live, checked: 0, actions: [], errors: [] };
+  const report = { live, checked: 0, actions: [], errors: [], flagged: [] };
+  const flags = await readFlags();
+  let flagsChanged = false;
   for (const m of await roster()) {
     const pre = plan(m, [], t0, fromMs);
     if (pre.skip) continue;
@@ -203,6 +242,11 @@ async function run({ dryRun }) {
       const c = await findContact(m.email);
       if (!c) { report.errors.push(`no GHL contact for ${m.name}`); continue; }
       const p = plan(m, (c.tags || []).map(norm), t0, fromMs);
+      if (p.paidMidChallenge && !(flags[m.id] && flags[m.id].paid)) {
+        flags[m.id] = { paid: true, seen: new Date(t0).toISOString().slice(0, 10) };
+        flagsChanged = true;
+        report.flagged.push(m.name);
+      }
       if (!p.add.length && !p.guides.length) continue;
       if (live) {
         await addGuides(m.email, c, p.guides);
@@ -215,6 +259,7 @@ async function run({ dryRun }) {
       report.errors.push(`${m.name}: ${e.message}`);
     }
   }
+  if (live && flagsChanged) await writeFlags(flags);
   console.log('TICK ' + JSON.stringify(report));
   return report;
 }

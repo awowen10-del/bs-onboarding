@@ -45,7 +45,9 @@ const SAM = () => challenger("sam", "Sam Doyle", {
   assert.ok(m.notes.includes("knee"), "the shared notes travelled with them");
   assert.strictEqual(m.notes, app.find("sam").notes, "…exactly as the coach wrote them");
   assert.strictEqual(m.fromChallenger, "sam", "linked back to the challenger they came from");
-  assert.strictEqual(m.joined, TODAY, "joined today — the anchor for day-30, day-60, anniversaries");
+  // Sam is on day 40 of 42, so their membership starts in two days, on the day the challenge
+  // ends, not on the day of the tap. That date anchors day-30, day-60 and anniversaries.
+  assert.strictEqual(m.joined, daysFromToday(2), "joined on the day their challenge ends");
   assert.ok(m.id && m.id !== "sam", "and a member id of their own");
 
   // it went through the member list's own sync path, not the roster's
@@ -125,7 +127,7 @@ const SAM = () => challenger("sam", "Sam Doyle", {
   const reloaded = boot({ members: app.cached(), retention: app.retentionCached() });
   assert.strictEqual(reloaded.retention().length, 1, "reloading does not re-run the handoff");
   assert.strictEqual(reloaded.retention()[0].fromChallenger, "sam", "…and the link survives");
-  assert.strictEqual(reloaded.retention()[0].joined, TODAY);
+  assert.strictEqual(reloaded.retention()[0].joined, daysFromToday(2));   // the day their challenge ends
   reloaded.ctx.setOutcome("sam", "stayed");
   assert.strictEqual(reloaded.retention().length, 1,
     "…so a fresh device pressing Stayed on again still makes no second copy");

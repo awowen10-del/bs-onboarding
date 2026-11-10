@@ -158,8 +158,8 @@ function member(id, name, extra) {
   // The realtime channel carries SHARED data and nothing else. Three subscriptions: the
   // roster, the member list and the Playbook's wording overrides — no fourth one for which
   // tracker somebody is looking at, because that is this device's business.
-  assert.strictEqual((HTML.match(/key=eq\./g) || []).length, 3,
-    "three realtime subscriptions — the roster, the member list, the Playbook wording");
+  assert.strictEqual((HTML.match(/key=eq\./g) || []).length, 4,
+    "four realtime subscriptions — the roster, the member list, the Playbook wording, and the morning job's paid-through-the-link list");
   assert.ok(!/key=eq\.'\+TRACKER|key=eq\.tracker/.test(HTML),
     "…and none of them is the tracker choice");
 
@@ -587,7 +587,7 @@ async function cloudTests() {
     // the realtime channel carries the shared DATA — the two rosters and the Playbook's
     // wording — and nothing about which screen anybody is looking at
     assert.deepStrictEqual(app.cloud.subscribedTo().slice().sort(),
-      ["key=eq.playbook_overrides", "key=eq.retention", "key=eq.roster"],
+      ["key=eq.challenge-flags", "key=eq.playbook_overrides", "key=eq.retention", "key=eq.roster"],
       "no subscription for a tracker row");
   }
 

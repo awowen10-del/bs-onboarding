@@ -660,6 +660,9 @@
   .rail .ticks span{font-size:10px;color:var(--ink-faint);font-weight:600}
   .mcard .controls{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
   .mcard .ext-note{font-size:11.5px;color:var(--amber);font-weight:700;margin-top:8px}
+  .mcard .mstart-note{font-size:12px;color:var(--ink-dim);font-weight:700;margin-top:8px}
+  .mcard .paybox{margin-top:12px;padding:12px 14px;border-radius:12px;background:rgba(var(--amber-rgb),.12);border:1px solid rgba(var(--amber-rgb),.4);font-size:13px;line-height:1.55}
+  .mcard .paybox .btn{margin-top:10px;display:block}
 
   /* ---------- Modal ---------- */
   .modal-bg{position:fixed;inset:0;background:rgba(var(--backdrop-rgb),.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
@@ -1670,6 +1673,10 @@
       <label>Date of birth <span class="lbl-opt">optional — shows on the Birthdays tab</span></label>
       <input type="date" id="f-dob">
     </div>
+    <div class="field" id="f-mstart-field">
+      <label>Membership start date <span class="lbl-opt">optional — leave blank and it's the day their challenge ends</span></label>
+      <input type="date" id="f-mstart">
+    </div>
     <div class="field">
       <label>One personal thing (learn this at the intro — what to remember)</label>
       <textarea id="f-personal" placeholder="Why they joined, a kid's name, an event coming up…"></textarea>
@@ -1999,6 +2006,7 @@ const CACHE = 'bsj_cache'; // local offline cache (NOT the source of truth)
    other (a challenger is mid-journey; a member is not), same table so a later stage can move
    somebody from one to the other inside a single backend. */
 let retention = [];                        // full members
+const FLAGS_ROW_KEY = 'challenge-flags';     // written by the morning job only: who has paid through the memberships link
 const RET_ROW_KEY = 'retention';           // its row in the same `bodysculpt` table
 const RET_CACHE = 'bsj_retention_cache';   // its own offline cache
 
@@ -2428,11 +2436,13 @@ async function bootData(){
   try{
     // pull the roster, the member list and a one-time "seeded" marker in one go
     const { data, error } = await sb.from('bodysculpt').select('key,value,updated_at')
-      .in('key', [ROW_KEY, RET_ROW_KEY, PB_ROW_KEY, 'seeded']);
+      .in('key', [ROW_KEY, RET_ROW_KEY, PB_ROW_KEY, 'seeded', FLAGS_ROW_KEY]);
     if(error) throw error;
     const rosterRow = (data||[]).find(r=>r.key===ROW_KEY);
     const retRow = (data||[]).find(r=>r.key===RET_ROW_KEY);
     const seededRow = (data||[]).find(r=>r.key==='seeded');
+    const flagsRow = (data||[]).find(r=>r.key===FLAGS_ROW_KEY);
+    challengeFlags = (flagsRow && flagsRow.value && typeof flagsRow.value==='object') ? flagsRow.value : {};
     // No overrides row yet is the normal case on every device until somebody edits a word of
     // the Playbook, and it reads as "no overrides" rather than as an error.
     const pbRow = (data||[]).find(r=>r.key===PB_ROW_KEY);
@@ -2465,6 +2475,12 @@ async function bootData(){
           // ignore the echo of a write we just made
           if(incomingTime && Math.abs(incomingTime - lastOwnWrite) < 1500) return;
           if(Array.isArray(incoming)){ members = migrateList(incoming); markSeen(seenRosterIds, members); writeCache(); renderAll(); }
+        })
+      // the job's paid-through-link list: only the job writes it, so there is no echo to guard
+      .on('postgres_changes', { event:'*', schema:'public', table:'bodysculpt', filter:'key=eq.'+FLAGS_ROW_KEY },
+        payload=>{
+          const v = payload.new && payload.new.value;
+          if(v && typeof v==='object'){ challengeFlags = v; renderAll(); }
         })
       // the member list rides the same channel, with the same echo guard
       .on('postgres_changes', { event:'*', schema:'public', table:'bodysculpt', filter:'key=eq.'+RET_ROW_KEY },
@@ -2988,6 +3004,11 @@ function renderToday(){
   const startRows = members.filter(awaitingStart)
     .sort((a,b)=> (a.booked||FAR) - (b.booked||FAR));
 
+  // Paid for a membership through the link part way through their challenge: their next
+  // payment needs moving in GHL so it lands a month after their challenge ends. A state, not a
+  // dated touchpoint, so gathered here like the two above. It stands until a coach says it's done.
+  const payRows = members.filter(needsPaymentMove);
+
   // Birthdays inside the next week. Gathered here for the same reason as the two above: this
   // is a DATE in the calendar, not a day in anybody's 42, so dueToday() has nothing to say
   // about it. Soonest first, and today's before tomorrow's.
@@ -3007,13 +3028,13 @@ function renderToday(){
   // The tab badge is REAL work and nothing else, so the examples are missing from it on
   // purpose — a prop must never make a coach think they have something to do.
   document.getElementById('todayCount').textContent =
-    rows.length + fuRows.length + startRows.length + bdayRows.length;
+    rows.length + fuRows.length + startRows.length + payRows.length + bdayRows.length;
 
   // The empty state is a different question — it is "is there anything on this screen", not
   // "is there anything to do". A clear day is exactly when the examples get demonstrated, so
   // showing "All caught up" over the top of two visible cards would be the screen lying about
   // itself. They suppress it without ever reaching the badge above.
-  if(rows.length===0 && fuRows.length===0 && startRows.length===0 && bdayRows.length===0
+  if(rows.length===0 && fuRows.length===0 && startRows.length===0 && payRows.length===0 && bdayRows.length===0
      && birthdayExampleTasks('onboarding').length===0){
     list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
       No touchpoints due right now. Consistency is the magic — check the Challengers tab to see where everyone sits.</div>`;
@@ -3116,6 +3137,25 @@ function renderToday(){
   // No Done and no Missed. There is nothing to perform and nothing to let slide — the only
   // thing that resolves this task is the clock actually starting, so the start control IS the
   // row rather than something hidden behind the chevron.
+  if(payRows.length){
+    html += `<div class="group-label">Move a membership payment<span class="gcount">${payRows.length}</span></div>`;
+    payRows.forEach(m=>{
+      const end = challengeEnd(m);
+      html += `<div class="action awaiting" id="act-${m.id}-paymove">
+        <span class="ch awaiting">Payment</span>
+        <div class="body">
+          <div class="who">
+            <span class="nm">${esc(m.name)}</span>${notesBtn(m)}
+            <span class="ttl">Paid through the memberships link. In GHL, move their next payment to ${end?fmt(monthAfter(end)):'a month after their challenge ends'}</span>
+          </div>
+        </div>
+        <div class="await-actions">
+          <button class="btn sm start-btn" onclick="paymentMoved('${m.id}')">Done, payment moved</button>
+        </div>
+      </div>`;
+    });
+  }
+
   if(startRows.length){
     html += `<div class="group-label">Waiting on a first session<span class="gcount">${startRows.length}</span></div>`;
     startRows.forEach(m=>{
@@ -3677,6 +3717,13 @@ function renderMembers(){
     const started = hasStarted(m);
     const pct = started ? Math.min(100, Math.round(cd/tot*100)) : 0;
     const ext = (started && m.extraDays) ? `<div class="ext-note">+${m.extraDays} days added · finishes ${fmt(finishDate(m))}</div>`:'';
+    const endTs = started ? challengeEnd(m) : null;
+    const startNote = (started && m.outcome!=='left' && endTs)
+      ? `<div class="mstart-note">Membership starts ${fmt(endTs)}${m.memberStart?' (set by hand)':s==='paused'?' if they come back today':''}</div>` : '';
+    const payBox = needsPaymentMove(m)
+      ? `<div class="paybox"><b>Paid for a membership through the link.</b> Move their next payment to
+           <b>${endTs?fmt(monthAfter(endTs)):'a month after their challenge ends'}</b> in GHL: Payments, Subscriptions, their name, change the next payment date.
+           <button class="btn sm primary" onclick="paymentMoved('${m.id}')">Done, payment moved</button></div>` : '';
     const tag = s==='notstarted' ? `<span class="tag notstarted">Not started</span>`
               : s==='live'?`<span class="tag live">Day ${cd} of ${tot}</span>`
               : s==='paused'?`<span class="tag paused">Paused</span>`
@@ -3741,7 +3788,9 @@ function renderMembers(){
         <div class="ticks"><span>Day 0</span><span>Day ${tot}</span></div>
       </div>
       ${ext}
+      ${startNote}
       <div class="sub" style="margin-top:8px">${doneCount} of ${applicable.length} touchpoints done</div>
+      ${payBox}
       ${decisionBlock}
       <div class="controls">
         ${s==='paused'
@@ -3900,7 +3949,8 @@ function handOffToRetention(m){
     personal: m.personal || '',
     notes: m.notes || '',                     // the shared document travels with them
     dob: m.dob || null,
-    joined: today0(),                         // the anchor for day-30, day-60, anniversaries
+    joined: Math.max(today0(), challengeEnd(m) || 0),   // the anchor for day-30, day-60, anniversaries:
+                                              // the day their membership starts, not the day of the tap
     fromChallenger: m.id,
     left: false,                              // they have just JOINED; the cancellation flag is off
     /* Nobody has said how many challenge sessions they did, and the tracker cannot work it
@@ -4111,6 +4161,33 @@ function finishDate(m){
   return today0() + remainingDays*MS_DAY;
 }
 
+/* ---------------- Membership start ----------------
+   The day their six weeks end is the day their membership starts. Three things hang off it:
+   the first payment for anyone a coach signs up by hand, the next payment for anyone who paid
+   through the memberships link part way through, and the morning job moving them from the
+   challenge emails into the members emails (the 'member start' tag in GHL). It is finishDate(),
+   so pauses and added days move it, unless a coach has typed a different date on the Edit form,
+   which wins. Keep in step with challengeEnd() in netlify/functions/challenge-tick.js. */
+function challengeEnd(m){
+  if(m.memberStart) return m.memberStart;
+  return hasStarted(m) ? finishDate(m) : null;
+}
+/* Same day next month, for someone who has already paid their first month through the link. */
+function monthAfter(ts){ const d=new Date(ts); d.setMonth(d.getMonth()+1); d.setHours(0,0,0,0); return d.getTime(); }
+
+/* Set each morning by the job (row 'challenge-flags', which only the job writes): challengers
+   whose GHL contact has the members tag, i.e. they paid for a membership themselves. Until a
+   coach confirms the payment date has been moved, they get a task. */
+let challengeFlags = {};
+function paidThroughLink(m){ return !!(challengeFlags[m.id] && challengeFlags[m.id].paid); }
+function needsPaymentMove(m){ return paidThroughLink(m) && !m.paymentMoved && m.outcome!=='left'; }
+function paymentMoved(id){
+  const m=members.find(x=>x.id===id); if(!m) return;
+  m.paymentMoved = true;
+  if(!m.outcome){ setOutcome(id,'stayed'); return; }   // they joined, so they stayed on
+  save(); renderAll();
+}
+
 function pause(id){
   const m=members.find(x=>x.id===id); if(!m) return;
   if(m.pausedAt) return;           // already paused — don't reset and lose banked days
@@ -4145,6 +4222,8 @@ function openAdd(){
   document.getElementById('f-coach').value='Dan';
   document.getElementById('f-dob').value='';
   document.getElementById('f-personal').value='';
+  document.getElementById('f-mstart').value='';
+  document.getElementById('f-mstart-field').style.display='none';   // nothing to override until they've started
   document.getElementById('modalBg').classList.add('show');
 }
 function openEdit(id){
@@ -4156,6 +4235,8 @@ function openEdit(id){
   document.getElementById('f-coach').value=m.coach;
   document.getElementById('f-dob').value=m.dob||'';
   document.getElementById('f-personal').value=m.personal||'';
+  document.getElementById('f-mstart').value=m.memberStart?toDateInput(m.memberStart):'';
+  document.getElementById('f-mstart-field').style.display='';
   document.getElementById('modalBg').classList.add('show');
 }
 function closeModal(){ document.getElementById('modalBg').classList.remove('show'); }
@@ -4168,6 +4249,8 @@ function saveMember(){
   if(editTarget){
     const m=members.find(x=>x.id===editTarget);
     m.name=name; m.coach=coach; m.personal=personal; m.dob=dob;
+    const ms=document.getElementById('f-mstart').value;
+    m.memberStart = ms ? parseDate(ms) : null;
   }else{
     members.push({id:'m'+Date.now()+Math.random().toString(36).slice(2,6),
       name,booked:null,day0:null,firstSessionDone:false,coach,personal,dob,

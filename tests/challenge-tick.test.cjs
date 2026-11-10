@@ -77,13 +77,18 @@ async function morning({ tags = [], onTrainerize = true, failOn = null }) {
     if (url.includes("/contacts/?")) return ok({ contacts: [{ id: "c1", email: "a@b.c", tags }] });
     if (url.endsWith("/contacts/search")) return ok({ contacts: tags.includes("members") ? [{ id: "c1", email: "a@b.c", tags }] : [] });
     if (url.endsWith("/contacts/c1/tags")) { log.push(opts.method + " " + JSON.parse(opts.body).tags.join()); return ok({}); }
-    if (url.endsWith("/user/find")) return ok({ users: onTrainerize ? [{ id: 7, email: "a@b.c" }] : [] });
+    if (url.endsWith("/user/find")) return ok({ users: onTrainerize ? [{ id: 7, email: "a@b.c", firstName: "Amy" }] : [] });
     if (url.endsWith(".pdf")) return new Response("pdf", { status: 200 });
+    if (url.endsWith("/message/send")) {
+      const b = JSON.parse(opts.body);
+      assert.equal(b.userID, 31884552); assert.deepEqual(b.recipients, [7]); assert.ok(b.body.startsWith("Hi Amy,"));
+      return ok({ threadIDs: [99] });
+    }
     if (url.endsWith("/file/upload")) {
-      const d = JSON.parse(opts.body.get("data"));
-      if (d.fileName === failOn) return new Response("no", { status: 500 });
-      assert.equal(d.attachType, "userAttachment"); assert.equal(d.attachTo, 7); assert.ok(opts.body.get("file"));
-      log.push("upload " + d.fileName);
+      const d = JSON.parse(opts.body.get("data")); const f = opts.body.get("file0");
+      if (f.name === failOn) return new Response("no", { status: 500 });
+      assert.equal(d.attachType, "messageAttachment"); assert.equal(d.attachTo, 99); assert.equal(d.userID, 31884552);
+      log.push("upload " + f.name);
       return ok({ id: 1 });
     }
     throw new Error("unexpected " + url);

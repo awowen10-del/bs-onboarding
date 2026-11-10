@@ -20,7 +20,7 @@
  *   '6wc finished'      their six weeks are up.
  *   '6wc lapsed'        a week after finishing, with no membership: Trainerize is deactivated.
  *   'email list'        added with '6wc lapsed': Ash's list for regular offers and content.
- *   '6wc guide ...'     that guide is in their Trainerize attachments, so it's never added twice.
+ *   '6wc guide ...'     that guide has been sent to them in a Trainerize message, so it's never sent twice.
  *
  *   '6wc guide failed'  a guide couldn't be added. The tag starts a text to Ash in GHL.
  *
@@ -177,15 +177,26 @@ async function deactivateTrainerize(email) {
   await json(TZ_API + '/user/setStatus', { method: 'POST', headers: tzHeaders(), body: JSON.stringify({ userID: u.id, accountStatus: 'deactivated' }) });
   return 'deactivated';
 }
-/* Adds one guide to a client's Trainerize attachments. The PDFs are served by this site. */
-async function uploadGuide(userID, guide) {
+/* The guides go to the client as a Trainerize message from Ash, with the PDFs attached in that chat.
+   (Profile attachments are coach-only: clients can't see them.) */
+const ASH_TZ = 31884552;
+const guidesText = (first) => `Hi ${first || 'there'}, here are your Bodysculpt guides \u{1F60A} The Welcome Guide walks you through your six weeks, and there's one each for Nutracheck and MyFitnessPal to help with your food tracking. Save them somewhere handy, and if anything's unclear just give us a shout.\n\nAsh`;
+async function sendGuidesMessage(u) {
+  const r = await json(TZ_API + '/message/send', { method: 'POST', headers: tzHeaders(), body: JSON.stringify({
+    userID: ASH_TZ, recipients: [u.id], body: guidesText(u.firstName), threadType: 'mainThread', type: 'text', subject: 'Main', conversationType: 'single' }) });
+  const thread = r.threadIDs && r.threadIDs[0];
+  if (!thread) throw new Error(`guides message not sent: ${JSON.stringify(r).slice(0, 200)}`);
+  return thread;
+}
+/* Posts one guide PDF into that chat. The PDFs are served by this site. */
+async function uploadGuide(threadID, guide) {
   const pdf = await fetch(`${process.env.URL}/${guide.path}`);
   if (!pdf.ok) throw new Error(`${guide.path} ${pdf.status}`);
   const form = new FormData();
-  form.append('data', JSON.stringify({ fileName: guide.name, attachType: 'userAttachment', attachTo: userID }));
-  form.append('file', new Blob([await pdf.arrayBuffer()], { type: 'application/pdf' }), guide.name);
+  form.append('data', JSON.stringify({ attachTo: threadID, attachType: 'messageAttachment', notes: '', userID: ASH_TZ }));
+  form.append('file0', new Blob([await pdf.arrayBuffer()], { type: 'application/pdf' }), guide.name);
   const r = await json(TZ_API + '/file/upload', { method: 'POST', headers: { Authorization: tzAuth() }, body: form });
-  if (!r.id) throw new Error(`${guide.name} not added: ${JSON.stringify(r).slice(0, 200)}`);
+  if (!r.id && !r.messageID) throw new Error(`${guide.name} not added: ${JSON.stringify(r).slice(0, 200)}`);
 }
 /* Guides first: the tag goes on after each one, so a failure part way picks up where it stopped. */
 async function addGuides(email, contact, guides) {
@@ -194,8 +205,9 @@ async function addGuides(email, contact, guides) {
   try {
     const u = await findTrainerize(email);
     if (!u) throw new Error('not on Trainerize, so no guides or email today');
+    const thread = await sendGuidesMessage(u);
     for (const g of guides) {
-      await uploadGuide(u.id, g);
+      await uploadGuide(thread, g);
       await addTags(contact.id, [g.tag]);
     }
     if (failedBefore) await removeTags(contact.id, [GUIDE_FAILED]);
@@ -224,8 +236,9 @@ async function guidesNow(id) {
 async function testGuides(email) {
   const u = await findTrainerize(email);
   if (!u) throw new Error('not on Trainerize');
-  for (const g of GUIDES) await uploadGuide(u.id, g);
-  return { userID: u.id, added: GUIDES.length };
+  const thread = await sendGuidesMessage(u);
+  for (const g of GUIDES) await uploadGuide(thread, g);
+  return { userID: u.id, threadID: thread, added: GUIDES.length };
 }
 async function roster() {
   const url = `${process.env.SUPABASE_URL}/rest/v1/bodysculpt?key=eq.roster&select=value`;

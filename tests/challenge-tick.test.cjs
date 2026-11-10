@@ -35,7 +35,7 @@ assert.deepEqual(plan(m(30, { outcome: "stayed", memberStart: t0 + DAY }), [J, "
 assert.deepEqual(plan(m(42), [L], t0).add, [F]);                                            // not joined: no member start
 // Paid through the link part way through, before a coach marked them stayed on: the coach gets a task.
 assert.equal(plan(m(30), ["members", "6wc day 28"], t0).paidMidChallenge, true);
-assert.equal(plan(m(30, { outcome: "stayed" }), ["members", "6wc day 28"], t0).paidMidChallenge, false); // a coach set it up
+assert.equal(plan(m(30, { outcome: "stayed" }), ["members", "6wc day 28"], t0).paidMidChallenge, true);  // paid AND tapped Stayed on: still a task
 assert.equal(plan(m(42), ["members", L], t0).paidMidChallenge, false);                      // first payment on the end date
 assert.equal(plan(m(30), ["6wc day 28"], t0).paidMidChallenge, false);
 assert.deepEqual(plan(m(42, { extraDays: 7 }), [L], t0).add, []);                           // an extension moves the end

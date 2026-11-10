@@ -33,8 +33,7 @@
  *
  * Skipped: Intro not done, paused or left. Joined people skip only the sign-up emails.
  *
- * Someone who paid through the memberships link DURING their challenge, before a coach marked
- * them as stayed on, is written to the 'challenge-flags' row so the tracker gives the coach a task
+ * Someone whose membership payment came in DURING their challenge is written to the 'challenge-flags' row so the tracker gives the coach a task
  * to move their next payment in GHL. Only this job writes that row.
  *
  * SAFE BY DEFAULT. Nothing is written unless CHALLENGE_LIVE=1 and the request is not a dry run.
@@ -110,9 +109,10 @@ function plan(m, tags, t0, fromMs) {
   /* Membership starts the day the challenge ends, or on the date a coach typed on the tracker. */
   const startDue = m.memberStart ? t0 >= m.memberStart - MS_DAY / 2 : ended;
   if (joined && startDue && !has('member start')) add.push('member start');
-  /* Paid through the link mid-challenge, before a coach marked them stayed on: the coach needs to
-     move their next payment. Someone a coach signed up pays on the end date, after 'stayed'. */
-  const paidMidChallenge = paid && m.outcome !== 'stayed' && !ended;
+  /* A membership payment came in before their challenge ended, so the coach needs to move their
+     next payment. Whether or not a coach has also tapped Stayed on. Someone a coach signs up has
+     their first payment on the end date, so they never show here. */
+  const paidMidChallenge = paid && !ended;
   if (running && !joined && day >= totalDays(m) + LAPSE_AFTER && !has('6wc lapsed')) { add.push('6wc lapsed'); lapse = true; }
   return { day, add, remove, lapse, paidMidChallenge, guides: GUIDES.filter((g) => !has(g.tag)) };
 }

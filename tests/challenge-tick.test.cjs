@@ -40,7 +40,8 @@ assert.equal(plan(m(42), ["members", L], t0).paidMidChallenge, false);          
 assert.equal(plan(m(30), ["6wc day 28"], t0).paidMidChallenge, false);
 assert.deepEqual(plan(m(42, { extraDays: 7 }), [L], t0).add, []);                           // an extension moves the end
 assert.deepEqual(plan(m(48), [L, F], t0).add, []);
-p = plan(m(49), [L, F], t0); assert.deepEqual(p.add, ["6wc lapsed"]); assert.equal(p.lapse, true);
+p = plan(m(49), [L, F], t0); assert.deepEqual(p.add, ["6wc lapsed", "email list"]); assert.equal(p.lapse, true); // onto Ash's email list
+assert.deepEqual(plan(m(49), [L, F, "email list"], t0).add, ["6wc lapsed"]);                // already on it
 assert.deepEqual(plan(m(49), [J, L, F, "members", "member start"], t0).add, []);                // joined: never lapsed
 assert.equal(plan(m(3), [], t0, t0).skip, "started before launch");
 

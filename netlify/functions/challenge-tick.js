@@ -18,8 +18,8 @@
  *                       GHL. A challenger gets it when their challenge ends (or on the start date a coach
  *                       typed). Anyone else with 'members' gets it the next morning (see startSweep).
  *   '6wc finished'      their six weeks are up.
- *   '6wc lapsed'        a week after finishing, with no membership: Trainerize is deactivated
- *                       and the tag puts them on the lapsed list.
+ *   '6wc lapsed'        a week after finishing, with no membership: Trainerize is deactivated.
+ *   'email list'        added with '6wc lapsed': Ash's list for regular offers and content.
  *   '6wc guide ...'     that guide is in their Trainerize attachments, so it's never added twice.
  *
  *   '6wc guide failed'  a guide couldn't be added. The tag starts a text to Ash in GHL.
@@ -114,7 +114,7 @@ function plan(m, tags, t0, fromMs) {
      next payment. Whether or not a coach has also tapped Stayed on. Someone a coach signs up has
      their first payment on the end date, so they never show here. */
   const paidMidChallenge = paid && !ended;
-  if (running && !joined && day >= totalDays(m) + LAPSE_AFTER && !has('6wc lapsed')) { add.push('6wc lapsed'); lapse = true; }
+  if (running && !joined && day >= totalDays(m) + LAPSE_AFTER && !has('6wc lapsed')) { add.push('6wc lapsed'); if (!has('email list')) add.push('email list'); lapse = true; }
   return { day, add, remove, lapse, paidMidChallenge, guides: GUIDES.filter((g) => !has(g.tag)) };
 }
 

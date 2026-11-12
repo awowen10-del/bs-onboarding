@@ -60,8 +60,21 @@ h1 em{font-style:normal;color:var(--em)}
 .full p{margin:0 0 10px;white-space:pre-line}
 .full .lk{color:var(--tz);font-weight:600;text-decoration:underline}
 .full .sub{font-weight:700;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--line)}
-@media (hover:hover){.card:hover .full,.card:focus-within .full{display:block}}
-.card.open .full{display:block}
+.card .full{display:none!important}
+.card .hint{font-size:11.5px;font-weight:600;color:var(--muted)}
+.card:hover .hint{color:var(--ink)}
+.modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal[hidden]{display:none}
+.box{background:var(--card);color:var(--ink);border-radius:10px;width:min(760px,100%);max-height:calc(100vh - 40px);overflow:auto;padding:22px 26px;box-shadow:0 20px 50px rgba(0,0,0,.3);font-size:15px;line-height:1.6;position:relative}
+.box .bwhen{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.box .bwhen.e{color:var(--em-ink)} .box .bwhen.t{color:var(--tz-ink)}
+.box h2{margin:0 36px 14px 0;font-size:20px}
+.box p{margin:0 0 12px;white-space:pre-line}
+.box .lk{color:var(--tz);font-weight:600;text-decoration:underline}
+.box .sub{font-weight:700;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.box .sep{font-weight:700;color:var(--tz-ink);margin:16px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+.box .sep:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.close{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:20px;line-height:1;cursor:pointer}
 .empty{font-size:12.5px;color:var(--muted);padding:10px 2px}
 @media (max-width:820px){
   .heads{display:none}
@@ -80,7 +93,7 @@ h1 em{font-style:normal;color:var(--em)}
 <div class="wrap">
   <header>
     <h1>6 Week Challenge <em>messages</em></h1>
-    <p class="lead">Everything a challenger gets, in order. Emails on the left, what the coach does in the middle, Trainerize messages on the right. Hover over any card (or tap it on a phone) to read the full message.</p>
+    <p class="lead">Everything a challenger gets, in order. Emails on the left, what the coach does in the middle, Trainerize messages on the right. Click any card to read the full message.</p>
   </header>
   <section class="notes" aria-label="For coaches">
     <p><b>The emails and Trainerize posts are automatic.</b> They start when you press Done on the Intro in the tracker, and count from their start date. Your jobs are in the middle.</p>
@@ -90,6 +103,7 @@ h1 em{font-style:normal;color:var(--em)}
   </section>
   <div class="heads" aria-hidden="true"><div class="l">Email</div><div class="m">Coach does</div><div class="r">Trainerize</div></div>
   <main id="rows"></main>
+  <div class="modal" id="modal" hidden><div class="box" role="dialog" aria-modal="true" aria-labelledby="mt"><button class="close" id="close" aria-label="Close">&times;</button><div id="mbody"></div></div></div>
   <section class="notes" aria-label="Not automatic">
     <p><b>Not automatic: do these by hand</b></p>
     <p><b>Vegan?</b> Send them the Vegan Nutrition guide on Trainerize in week 1. The system doesn't know who's vegan.</p>
@@ -111,6 +125,7 @@ function card(kind, x){
     <span class="ttl">${para(title)}</span>
     <span class="what">${esc(what)}</span>
     ${chips ? `<div class="chips">${chips}</div>` : ""}
+    <span class="hint">Click to read the full message</span>
     <div class="full">${kind === "e" ? `<div class="sub">Subject: ${para(x.subj)}</div>` : ""}${x.body.map(b => b.startsWith("\u2014 Message") ? `<p class="sep">${esc(b.replace(/\u2014/g,"").trim())}</p>` : `<p>${para(b)}</p>`).join("")}</div>
   </div>`;
 }
@@ -129,16 +144,21 @@ document.getElementById("rows").innerHTML = ROWS.map(([w, d, em, tz, jobs]) => `
   <div class="spine"><b>${w}</b>${d ? `<span>${d}</span>` : ""}<ul class="jobs">${jobs.map(j => `<li>${esc(j)}</li>`).join("")}</ul></div>
   <div class="side r">${tz.map(x => card("t", x)).join("")}</div>
 </div>`).join("");
+const modal = document.getElementById("modal"), mbody = document.getElementById("mbody");
+function openCard(c){
+  const kind = c.classList.contains("e") ? "e" : "t";
+  mbody.innerHTML = `<div class="bwhen ${kind}">${c.querySelector(".when").innerHTML}</div><h2 id="mt">${c.querySelector(".ttl").innerHTML}</h2>` + c.querySelector(".full").innerHTML;
+  modal.hidden = false; document.getElementById("close").focus();
+}
+function closeModal(){ modal.hidden = true; }
 document.addEventListener("click", e => {
-  const c = e.target.closest(".card");
-  if (e.target.closest(".full")) return;
-  document.querySelectorAll(".card.open").forEach(o => { if (o !== c) o.classList.remove("open"); });
-  if (c) c.classList.toggle("open");
+  if (e.target.id === "close" || e.target === modal) return closeModal();
+  const c = e.target.closest(".card"); if (c) openCard(c);
 });
 document.addEventListener("keydown", e => {
+  if (e.key === "Escape") return closeModal();
   const c = e.target.closest && e.target.closest(".card");
-  if (c && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); c.classList.toggle("open"); }
-  if (e.key === "Escape") document.querySelectorAll(".card.open").forEach(o => o.classList.remove("open"));
+  if (c && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openCard(c); }
 });
 </script>
 </body>

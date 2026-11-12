@@ -81,11 +81,11 @@ const WEEKLY = [
   weekly('habits', 'Habits', 6, THU, 'https://vimeo.com/389514381', (n, l) => `Hey ${n}, with the challenge coming to an end I just wanted to chat about habits, because the goal was never just a great six weeks, it's keeping your results for good. I've attached a short guide, and the video is here: ${l}\n\nIf you're worried about slipping back into old ways once the challenge finishes, this shows you how to build small habits that stick, and if you can see yourself staying with us long term, we'd love to keep helping.`),
 ];
 /* Which weekly guides go today: Thursday sends the Thursday ones, Friday sends anything still due.
-   Not before day 2 (they've just had the three welcome guides), and not after the six weeks. */
+   Not on day 0 (they've just had the three welcome guides), and not after the six weeks. */
 function weeklyDue(m, tags, t0, day) {
   const wd = new Date(t0).getUTCDay();
   if (wd !== THU && wd !== FRI) return [];
-  if (!m.firstSessionDone || !m.day0 || day === null || day < 2 || day >= totalDays(m)) return [];
+  if (!m.firstSessionDone || !m.day0 || day === null || day < 1 || day >= totalDays(m)) return [];
   const week = Math.min(6, Math.floor(day / 7) + 1);
   return WEEKLY.filter((g) => !tags.includes(g.tag) && g.week <= week && (wd === FRI || g.day === THU));
 }

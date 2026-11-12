@@ -137,7 +137,8 @@ async function morning({ tags = [], onTrainerize = true, failOn = null }) {
   const W = (d, at, tags = []) => pl(wm(d, at), tags, at).weekly.map((g) => g.tag);
   const NB = "6wc guide nutrition basics", CA = "6wc guide calories", PR = "6wc guide protein", MP = "6wc guide meal planning", AL = "6wc guide alcohol";
   assert.deepEqual(W(3, MON), []);                                   // not on a Monday
-  assert.deepEqual(W(1, THU), []);                                   // too soon after the welcome guides
+  assert.deepEqual(W(0, THU), []);                                   // not on the day of the welcome guides
+  assert.deepEqual(W(1, FRI), [NB, CA]);                             // Thursday start: the Friday, not four at once a week later
   assert.deepEqual(W(3, THU), [NB, CA]);                             // week 1, Thursday
   assert.deepEqual(W(3, THU, [NB, CA]), []);                         // once
   assert.deepEqual(W(10, THU, [NB, CA]), [PR, MP]);                  // week 2, Thursday: not Alcohol yet

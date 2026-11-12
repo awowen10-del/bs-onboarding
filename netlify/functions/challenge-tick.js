@@ -58,7 +58,7 @@ const GUIDES = [
   { tag: '6wc guide nutracheck', name: 'Bodysculpt Nutracheck Guide.pdf', path: 'guides/Bodysculpt-Nutracheck-Guide.pdf' },
   { tag: '6wc guide myfitnesspal', name: 'Bodysculpt MyFitnessPal Guide.pdf', path: 'guides/Bodysculpt-MyFitnessPal-Guide.pdf' },
 ];
-/* The weekly nutrition guides, posted on Trainerize from Ash with the PDF in the chat. They go on
+/* The weekly nutrition guides, posted on Trainerize from Bodysculpt Support with the PDF in the chat. They go on
    Thursdays (Dan's check-ins run Monday to Wednesday), Alcohol on the Friday of week 2 so it lands
    before the weekend. Week = the challenge week from the tracker's clock. A Thursday or Friday run
    sends anything due and not yet sent, so someone who missed one catches up. The words are Ash's,
@@ -208,13 +208,14 @@ async function deactivateTrainerize(email) {
   await json(TZ_API + '/user/setStatus', { method: 'POST', headers: tzHeaders(), body: JSON.stringify({ userID: u.id, accountStatus: 'deactivated' }) });
   return 'deactivated';
 }
-/* The guides go to the client as a Trainerize message from Ash, with the PDFs attached in that chat.
+/* The guides go to the client as a Trainerize message from Bodysculpt Support, with the PDFs attached in that chat.
    (Profile attachments are coach-only: clients can't see them.) */
-const ASH_TZ = 31884552;
+/* Sent from the Bodysculpt Support account (not Ash), so every coach sees the replies. */
+const SENDER_TZ = 2920561;
 const guidesText = (first) => `Hi ${first || 'there'}, here are your Bodysculpt guides \u{1F60A} The Welcome Guide walks you through your six weeks, and there's one each for Nutracheck and MyFitnessPal to help with your food tracking. Save them somewhere handy, and if anything's unclear just give us a shout.\n\nAsh`;
 async function sendGuidesMessage(u, text = guidesText(u.firstName)) {
   const r = await json(TZ_API + '/message/send', { method: 'POST', headers: tzHeaders(), body: JSON.stringify({
-    userID: ASH_TZ, recipients: [u.id], body: text, threadType: 'mainThread', type: 'text', subject: 'Main', conversationType: 'single' }) });
+    userID: SENDER_TZ, recipients: [u.id], body: text, threadType: 'mainThread', type: 'text', subject: 'Main', conversationType: 'single' }) });
   const thread = r.threadIDs && r.threadIDs[0];
   if (!thread) throw new Error(`guides message not sent: ${JSON.stringify(r).slice(0, 200)}`);
   return thread;
@@ -224,7 +225,7 @@ async function uploadGuide(threadID, guide) {
   const pdf = await fetch(`${process.env.URL}/${guide.path}`);
   if (!pdf.ok) throw new Error(`${guide.path} ${pdf.status}`);
   const form = new FormData();
-  form.append('data', JSON.stringify({ attachTo: threadID, attachType: 'messageAttachment', notes: '', userID: ASH_TZ }));
+  form.append('data', JSON.stringify({ attachTo: threadID, attachType: 'messageAttachment', notes: '', userID: SENDER_TZ }));
   form.append('file0', new Blob([await pdf.arrayBuffer()], { type: 'application/pdf' }), guide.name);
   const r = await json(TZ_API + '/file/upload', { method: 'POST', headers: { Authorization: tzAuth() }, body: form });
   if (!r.id && !r.messageID) throw new Error(`${guide.name} not added: ${JSON.stringify(r).slice(0, 200)}`);
@@ -247,7 +248,7 @@ async function addGuides(email, contact, guides) {
     throw e;
   }
 }
-/* Weekly guides: Ash's message for that guide, then its PDF in the same chat, then the tag.
+/* Weekly guides: the message for that guide, then its PDF in the same chat, then the tag.
    One message per guide, in order, so a failure part way picks up at the next run. */
 async function addWeekly(email, contact, list) {
   if (!list.length) return;

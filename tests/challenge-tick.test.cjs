@@ -81,13 +81,13 @@ async function morning({ tags = [], onTrainerize = true, failOn = null }) {
     if (url.endsWith(".pdf")) return new Response("pdf", { status: 200 });
     if (url.endsWith("/message/send")) {
       const b = JSON.parse(opts.body);
-      assert.equal(b.userID, 31884552); assert.deepEqual(b.recipients, [7]); assert.ok(b.body.startsWith("Hi Amy,"));
+      assert.equal(b.userID, 2920561); assert.deepEqual(b.recipients, [7]); assert.ok(b.body.startsWith("Hi Amy,"));
       return ok({ threadIDs: [99] });
     }
     if (url.endsWith("/file/upload")) {
       const d = JSON.parse(opts.body.get("data")); const f = opts.body.get("file0");
       if (f.name === failOn) return new Response("no", { status: 500 });
-      assert.equal(d.attachType, "messageAttachment"); assert.equal(d.attachTo, 99); assert.equal(d.userID, 31884552);
+      assert.equal(d.attachType, "messageAttachment"); assert.equal(d.attachTo, 99); assert.equal(d.userID, 2920561);
       log.push("upload " + f.name);
       return ok({ id: 1 });
     }

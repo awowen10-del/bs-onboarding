@@ -58,6 +58,37 @@ const GUIDES = [
   { tag: '6wc guide nutracheck', name: 'Bodysculpt Nutracheck Guide.pdf', path: 'guides/Bodysculpt-Nutracheck-Guide.pdf' },
   { tag: '6wc guide myfitnesspal', name: 'Bodysculpt MyFitnessPal Guide.pdf', path: 'guides/Bodysculpt-MyFitnessPal-Guide.pdf' },
 ];
+/* The weekly nutrition guides, posted on Trainerize from Ash with the PDF in the chat. They go on
+   Thursdays (Dan's check-ins run Monday to Wednesday), Alcohol on the Friday of week 2 so it lands
+   before the weekend. Week = the challenge week from the tracker's clock. A Thursday or Friday run
+   sends anything due and not yet sent, so someone who missed one catches up. The words are Ash's,
+   from his 6WC Nutrition Guides page. The same guide is attached to that week's email. */
+const THU = 4, FRI = 5;
+const weekly = (key, label, week, day, video, text) => ({
+  tag: '6wc guide ' + key, label, week, day, video, text,
+  name: `Bodysculpt ${label}.pdf`, path: `guides/Bodysculpt-${label.replace(/ /g, '-')}.pdf`,
+});
+const WEEKLY = [
+  weekly('nutrition basics', 'Nutrition Basics', 1, THU, 'https://vimeo.com/991551296', (n, l) => `Hey ${n}, just wanted to chat to you about nutrition because it's the part that makes the biggest difference to your results on the challenge, and it's also the part most people overcomplicate. We keep it really simple with three rules, so I've attached a short guide that walks you through them, and the video is here too if you'd rather watch: ${l}\n\nIf you've ever started a diet and given up after a week because it felt too strict, it's definitely worth a read \u{1F60A}`),
+  weekly('calories', 'Calories', 1, THU, 'https://vimeo.com/991551409', (n, l) => `Hey ${n}, just wanted to chat about calories because now you've started tracking, it really helps to know what the numbers mean and why we've set your target where it is. I've attached a short guide, and the video is here: ${l}\n\nIf you've ever felt like you eat well but still can't shift the weight, this one is worth a read.`),
+  weekly('protein', 'Protein', 2, THU, 'https://vimeo.com/427320328', (n, l) => `Hey ${n}, just wanted to chat about protein because it's the target most people find hardest to hit in the first couple of weeks, and it's the one that keeps you full and protects your muscle while you lose fat. I've attached a short guide, and the video is here: ${l}\n\nIf you're getting hungry between meals or coming in well under your protein number, it's worth a read.`),
+  weekly('meal planning', 'Meal Planning', 2, THU, 'https://vimeo.com/427320963', (n, l) => `Hey ${n}, just wanted to chat about planning your week because it makes hitting your targets so much easier, and it doesn't mean spending your whole Sunday meal prepping. I've attached a short guide with six simple steps, and the video is here: ${l}\n\nIf the busy days are where things fall apart, or you're getting to tea time with loads of protein still to hit, this one will help.`),
+  weekly('alcohol', 'Alcohol', 2, FRI, 'https://vimeo.com/427323509', (n, l) => `Hey ${n}, with the weekend coming up I just wanted to chat about alcohol, because you don't need to give it up to get results on the challenge, you just need to plan for it. I've attached a short guide, and the video is here: ${l}\n\nIf you've got a night out coming up or you usually have a few drinks at the weekend, it shows you which drinks to pick and how to fit them into your week \u{1F60A}`),
+  weekly('neat', 'NEAT', 3, THU, 'https://vimeo.com/991551602', (n, l) => `Hey ${n}, just wanted to chat about your steps, because the time you spend outside the gym burns far more calories than your sessions do, and moving a bit more means you can eat a bit more and still lose fat. I've attached a short guide, and the video is here: ${l}\n\nIf you're finding your calories a bit tight, or you sit down for most of the day, give this a read.`),
+  weekly('food environments', 'Food Environments', 3, THU, 'https://vimeo.com/392984248', (n, l) => `Hey ${n}, just wanted to chat about your kitchen and your desk, because willpower runs out by the end of the day, and it's much easier to set things up so the good choice is the easy one. I've attached a short guide, and the video is here: ${l}\n\nIf the evenings or the snacks at work are where you tend to slip up, this one is worth a read.`),
+  weekly('under reporting', 'Under Reporting', 4, THU, 'https://vimeo.com/991554964', (n, l) => `Hey ${n}, just wanted to chat about tracking, because around now a lot of people feel like they're doing everything right but the scales have slowed down, and it's nearly always the little bits that don't get logged. I've attached a short guide, and the video is here: ${l}\n\nIf that sounds like you, or you've ever said "I don't eat that much", it's definitely worth a read.`),
+  weekly('calorie density', 'Calorie Density', 5, THU, 'https://vimeo.com/992070680', (n, l) => `Hey ${n}, just wanted to chat about calorie density, because by now you might be finding your calories a bit tighter, and choosing foods that fill you up for fewer calories makes a big difference. I've attached a short guide, and the video is here: ${l}\n\nIf you're feeling hungry a lot of the time, give this one a read.`),
+  weekly('habits', 'Habits', 6, THU, 'https://vimeo.com/389514381', (n, l) => `Hey ${n}, with the challenge coming to an end I just wanted to chat about habits, because the goal was never just a great six weeks, it's keeping your results for good. I've attached a short guide, and the video is here: ${l}\n\nIf you're worried about slipping back into old ways once the challenge finishes, this shows you how to build small habits that stick, and if you can see yourself staying with us long term, we'd love to keep helping.`),
+];
+/* Which weekly guides go today: Thursday sends the Thursday ones, Friday sends anything still due.
+   Not before day 2 (they've just had the three welcome guides), and not after the six weeks. */
+function weeklyDue(m, tags, t0, day) {
+  const wd = new Date(t0).getUTCDay();
+  if (wd !== THU && wd !== FRI) return [];
+  if (!m.firstSessionDone || !m.day0 || day === null || day < 2 || day >= totalDays(m)) return [];
+  const week = Math.min(6, Math.floor(day / 7) + 1);
+  return WEEKLY.filter((g) => !tags.includes(g.tag) && g.week <= week && (wd === FRI || g.day === THU));
+}
 
 const norm = (s) => String(s == null ? '' : s).trim().toLowerCase();
 
@@ -115,7 +146,7 @@ function plan(m, tags, t0, fromMs) {
      their first payment on the end date, so they never show here. */
   const paidMidChallenge = paid && !ended;
   if (running && !joined && day >= totalDays(m) + LAPSE_AFTER && !has('6wc lapsed')) { add.push('6wc lapsed'); if (!has('email list')) add.push('email list'); lapse = true; }
-  return { day, add, remove, lapse, paidMidChallenge, guides: GUIDES.filter((g) => !has(g.tag)) };
+  return { day, add, remove, lapse, paidMidChallenge, guides: GUIDES.filter((g) => !has(g.tag)), weekly: weeklyDue(m, tags, t0, day) };
 }
 
 async function json(url, opts) {
@@ -181,9 +212,9 @@ async function deactivateTrainerize(email) {
    (Profile attachments are coach-only: clients can't see them.) */
 const ASH_TZ = 31884552;
 const guidesText = (first) => `Hi ${first || 'there'}, here are your Bodysculpt guides \u{1F60A} The Welcome Guide walks you through your six weeks, and there's one each for Nutracheck and MyFitnessPal to help with your food tracking. Save them somewhere handy, and if anything's unclear just give us a shout.\n\nAsh`;
-async function sendGuidesMessage(u) {
+async function sendGuidesMessage(u, text = guidesText(u.firstName)) {
   const r = await json(TZ_API + '/message/send', { method: 'POST', headers: tzHeaders(), body: JSON.stringify({
-    userID: ASH_TZ, recipients: [u.id], body: guidesText(u.firstName), threadType: 'mainThread', type: 'text', subject: 'Main', conversationType: 'single' }) });
+    userID: ASH_TZ, recipients: [u.id], body: text, threadType: 'mainThread', type: 'text', subject: 'Main', conversationType: 'single' }) });
   const thread = r.threadIDs && r.threadIDs[0];
   if (!thread) throw new Error(`guides message not sent: ${JSON.stringify(r).slice(0, 200)}`);
   return thread;
@@ -215,6 +246,35 @@ async function addGuides(email, contact, guides) {
     if (!failedBefore) await addTags(contact.id, [GUIDE_FAILED]).catch(() => {});   // one text, not one a day
     throw e;
   }
+}
+/* Weekly guides: Ash's message for that guide, then its PDF in the same chat, then the tag.
+   One message per guide, in order, so a failure part way picks up at the next run. */
+async function addWeekly(email, contact, list) {
+  if (!list.length) return;
+  const failedBefore = (contact.tags || []).map(norm).includes(GUIDE_FAILED);
+  try {
+    const u = await findTrainerize(email);
+    if (!u) throw new Error('not on Trainerize, so no weekly guide');
+    for (const g of list) {
+      const thread = await sendGuidesMessage(u, g.text(u.firstName || 'there', g.video));
+      await uploadGuide(thread, g);
+      await addTags(contact.id, [g.tag]);
+    }
+    if (failedBefore) await removeTags(contact.id, [GUIDE_FAILED]);
+  } catch (e) {
+    if (!failedBefore) await addTags(contact.id, [GUIDE_FAILED]).catch(() => {});
+    throw e;
+  }
+}
+/* A test run of one weekly guide on one person: sends it and sets no tags. */
+async function testWeekly(email, label) {
+  const g = WEEKLY.find((x) => norm(x.label) === norm(label));
+  if (!g) throw new Error('no weekly guide called ' + label);
+  const u = await findTrainerize(email);
+  if (!u) throw new Error('not on Trainerize');
+  const thread = await sendGuidesMessage(u, g.text(u.firstName || 'there', g.video));
+  await uploadGuide(thread, g);
+  return { userID: u.id, threadID: thread, sent: g.label };
 }
 /* A coach has just pressed Done on this person's Intro. Anyone can call this, as all it can ever
    do is what the morning run would have done anyway: the roster and the tags decide. */
@@ -284,14 +344,16 @@ async function run({ dryRun }) {
         flagsChanged = true;
         report.flagged.push(m.name);
       }
-      if (!p.add.length && !p.guides.length) continue;
+      if (!p.add.length && !p.guides.length && !p.weekly.length) continue;
       if (live) {
         await addGuides(m.email, c, p.guides);
+        /* A weekly guide that fails never holds up the email: it's retried at the next run. */
+        try { await addWeekly(m.email, c, p.weekly); } catch (e) { report.errors.push(`${m.name} weekly guide: ${e.message}`); }
         if (p.lapse) await deactivateTrainerize(m.email);
         await addTags(c.id, p.add);
         if (p.remove.length) await removeTags(c.id, p.remove);
       }
-      report.actions.push({ name: m.name, day: p.day, add: p.add, guides: p.guides.map((g) => g.tag) });
+      report.actions.push({ name: m.name, day: p.day, add: p.add, guides: p.guides.map((g) => g.tag), weekly: p.weekly.map((g) => g.tag) });
     } catch (e) {
       report.errors.push(`${m.name}: ${e.message}`);
     }
@@ -339,6 +401,8 @@ exports.handler = async (event) => {
 exports.run = run;
 exports.plan = plan;
 exports.testGuides = testGuides;
+exports.testWeekly = testWeekly;
+exports.WEEKLY = WEEKLY;
 exports.guidesNow = guidesNow;
 exports.currentDay = currentDay;
 exports.startDecision = startDecision;

@@ -1,7 +1,7 @@
 /* Runs challenge-tick.js with up to 15 minutes, which Netlify gives any function with -background
    at the end of its name. Called by challenge-tick-daily.js.
    POST {"test_guides":"<email>"} adds the guides to that one Trainerize client and sets no tags. */
-const { run, testGuides } = require('./challenge-tick');
+const { run, testGuides, testWeekly } = require('./challenge-tick');
 
 exports.handler = async (event) => {
   const provided = (event.queryStringParameters && event.queryStringParameters.secret) || event.headers['x-webhook-secret'];
@@ -10,8 +10,9 @@ exports.handler = async (event) => {
     return;
   }
   try {
-    const { test_guides: email } = JSON.parse(event.body || '{}');
-    if (email) console.log('GUIDES TEST ' + JSON.stringify(await testGuides(email)));
+    const { test_guides: email, test_weekly: weeklyEmail, guide } = JSON.parse(event.body || '{}');
+    if (weeklyEmail) console.log('WEEKLY TEST ' + JSON.stringify(await testWeekly(weeklyEmail, guide)));
+    else if (email) console.log('GUIDES TEST ' + JSON.stringify(await testGuides(email)));
     else await run({ dryRun: false });
   } catch (e) {
     console.log('ERROR ' + e.message);

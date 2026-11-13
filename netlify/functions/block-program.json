@@ -1,0 +1,7 @@
+{
+  "_note": "The current 4-week training block in Trainerize. New 6WC payers are added to it from its first Sunday, so they land on whatever week everyone else is on. Change both lines when a new block starts (the /trainerize-weekly skill does this).",
+  "programID": 5430011,
+  "name": "Bodysculpt Workouts - Weeks 5-9",
+  "startDate": "2026-11-01",
+  "endDate": "2026-11-28"
+}

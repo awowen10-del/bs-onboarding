@@ -4,7 +4,9 @@
  * Receives a webhook from GHL when someone pays (the "6WC - Paid" workflow), and in Trainerize:
  *   1. adds them as a client (or finds them, if their email is already there),
  *   2. assigns them to the coach "Bodysculpt Support",
- *   3. adds them to the group "Important Announcements".
+ *   3. adds them to the group "Important Announcements",
+ *   4. adds them to the current training block (block-program.json) from the block's first Sunday,
+ *      so they land on the same week as everyone else. Skipped if they're already on it or the block has ended.
  * Each step is safe to repeat, so a second webhook for the same person changes nothing.
  *
  * Send dry_run: true to check the token and look the person up, changing nothing.
@@ -26,6 +28,7 @@ const TZ_TOKEN = process.env.TRAINERIZE_API_TOKEN || process.env.TRAINERIZE_API_
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const COACH_NAME = 'Bodysculpt Support';
 const USERGROUP_NAME = 'Important Announcements';
+const BLOCK = require('./block-program.json');
 
 exports.handler = async (event) => {
   // 1. Only accept POST
@@ -76,7 +79,7 @@ exports.handler = async (event) => {
 
     // 5. Find or add the client
     let userID = await findClientByEmail(email);
-    if (dryRun) return resp(200, { ok: true, dryRun: true, trainerID, userGroupID, existingClient: userID || null });
+    if (dryRun) return resp(200, { ok: true, dryRun: true, trainerID, userGroupID, existingClient: userID || null, block: await blockCheck(userID) });
     let created = false;
     if (!userID) {
       const added = await tz('/user/add', {
@@ -93,13 +96,36 @@ exports.handler = async (event) => {
     await tz('/user/switchTrainer', { userID, trainerID });
     await tz('/userGroup/addUser', { id: userGroupID, userID });
 
-    console.log(`DONE: ${email} userID=${userID} created=${created}`);
-    return resp(200, { ok: true, userID, created });
+    // 7. Current training block. Never fails the whole set-up: the weekly check catches anyone missed.
+    let block;
+    try { block = await addToBlock(userID); } catch (e) { block = 'error: ' + e.message; }
+
+    console.log(`DONE: ${email} userID=${userID} created=${created} block=${block}`);
+    return resp(200, { ok: true, userID, created, block });
   } catch (e) {
     console.log('ERROR: ' + e.message);
     return resp(502, { error: e.message });
   }
 };
+
+// What would happen with the block, without changing anything (used by dry runs).
+async function blockCheck(userID) {
+  if (!BLOCK.programID) return 'no block set';
+  if (new Date().toISOString().slice(0, 10) > BLOCK.endDate) return `block ${BLOCK.name} ended ${BLOCK.endDate}, would skip`;
+  if (!userID) return `new client, would add to ${BLOCK.name} from ${BLOCK.startDate}`;
+  const r = await tz('/program/getUserProgramList', { userID });
+  return (r.programs || []).some(p => p.id === BLOCK.programID) ? `already on ${BLOCK.name}` : `would add to ${BLOCK.name} from ${BLOCK.startDate}`;
+}
+
+async function addToBlock(userID) {
+  if (!BLOCK.programID) return 'no block set';
+  if (new Date().toISOString().slice(0, 10) > BLOCK.endDate) return `block ended ${BLOCK.endDate}, skipped`;
+  const r = await tz('/program/getUserProgramList', { userID });
+  if ((r.programs || []).some(p => p.id === BLOCK.programID)) return 'already on block';
+  // The program's field is "id"; "programID" returns a misleading 403.
+  const a = await tz('/program/addUser', { id: BLOCK.programID, userID, startDate: BLOCK.startDate, subscribeType: 'addon' });
+  return `added from ${BLOCK.startDate}: ${a.message || JSON.stringify(a).slice(0, 80)}`;
+}
 
 async function findClientByEmail(email) {
   const r = await tz('/user/find', { searchTerm: email, view: 'allClient', start: 0, count: 10 });

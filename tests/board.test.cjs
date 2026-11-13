@@ -325,7 +325,8 @@ const countBadge = (html) => {
     .exec(panel(app))[0];
 
   assert.ok(/<span class="status-day">Day 8<\/span>/.test(card), "the day label is on the card");
-  assert.ok(/<span class="nm">Sam Live<\/span>/.test(card), "…as is the challenger's name");
+  assert.ok(/<span class="nm nm-link"[^>]*>Sam Live<\/span>/.test(card), "…as is the challenger's name");
+  assert.ok(/openPerson\('a'\)/.test(card), "…and the name opens their card in a popup");
   assert.ok(/<span class="ttl">Week 2 check-in<\/span>/.test(card), "…and the touchpoint's title");
   assert.ok(/toggleDone\('a','wk2',true\)/.test(card), "Done is still wired to the real handler");
   assert.ok(/markMissed\('a','wk2'\)/.test(card), "…and Missed to its own");

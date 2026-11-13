@@ -668,6 +668,14 @@
   .modal-bg{position:fixed;inset:0;background:rgba(var(--backdrop-rgb),.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
   .modal-bg.show{display:flex;animation:fade .2s ease}
   .modal{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);max-width:460px;width:100%;padding:24px;box-shadow:var(--shadow);max-height:90vh;overflow:auto}
+  /* a challenger's card in a popup: the popup is the card's frame, so the card inside is flat */
+  .modal.person-modal{max-width:720px;padding:18px 24px 24px}
+  .person-bar{display:flex;justify-content:flex-end;margin-bottom:6px}
+  .person-modal .mcard{background:transparent;border:0;box-shadow:none;padding:0;margin:0}
+  /* a name that opens that card */
+  .nm-link{cursor:pointer;border-radius:4px}
+  .nm-link:hover{text-decoration:underline;text-underline-offset:3px}
+  .nm-link:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
   .modal h3{font-size:19px;font-weight:800;margin-bottom:4px}
   .modal p.note{font-size:13px;color:var(--ink-dim);margin-bottom:18px}
   .modal p.note b{color:var(--ink)}
@@ -1653,6 +1661,14 @@
   </section>
 
 </main>
+
+<!-- ===== One challenger's card, opened from a name on Today's moves ===== -->
+<div class="modal-bg" id="personBg" onclick="if(event.target===this)closePerson()">
+  <div class="modal person-modal" role="dialog" aria-label="Challenger">
+    <div class="person-bar"><button type="button" class="btn sm ghost" onclick="closePerson()">Close</button></div>
+    <div id="personBody"></div>
+  </div>
+</div>
 
 <!-- ===== Add / Edit modal ===== -->
 <div class="modal-bg" id="modalBg">
@@ -3117,7 +3133,7 @@ function renderToday(){
         <span class="ch followup">Follow-up</span>
         <div class="body" onclick="toggleExpand('${m.id}','followup')">
           <div class="who">
-            <span class="nm">${esc(m.name)}</span>${notesBtn(m)}
+            ${nameLink(m)}${notesBtn(m)}
             <span class="ttl">Follow up — see how they're getting on</span>
             <span class="day">${fmt(m.followUpOn)}</span>
             ${overdue?'<span class="overdue">Overdue</span>':''}
@@ -3151,7 +3167,7 @@ function renderToday(){
         <span class="ch awaiting">Payment</span>
         <div class="body">
           <div class="who">
-            <span class="nm">${esc(m.name)}</span>${notesBtn(m)}
+            ${nameLink(m)}${notesBtn(m)}
             <span class="ttl">Paid through the memberships link. In GHL, move their next payment to ${end?fmt(monthAfter(end)):'a month after their challenge ends'}</span>
           </div>
         </div>
@@ -3171,7 +3187,7 @@ function renderToday(){
         <span class="ch awaiting">To start</span>
         <div class="body">
           <div class="who">
-            <span class="nm">${esc(m.name)}</span>${notesBtn(m)}
+            ${nameLink(m)}${notesBtn(m)}
             <span class="ttl">Confirm their first session to start their 42 days</span>
             <span class="day">${esc(bookedLabel(m))}</span>
             ${late?'<span class="overdue">Session date passed</span>':''}
@@ -3270,7 +3286,7 @@ function todayCardHtml(r){
         </div>
         <div class="body" onclick="toggleExpand('${m.id}','${item.id}')">
           <div class="who">
-            <span class="nm">${esc(m.name)}</span>${notesBtn(m)}
+            ${nameLink(m)}${notesBtn(m)}
             <span class="ttl">${esc(tpTitle(item))}</span>
           </div>
           ${detail}
@@ -3291,6 +3307,7 @@ function toggleExpand(mid,iid){
 /* Jump to whichever of a challenger's two pre-start tasks is actually on Today's moves — the
    intro card while the admin is outstanding, the start-the-clock task once it is done. */
 function goToIntro(mid){
+  closePerson();   // it may have been pressed on the card in the popup
   // switch to the Today tab
   document.querySelectorAll('nav.tabs button').forEach(x=>x.setAttribute('aria-selected','false'));
   const todayBtn=document.querySelector('nav.tabs button[data-view="today"]');
@@ -3718,7 +3735,12 @@ function renderMembers(){
       ${members.length?'Nobody on this tab — the counts above say where everyone is.':'Add your first challenger to start their 42-day journey.'}</div>`;
     return;
   }
-  list.innerHTML = arr.map(m=>{
+  list.innerHTML = arr.map(memberCardHtml).join('');
+}
+
+/* One challenger's card. The Challengers screen lists these, and the popup opened from a name
+   on Today's moves shows the same one, so there is a single place that says what a card is. */
+function memberCardHtml(m){
     const cd = currentDay(m), tot = totalDays(m), s = status(m);
     const started = hasStarted(m);
     const pct = started ? Math.min(100, Math.round(cd/tot*100)) : 0;
@@ -3809,8 +3831,35 @@ function renderMembers(){
         <button class="btn sm ghost danger" onclick="removeMember('${m.id}')">Remove</button>
       </div>
     </div>`;
-  }).join('');
 }
+
+/* A challenger's card in a popup, opened by clicking their name on Today's moves, so a coach
+   doesn't have to go to Challengers and find them. It is re-drawn by renderAll, so Pause, Add
+   time and the rest update it in place; if the person is removed it closes. */
+let personTarget=null;
+function nameLink(m, cls='nm nm-link'){
+  return `<span class="${cls}" role="button" tabindex="0" title="Open ${esc(m.name)}"
+    onclick="event.stopPropagation();openPerson('${m.id}')"
+    onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();openPerson('${m.id}')}">${esc(m.name)}</span>`;
+}
+function openPerson(id){
+  if(!members.find(x=>x.id===id)) return;
+  personTarget=id; renderPerson();
+  document.getElementById('personBg').classList.add('show');
+}
+function closePerson(){ personTarget=null; document.getElementById('personBg').classList.remove('show'); }
+function renderPerson(){
+  if(!personTarget) return;
+  const m=members.find(x=>x.id===personTarget);
+  if(!m){ closePerson(); return; }
+  document.getElementById('personBody').innerHTML = memberCardHtml(m);
+}
+document.addEventListener('keydown',ev=>{
+  if(ev.key!=='Escape' || !personTarget) return;
+  // only when it's the popup on top: Edit, Add time and Notes open over it
+  const open=[...document.querySelectorAll('.modal-bg.show')];
+  if(open.length===1 && open[0].id==='personBg') closePerson();
+});
 
 /* status of a single touchpoint cell for a member */
 function cellStatus(m,it){
@@ -3867,7 +3916,7 @@ function renderMemberTable(){
     const meta = `Coach ${esc(m.coach)}${m.signedUp?' · Member':''}${m.extraDays?` · +${m.extraDays}d`:''}`
       + (followUpPending(m)?` · follow-up ${fmt(m.followUpOn)}`:'');
     return `<tr>
-      <td class="who"><div class="nm">${esc(m.name)}${notesBtn(m)}</div><div class="meta">${meta}</div></td>
+      <td class="who"><div class="nm">${nameLink(m,'nm-link')}${notesBtn(m)}</div><div class="meta">${meta}</div></td>
       <td class="day">${dayCell}</td>
       ${cells}
     </tr>`;
@@ -6182,7 +6231,7 @@ function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp
 function stripTags(s){ return (s==null?'':String(s)).replace(/<[^>]*>/g,''); }
 
 function renderAll(){
-  renderConvBar(); renderToday(); renderMembers(); renderBirthdays(); renderPlaybook();
+  renderConvBar(); renderToday(); renderMembers(); renderPerson(); renderBirthdays(); renderPlaybook();
   renderRetentionToday(); renderRetentionMembers(); renderAttendance();
   if(todayView==='table') renderMemberTable();
   if(retTodayView==='table') renderRetentionTable();

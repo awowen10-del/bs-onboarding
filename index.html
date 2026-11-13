@@ -1678,6 +1678,12 @@
       <input type="date" id="f-mstart">
     </div>
     <div class="field">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;text-transform:none;letter-spacing:0">
+        <input type="checkbox" id="f-noalcohol" style="width:18px;height:18px;flex:none;accent-color:var(--orange)">
+        <span>Doesn't drink <span class="lbl-opt">tick this and they never get the Alcohol guide, by email or on Trainerize</span></span>
+      </label>
+    </div>
+    <div class="field">
       <label>One personal thing (learn this at the intro — what to remember)</label>
       <textarea id="f-personal" placeholder="Why they joined, a kid's name, an event coming up…"></textarea>
     </div>
@@ -4222,6 +4228,7 @@ function openAdd(){
   document.getElementById('f-coach').value='Dan';
   document.getElementById('f-dob').value='';
   document.getElementById('f-personal').value='';
+  document.getElementById('f-noalcohol').checked=false;
   document.getElementById('f-mstart').value='';
   document.getElementById('f-mstart-field').style.display='none';   // nothing to override until they've started
   document.getElementById('modalBg').classList.add('show');
@@ -4235,6 +4242,7 @@ function openEdit(id){
   document.getElementById('f-coach').value=m.coach;
   document.getElementById('f-dob').value=m.dob||'';
   document.getElementById('f-personal').value=m.personal||'';
+  document.getElementById('f-noalcohol').checked=!!m.noAlcohol;
   document.getElementById('f-mstart').value=m.memberStart?toDateInput(m.memberStart):'';
   document.getElementById('f-mstart-field').style.display='';
   document.getElementById('modalBg').classList.add('show');
@@ -4246,14 +4254,15 @@ function saveMember(){
   const coach=document.getElementById('f-coach').value;
   const personal=document.getElementById('f-personal').value.trim();
   const dob=normalizeDob(document.getElementById('f-dob').value);   // '' or nonsense -> null
+  const noAlcohol=document.getElementById('f-noalcohol').checked;   // the morning job leaves out the Alcohol guide
   if(editTarget){
     const m=members.find(x=>x.id===editTarget);
-    m.name=name; m.coach=coach; m.personal=personal; m.dob=dob;
+    m.name=name; m.coach=coach; m.personal=personal; m.dob=dob; m.noAlcohol=noAlcohol;
     const ms=document.getElementById('f-mstart').value;
     m.memberStart = ms ? parseDate(ms) : null;
   }else{
     members.push({id:'m'+Date.now()+Math.random().toString(36).slice(2,6),
-      name,booked:null,day0:null,firstSessionDone:false,coach,personal,dob,
+      name,booked:null,day0:null,firstSessionDone:false,coach,personal,dob,noAlcohol,
       extraDays:0,pausedDays:0,pausedAt:null,signedUp:false,outcome:null,completed:[],doneMeta:{},checks:{},
       followUpOn:null,followUpStatus:null,notes:''});
   }

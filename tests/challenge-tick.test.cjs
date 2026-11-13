@@ -98,7 +98,7 @@ async function morning({ tags = [], onTrainerize = true, failOn = null }) {
   console.log = quiet;
   return { log, report };
 }
-(async () => {
+const morningTests = (async () => {
   let r = await morning({});
   assert.deepEqual(r.log, [
     "upload Bodysculpt Welcome Guide.pdf", "POST 6wc guide welcome",
@@ -150,3 +150,90 @@ async function morning({ tags = [], onTrainerize = true, failOn = null }) {
   assert.deepEqual(pl({ email: "a@b.c", completed: ["intro"] }, [], THU).weekly, []);   // clock not started
 }
 console.log("weekly guides ok");
+
+
+// Nothing is posted over a client who may be waiting on a reply. Trainerize only shows each side's
+// unread count, the time of the last message and its first line, so that's what the rule works from.
+{
+  const { safeToPost: safe, plan: pl } = require("../netlify/functions/challenge-tick.js");
+  const H = 3600000, now = Date.UTC(2026, 10, 19, 8);
+  const S = (o) => safe({ last: now - 30 * H, excerpt: "Thanks", coachUnread: 0, clientUnread: 0, lastPost: 0, now, ...o }).ok;
+  assert.equal(S({ last: 0 }), true);                                          // never spoken
+  assert.equal(S({ coachUnread: 1 }), false);                                  // a message no coach has opened
+  assert.equal(S({ coachUnread: 1, last: now - 9 * DAY }), false);             // however old it is
+  assert.equal(S({ coachUnread: 1, lastPost: now - 30 * H }), false);          // even if our post went on top of it
+  assert.equal(S({ last: now - 2 * H, lastPost: now - 2 * H }), true);         // only our own last post since
+  assert.equal(S({ last: now - 2 * H, clientUnread: 1 }), true);               // a coach spoke last
+  assert.equal(S({ last: now - 2 * H }), false);                               // can't tell, and it's recent
+  assert.equal(S({ last: now - 30 * H }), true);                               // can't tell, a day old, not a question
+  assert.equal(S({ last: now - 30 * H, excerpt: "Is it normal to be this sore?" }), false);   // a question waits longer
+  assert.equal(S({ last: now - 80 * H, excerpt: "Is it normal to be this sore?" }), true);    // but not for ever
+
+  const THU = Date.UTC(2026, 11, 3), FRI = Date.UTC(2026, 11, 4), SAT = Date.UTC(2026, 11, 5), MON = Date.UTC(2026, 11, 7);
+  const wm = (d, at) => ({ email: "a@b.c", completed: ["intro"], firstSessionDone: true, day0: at - d * DAY });
+  const W = (d, at, tags = []) => pl(wm(d, at), tags, at).weekly.map((g) => g.tag);
+  const NB = "6wc guide nutrition basics", CA = "6wc guide calories", PR = "6wc guide protein", MP = "6wc guide meal planning", AL = "6wc guide alcohol", HELD = "6wc guide held";
+  assert.deepEqual(W(11, FRI, [NB, CA, PR, MP, "6wc no alcohol"]), []);        // never the Alcohol guide
+  assert.deepEqual(W(9, FRI, ["6wc no alcohol"]), [NB, CA, PR, MP]);           // the rest still go
+  assert.deepEqual(pl({ ...wm(11, FRI), noAlcohol: true }, [NB, CA, PR, MP], FRI).weekly, []);   // ticked on the tracker: the same
+  assert.ok(pl({ ...wm(2, FRI), noAlcohol: true }, [], FRI).add.includes("6wc no alcohol"));     // and GHL is told, for the email
+  assert.ok(!pl({ ...wm(2, FRI), noAlcohol: true }, ["6wc no alcohol"], FRI).add.includes("6wc no alcohol"));
+  assert.deepEqual(W(5, SAT, [HELD]), [NB, CA]);                               // a held guide is tried the next morning
+  assert.deepEqual(W(5, SAT), []);                                             // only if one was held
+  assert.deepEqual(W(7, MON, [HELD]), [NB, CA]);                               // Monday of week 2: still only what was held
+  assert.deepEqual(W(3, MON, [HELD]), []);                                     // nothing was due last Friday
+  assert.deepEqual(W(3, THU, [HELD]), [NB, CA]);                               // Thursdays as normal
+}
+
+// The morning run with a weekly guide due: held when the chat isn't clear, sent when it is.
+morningTests.then(async () => {
+  const tick = require("../netlify/functions/challenge-tick.js");
+  const RealDate = Date, THU = RealDate.UTC(2026, 11, 3, 8);
+  const G3 = ["6wc guide welcome", "6wc guide nutracheck", "6wc guide myfitnesspal", "6wc day 2"];
+  async function thursday({ tags = G3, thread, coachUnread = 0, posts = {} }) {
+    Object.assign(process.env, { CHALLENGE_LIVE: "1", URL: "https://site.test", GHL_TOKEN: "x", SUPABASE_URL: "https://db.test",
+      SUPABASE_SERVICE_KEY: "x", TRAINERIZE_GROUP_ID: "1", TRAINERIZE_API_ACCESS: "x" });
+    delete process.env.CHALLENGE_FROM;
+    const log = [];
+    const ok = (body) => new Response(JSON.stringify(body), { status: 200 });
+    global.Date = class extends RealDate { constructor(...a) { super(...(a.length ? a : [THU])); } static now() { return THU; } };
+    global.fetch = async (url, opts = {}) => {
+      if (url.includes("key=eq.roster")) return ok([{ value: [{ id: "1", name: "A", email: "a@b.c", completed: ["intro"], firstSessionDone: true, day0: RealDate.UTC(2026, 10, 30) }] }]);
+      if (url.includes("key=eq.guide-posts")) return ok([{ value: posts }]);
+      if (url.includes("/rest/v1/")) { if (opts.method === "POST") log.push("noted " + JSON.parse(opts.body).key); return ok([]); }
+      if (url.includes("/contacts/?")) return ok({ contacts: [{ id: "c1", email: "a@b.c", tags }] });
+      if (url.endsWith("/contacts/search")) return ok({ contacts: [] });
+      if (url.endsWith("/contacts/c1/tags")) { log.push(opts.method + " " + JSON.parse(opts.body).tags.join()); return ok({}); }
+      if (url.endsWith("/user/find")) return ok({ users: [{ id: 7, email: "a@b.c", firstName: "Amy" }] });
+      if (url.endsWith("/message/getThreads")) {
+        const who = JSON.parse(opts.body).userID;
+        if (!thread) return ok({ threads: [] });
+        return ok({ threads: [{ threadID: 99, threadType: "mainThread", ...thread, totalUnreadMessages: who === 7 ? (thread.clientUnread || 0) : coachUnread }] });
+      }
+      if (url.endsWith(".pdf")) return new Response("pdf", { status: 200 });
+      if (url.endsWith("/message/send")) { log.push("sent"); return ok({ threadIDs: [99] }); }
+      if (url.endsWith("/file/upload")) { log.push("upload " + opts.body.get("file0").name); return ok({ id: 1 }); }
+      throw new Error("unexpected " + url);
+    };
+    const quiet = console.log; console.log = () => {};
+    let report;
+    try { report = await tick.run({ dryRun: false }); } finally { console.log = quiet; global.Date = RealDate; }
+    return { log, report };
+  }
+  const sentBoth = ["sent", "upload Bodysculpt Nutrition Basics.pdf", "POST 6wc guide nutrition basics", "noted guide-posts",
+    "sent", "upload Bodysculpt Calories.pdf", "POST 6wc guide calories", "noted guide-posts"];
+  let r = await thursday({});
+  assert.deepEqual(r.log, sentBoth);                                                        // no chat yet: goes
+  r = await thursday({ thread: { lastSentTime: "2026-12-02 21:10:00", excerpt: "Is it normal to be this sore?" }, coachUnread: 1 });
+  assert.deepEqual(r.log, ["POST 6wc guide held"]);                                         // unopened message: held, tagged
+  assert.equal(r.report.held.length, 1); assert.equal(r.report.errors.length, 0);
+  r = await thursday({ thread: { lastSentTime: "2026-12-02 21:10:00", excerpt: "Is it normal to be this sore?" } });
+  assert.deepEqual(r.log, ["POST 6wc guide held"]);                                         // opened but maybe not answered: held
+  r = await thursday({ tags: [...G3, "6wc guide held"], thread: { lastSentTime: "2026-12-02 21:10:00", excerpt: "ok" } });
+  assert.deepEqual(r.log, []);                                                              // still held: one tag, not one a day
+  r = await thursday({ tags: [...G3, "6wc guide held"], thread: { lastSentTime: "2026-12-02 21:30:00", excerpt: "Totally normal, it eases off", clientUnread: 1 } });
+  assert.deepEqual(r.log, [...sentBoth, "DELETE 6wc guide held"]);                          // a coach replied: goes, tag off
+  r = await thursday({ thread: { lastSentTime: "2026-11-30 10:00:10", excerpt: "File shared." }, posts: { 7: RealDate.UTC(2026, 10, 30, 10, 0, 20) } });
+  assert.deepEqual(r.log, sentBoth);                                                        // only our own post since: goes
+  console.log("safe to post: ok");
+}).catch((e) => { console.error(e); process.exit(1); });

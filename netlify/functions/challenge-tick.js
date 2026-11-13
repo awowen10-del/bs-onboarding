@@ -23,6 +23,12 @@
  *   '6wc guide ...'     that guide has been sent to them in a Trainerize message, so it's never sent twice.
  *
  *   '6wc guide failed'  a guide couldn't be added. The tag starts a text to Ash in GHL.
+ *   '6wc guide held'    a weekly guide was due but the client may be waiting on a reply in their
+ *                       Trainerize chat, so nothing was posted (see safeToPost). It's tried again
+ *                       every morning until the chat is clear, then the tag comes off.
+ *   '6wc no alcohol'    a coach ticked "Doesn't drink" on the tracker (or the tag was put on by hand).
+ *                       They never get the Alcohol guide: not on Trainerize, and the Week 2 email in
+ *                       GHL checks the tag and sends the copy without it.
  *
  * The guides go on as soon as a coach presses Done on the Intro (guides-now-background.js). The
  * morning run catches anyone that missed, and adds them before the email, as the email tells
@@ -53,6 +59,9 @@ const GHL = 'https://services.leadconnectorhq.com';
 const LOCATION = process.env.GHL_LOCATION_ID || 'I88mpb966qBRVCCDbEx5';
 const TZ_API = 'https://api.trainerize.com/v03';
 const GUIDE_FAILED = '6wc guide failed';
+const GUIDE_HELD = '6wc guide held';
+const NO_ALCOHOL = '6wc no alcohol';
+const ALCOHOL = '6wc guide alcohol';
 const GUIDES = [
   { tag: '6wc guide welcome', name: 'Bodysculpt Welcome Guide.pdf', path: 'guides/Bodysculpt-Welcome-Guide.pdf' },
   { tag: '6wc guide nutracheck', name: 'Bodysculpt Nutracheck Guide.pdf', path: 'guides/Bodysculpt-Nutracheck-Guide.pdf' },
@@ -81,13 +90,42 @@ const WEEKLY = [
   weekly('habits', 'Habits', 6, THU, 'https://vimeo.com/389514381', (n, l) => `Hi ${n}, with the challenge coming to an end, here's one on habits, because the plan is to keep your results long after the six weeks. The guide shows you how to build small habits that stick, and the video's here: ${l}\n\nIf you're worried about slipping back into old ways when the challenge finishes, have a read, and if you can see yourself staying with us long term, we'd love to keep helping. Which habit from the last six weeks are you keeping? 💪🏻`),
 ];
 /* Which weekly guides go today: Thursday sends the Thursday ones, Friday sends anything still due.
-   Not on day 0 (they've just had the three welcome guides), and not after the six weeks. */
+   Not on day 0 (they've just had the three welcome guides), and not after the six weeks.
+   Someone with a held guide is tried every morning, for what was due at the last Friday run. */
 function weeklyDue(m, tags, t0, day) {
+  if (!m.firstSessionDone || !m.day0 || day === null || day >= totalDays(m)) return [];
   const wd = new Date(t0).getUTCDay();
-  if (wd !== THU && wd !== FRI) return [];
-  if (!m.firstSessionDone || !m.day0 || day === null || day < 1 || day >= totalDays(m)) return [];
-  const week = Math.min(6, Math.floor(day / 7) + 1);
-  return WEEKLY.filter((g) => !tags.includes(g.tag) && g.week <= week && (wd === FRI || g.day === THU));
+  let asOf = day, friday = wd === FRI;
+  if (wd !== THU && wd !== FRI) {
+    if (!tags.includes(GUIDE_HELD)) return [];
+    asOf = day - ((wd - FRI + 7) % 7); friday = true;
+  }
+  if (asOf < 1) return [];
+  const week = Math.min(6, Math.floor(asOf / 7) + 1);
+  return WEEKLY.filter((g) => !tags.includes(g.tag) && g.week <= week && (friday || g.day === THU)
+    && !(g.tag === ALCOHOL && tags.includes(NO_ALCOHOL)));
+}
+
+/* Is it safe to drop an automated post into this chat, or might the client be waiting on a reply?
+   Trainerize won't let this job read the messages. All it gives is: how many messages each side
+   hasn't opened, when the last message was sent, and its first line. So:
+     hold  the coaches have a message they haven't opened
+     send  nothing has been said since our own last post
+     send  the client has a coach message they haven't opened (so a coach spoke last)
+     hold  can't tell who spoke last, and the last message is a question from the last 3 days
+     hold  can't tell who spoke last, and it was in the last 24 hours
+     send  otherwise
+   Pure, so it can be tested. Times are in ms. */
+const HOLD_RECENT = MS_DAY, HOLD_QUESTION = 3 * MS_DAY, OWN_POST_SLACK = 5 * 60000;
+function safeToPost({ last, excerpt, coachUnread, clientUnread, lastPost, now }) {
+  if (coachUnread > 0) return { ok: false, why: 'a message from them has not been opened' };
+  if (!last) return { ok: true };
+  if (lastPost && last <= lastPost + OWN_POST_SLACK) return { ok: true };
+  if (clientUnread > 0) return { ok: true };
+  const age = now - last;
+  if (/\?/.test(excerpt || '') && age < HOLD_QUESTION) return { ok: false, why: 'the last message in the chat is a question' };
+  if (age < HOLD_RECENT) return { ok: false, why: 'the chat has been active in the last day' };
+  return { ok: true };
 }
 
 const norm = (s) => String(s == null ? '' : s).trim().toLowerCase();
@@ -125,6 +163,7 @@ function plan(m, tags, t0, fromMs) {
   let lapse = false;
   const remove = [];
   if (joined && !has('6wc joined')) add.push('6wc joined');   // first, so it's on before that day's email
+  if (m.noAlcohol && !has(NO_ALCOHOL)) add.push(NO_ALCOHOL);   // the same: on before the Week 2 email
   {
     const sent = tags.map((t) => /^6wc day (\d+)$/.exec(t)).filter(Boolean).map((x) => Number(x[1]));
     const last = sent.length ? Math.max(...sent) : -1;
@@ -146,7 +185,7 @@ function plan(m, tags, t0, fromMs) {
      their first payment on the end date, so they never show here. */
   const paidMidChallenge = paid && !ended;
   if (running && !joined && day >= totalDays(m) + LAPSE_AFTER && !has('6wc lapsed')) { add.push('6wc lapsed'); if (!has('email list')) add.push('email list'); lapse = true; }
-  return { day, add, remove, lapse, paidMidChallenge, guides: GUIDES.filter((g) => !has(g.tag)), weekly: weeklyDue(m, tags, t0, day) };
+  return { day, add, remove, lapse, paidMidChallenge, guides: GUIDES.filter((g) => !has(g.tag)), weekly: weeklyDue(m, m.noAlcohol ? [...tags, NO_ALCOHOL] : tags, t0, day) };
 }
 
 async function json(url, opts) {
@@ -230,6 +269,47 @@ async function uploadGuide(threadID, guide) {
   const r = await json(TZ_API + '/file/upload', { method: 'POST', headers: { Authorization: tzAuth() }, body: form });
   if (!r.id && !r.messageID) throw new Error(`${guide.name} not added: ${JSON.stringify(r).slice(0, 200)}`);
 }
+/* Trainerize times are UTC, like "2026-11-13 08:01:10". */
+const tzTime = (t) => (t ? Date.parse(String(t).replace(' ', 'T') + 'Z') : 0);
+const tzThreads = async (userID, start, count) => (await json(TZ_API + '/message/getThreads', { method: 'POST', headers: tzHeaders(),
+  body: JSON.stringify({ userID, view: 'inbox', start, count }) })).threads || [];
+/* What this job can see of the client's chat with the coaches: see safeToPost. The coaches' inbox
+   is newest first, so the search stops once it's past this chat's last message. */
+async function chatState(u) {
+  const mine = (await tzThreads(u.id, 0, 30)).filter((t) => t.threadType === 'mainThread')
+    .sort((a, b) => tzTime(b.lastSentTime) - tzTime(a.lastSentTime))[0];
+  if (!mine) return { last: 0 };
+  const last = tzTime(mine.lastSentTime);
+  let coachUnread = 0;
+  for (let start = 0; start < 1000; start += 100) {
+    const page = await tzThreads(SENDER_TZ, start, 100);
+    const t = page.find((x) => x.threadID === mine.threadID);
+    if (t) { coachUnread = t.totalUnreadMessages || (t.unread ? 1 : 0); break; }
+    if (page.length < 100 || tzTime(page[page.length - 1].lastSentTime) < last) break;
+  }
+  return { last, excerpt: mine.excerpt || '', clientUnread: mine.totalUnreadMessages || 0, coachUnread };
+}
+/* When this job last posted in each client's chat, by Trainerize ID, so its own posts never look
+   like the client talking. Kept in the 'guide-posts' row. */
+const POSTS_KEY = 'guide-posts';
+async function readRow(k) {
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  const rows = await json(`${process.env.SUPABASE_URL}/rest/v1/bodysculpt?key=eq.${k}&select=value`, { headers: { apikey: key, Authorization: 'Bearer ' + key } });
+  const v = rows[0] && rows[0].value;
+  return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {};
+}
+async function writeRow(k, value) {
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  await json(`${process.env.SUPABASE_URL}/rest/v1/bodysculpt`, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+    body: JSON.stringify({ key: k, value, updated_at: new Date().toISOString() }),
+  });
+}
+/* Never fails a send: the worst a missed note does is hold the next guide for a day. */
+async function notePost(u) {
+  try { const posts = await readRow(POSTS_KEY); posts[u.id] = Date.now(); await writeRow(POSTS_KEY, posts); } catch (e) { console.log('NOTE POST ' + e.message); }
+}
 /* Guides first: the tag goes on after each one, so a failure part way picks up where it stopped. */
 async function addGuides(email, contact, guides) {
   if (!guides.length) return;
@@ -242,6 +322,7 @@ async function addGuides(email, contact, guides) {
       await uploadGuide(thread, g);
       await addTags(contact.id, [g.tag]);
     }
+    await notePost(u);
     if (failedBefore) await removeTags(contact.id, [GUIDE_FAILED]);
   } catch (e) {
     if (!failedBefore) await addTags(contact.id, [GUIDE_FAILED]).catch(() => {});   // one text, not one a day
@@ -249,23 +330,37 @@ async function addGuides(email, contact, guides) {
   }
 }
 /* Weekly guides: the message for that guide, then its PDF in the same chat, then the tag.
-   One message per guide, in order, so a failure part way picks up at the next run. */
+   One message per guide, in order, so a failure part way picks up at the next run.
+   Nothing is posted over a client who may be waiting on a reply: the guide is held, tagged, and
+   tried again each morning. Returns why it was held, or null if the guides went. */
 async function addWeekly(email, contact, list) {
-  if (!list.length) return;
-  const failedBefore = (contact.tags || []).map(norm).includes(GUIDE_FAILED);
+  if (!list.length) return null;
+  const tags = (contact.tags || []).map(norm);
+  const failedBefore = tags.includes(GUIDE_FAILED);
+  let held = null;
   try {
     const u = await findTrainerize(email);
     if (!u) throw new Error('not on Trainerize, so no weekly guide');
-    for (const g of list) {
-      const thread = await sendGuidesMessage(u, g.text(u.firstName || 'there', g.video));
-      await uploadGuide(thread, g);
-      await addTags(contact.id, [g.tag]);
+    const chat = await chatState(u);
+    const lastPost = (await readRow(POSTS_KEY))[u.id] || 0;
+    const safe = safeToPost({ ...chat, lastPost, now: Date.now() });
+    if (!safe.ok) held = safe.why;
+    else {
+      for (const g of list) {
+        const thread = await sendGuidesMessage(u, g.text(u.firstName || 'there', g.video));
+        await uploadGuide(thread, g);
+        await addTags(contact.id, [g.tag]);
+        await notePost(u);
+      }
     }
     if (failedBefore) await removeTags(contact.id, [GUIDE_FAILED]);
   } catch (e) {
     if (!failedBefore) await addTags(contact.id, [GUIDE_FAILED]).catch(() => {});
     throw e;
   }
+  if (held && !tags.includes(GUIDE_HELD)) await addTags(contact.id, [GUIDE_HELD]);
+  if (!held && tags.includes(GUIDE_HELD)) await removeTags(contact.id, [GUIDE_HELD]);
+  return held;
 }
 /* A test run of one weekly guide on one person: sends it and sets no tags. */
 async function testWeekly(email, label) {
@@ -329,7 +424,7 @@ async function run({ dryRun }) {
   const live = process.env.CHALLENGE_LIVE === '1' && !dryRun;
   const fromMs = process.env.CHALLENGE_FROM ? Date.parse(process.env.CHALLENGE_FROM + 'T00:00:00Z') : null;
   const t0 = today0();
-  const report = { live, checked: 0, actions: [], errors: [], flagged: [] };
+  const report = { live, checked: 0, actions: [], errors: [], flagged: [], held: [] };
   const flags = await readFlags();
   let flagsChanged = false;
   for (const m of await roster()) {
@@ -349,9 +444,12 @@ async function run({ dryRun }) {
       if (live) {
         await addGuides(m.email, c, p.guides);
         /* A weekly guide that fails never holds up the email: it's retried at the next run. */
-        try { await addWeekly(m.email, c, p.weekly); } catch (e) { report.errors.push(`${m.name} weekly guide: ${e.message}`); }
+        try {
+          const why = await addWeekly(m.email, c, p.weekly);
+          if (why) report.held.push(`${m.name}: ${why}`);
+        } catch (e) { report.errors.push(`${m.name} weekly guide: ${e.message}`); }
         if (p.lapse) await deactivateTrainerize(m.email);
-        await addTags(c.id, p.add);
+        if (p.add.length) await addTags(c.id, p.add);
         if (p.remove.length) await removeTags(c.id, p.remove);
       }
       report.actions.push({ name: m.name, day: p.day, add: p.add, guides: p.guides.map((g) => g.tag), weekly: p.weekly.map((g) => g.tag) });
@@ -404,6 +502,8 @@ exports.plan = plan;
 exports.testGuides = testGuides;
 exports.testWeekly = testWeekly;
 exports.WEEKLY = WEEKLY;
+exports.safeToPost = safeToPost;
+exports.chatState = chatState;
 exports.guidesNow = guidesNow;
 exports.currentDay = currentDay;
 exports.startDecision = startDecision;

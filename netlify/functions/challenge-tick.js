@@ -139,11 +139,15 @@ function today0(now = new Date()) {
    The clock runs from day0 once it's started, or from the booked first session until then.
    Null means no date yet; a date still to come gives a negative day. */
 function currentDay(m, t0) {
-  const start = m.day0 || m.booked;
-  if (!start) return null;
+  const begin = m.day0 || m.booked;
+  if (!begin) return null;
+  /* Free weeks (Black Friday): m.sixStart is the day the six weeks begin. Until then the day is
+     negative, so only the Day 0 welcome and the welcome guides go. Keep in step with
+     clockStart() in index.html. */
+  const start = (m.sixStart && m.sixStart > begin) ? m.sixStart : begin;
   let e = Math.round((t0 - start) / MS_DAY);
   e -= m.pausedDays || 0;
-  if (m.pausedAt) e -= Math.round((t0 - m.pausedAt) / MS_DAY);
+  if (m.pausedAt) e -= Math.max(0, Math.round((t0 - Math.max(m.pausedAt, start)) / MS_DAY));
   return e;
 }
 const introDone = (m) => (m.completed || []).includes('intro') || !!m.firstSessionDone;

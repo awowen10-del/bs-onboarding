@@ -26,6 +26,13 @@ const SERVICE_KEY  = process.env.SUPABASE_SERVICE_KEY;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const ROW_KEY = 'roster';
 
+/* Black Friday 2026: anyone who pays from Sunday 15 to Sunday 22 November trains free until
+   their six weeks start on Monday 4 January 2027. The tracker holds their clock at day 0 until
+   then (m.sixStart), and a coach can change or clear the date on the Edit form.
+   Times are UK midnights, which are UTC midnights in winter. */
+const BF_FROM = Date.UTC(2026, 10, 15), BF_TO = Date.UTC(2026, 10, 23), BF_SIX_START = Date.UTC(2027, 0, 4);
+const sixStartFor = (now) => (now >= BF_FROM && now < BF_TO ? BF_SIX_START : null);
+
 const trainerize = require('./trainerize-new-client');
 const teamup = require('./teamup-new-client');
 
@@ -132,6 +139,7 @@ async function addToTracker(event) {
       name,
       booked: null,
       day0: null,
+      sixStart: sixStartFor(Date.now()),   // Black Friday payers: six weeks start 4 January
       firstSessionDone: false,
       coach,
       personal: '',
@@ -180,3 +188,4 @@ function authHeaders() {
 function resp(status, body) {
   return { statusCode: status, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
 }
+exports.sixStartFor = sixStartFor;

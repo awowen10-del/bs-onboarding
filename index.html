@@ -1689,6 +1689,10 @@
       <label>Date of birth <span class="lbl-opt">optional — shows on the Birthdays tab</span></label>
       <input type="date" id="f-dob">
     </div>
+    <div class="field" id="f-sixstart-field">
+      <label>Six weeks start on <span class="lbl-opt">optional — for free weeks (Black Friday). Leave blank and it's the day of their first session</span></label>
+      <input type="date" id="f-sixstart">
+    </div>
     <div class="field" id="f-mstart-field">
       <label>Membership start date <span class="lbl-opt">optional — leave blank and it's the day their challenge ends</span></label>
       <input type="date" id="f-mstart">
@@ -2203,6 +2207,7 @@ function migrateList(arr){
     if(m.start!=null && m.day0===undefined){ m.day0=m.start; m.booked=m.start; m.firstSessionDone=true; }
     if(m.booked===undefined) m.booked = m.day0||null;
     if(m.firstSessionDone===undefined) m.firstSessionDone = !!m.day0;
+    if(m.sixStart===undefined) m.sixStart = null;   // the day their six weeks begin, when that is later than their first session
     if(m.checks===undefined || m.checks===null || typeof m.checks!=='object'
        || Array.isArray(m.checks)) m.checks = {};
     /* Journey progress, keyed by touchpoint id. The IDS NEVER CHANGE when a touchpoint is
@@ -2655,12 +2660,22 @@ function ordinal(n){
      pausedAt / pausedDays – freeze handling
    "currentDay" = journey-days elapsed since day0. */
 function hasStarted(m){ return !!m.firstSessionDone && !!m.day0; }
+/* Free weeks (Black Friday and the like). A challenger can train before their six weeks begin:
+   m.sixStart is the day the six weeks start. Until then they have started (first session done,
+   welcome sent) but the clock sits at day 0, so no dated touchpoint or email comes due early.
+   On that day the clock starts by itself. No sixStart, or one that is not after their first
+   session, and the clock runs from the first session as it always has.
+   Keep in step with currentDay() in netlify/functions/challenge-tick.js. */
+function clockStart(m){ return (m.sixStart && m.sixStart > m.day0) ? m.sixStart : m.day0; }
+function inFreeWeeks(m){ return hasStarted(m) && !!m.sixStart && m.sixStart > m.day0 && today0() < m.sixStart; }
+/* Only the part of a pause that falls inside the six weeks holds the clock back. */
+function pausedSpan(m, from){ return Math.max(0, Math.floor((today0() - Math.max(from, clockStart(m)))/MS_DAY)); }
 function currentDay(m){
   if(!hasStarted(m)) return 0;                 // clock hasn't begun
-  let elapsed = Math.floor((today0() - m.day0)/MS_DAY);
+  let elapsed = Math.floor((today0() - clockStart(m))/MS_DAY);
   elapsed -= (m.pausedDays||0);                // banked paused days
   if(m.pausedAt){                              // days sitting in the current pause
-    elapsed -= Math.floor((today0() - m.pausedAt)/MS_DAY);
+    elapsed -= pausedSpan(m, m.pausedAt);
   }
   return Math.max(0, elapsed);
 }
@@ -2895,6 +2910,7 @@ function checklistGroupAt(item, i){
 const BOARD_WEEKS = [1,2,3,4,5,6];
 function journeyWeek(it){
   if(!it || it.phase==='intro') return 0;             // the intro is before day zero
+  if(it.free) return 1;                               // free weeks check-ins sit under Week 1, ahead of the six weeks
   const d = Number(it.day);
   return Math.min(6, Math.max(1, Math.floor((isFinite(d) ? d : 1)/7) + 1));
 }
@@ -2932,6 +2948,26 @@ function isDone(m,key){ return (m.completed||[]).includes(key); }
 function isMissed(m,key){ return (m.missed||[]).includes(key); }
 function isHandled(m,key){ return isDone(m,key) || isMissed(m,key); }
 
+/* ---------------- Free weeks: the coach still checks in ----------------
+   While somebody is training before their six weeks begin (see clockStart), the journey clock
+   sits at day 0, so nothing dated on JOURNEY would come due. Two things must still happen, and
+   both run off the REAL days since their first session:
+     - the morning-after-first-session text ('d1_text'), the day after they first trained
+     - a personal check-in every seven days ('fw1', 'fw2', ...) until the six weeks start
+   The week 2 to week 6 check-ins then run from the day the six weeks begin, as for anyone. */
+function hasFreeWeeks(m){ return hasStarted(m) && !!m.sixStart && m.sixStart > m.day0; }
+function realDay(m){ return Math.max(0, Math.floor((today0() - m.day0)/MS_DAY)); }
+function usesRealDays(m,item){ return hasFreeWeeks(m) && !!item && (item.free===true || item.id==='d1_text'); }
+function freeWeekCheckIns(m){
+  if(!hasFreeWeeks(m)) return [];
+  const out = [];
+  for(let k=1; m.day0 + 7*k*MS_DAY < m.sixStart && k<=26; k++){
+    out.push({day:7*k, id:'fw'+k, ch:'digital', title:'Free weeks check-in', owner:'coach', phase:'journey', win:true, free:true,
+      what:'Voice note (or text if better). A warm personal check-in while they train before their six weeks start. Reference their effort and attendance, give a <b>named win</b>, and remind them they can ask for help before they struggle.'});
+  }
+  return out;
+}
+
 function dueToday(m){
   if(status(m)==='paused') return [];
   if(isInactive(m)) return [];        // left = inactive, off Today's moves
@@ -2955,8 +2991,20 @@ function dueToday(m){
     // missed on the member card) so old postcards don't pile up on later days.
     const ed = effectiveDay(it,m);
     const GRACE = 7; // days a missed touchpoint keeps showing before it expires
+    if(usesRealDays(m,it)){                     // free weeks: the morning-after text goes off their real first session
+      const rd = realDay(m);
+      if(rd >= it.day && rd <= it.day + GRACE && !isHandled(m,it.id) && status(m)==='live') out.push(it);
+      return;
+    }
     if(cd >= ed && cd <= ed + GRACE && !isHandled(m,it.id) && status(m)==='live') out.push(it);
   });
+  // free weeks: a personal check-in every seven days until their six weeks begin
+  if(inFreeWeeks(m) && status(m)==='live'){
+    const rd = realDay(m), GRACE = 7;
+    freeWeekCheckIns(m).forEach(it=>{
+      if(rd >= it.day && rd <= it.day + GRACE && !isHandled(m,it.id)) out.push(it);
+    });
+  }
   return out;
 }
 
@@ -3000,8 +3048,9 @@ function renderToday(){
   members.forEach(m=>{
     dueToday(m).forEach(item=>{
       const key = dayKeyFor(m,item);
-      const cd = currentDay(m);
-      const ed = effectiveDay(item,m);
+      const real = usesRealDays(m,item);            // free weeks: counted from their real first session
+      const cd = real ? realDay(m) : currentDay(m);
+      const ed = real ? item.day : effectiveDay(item,m);
       // overdue = a dated touchpoint whose day has already passed
       const overdue = item.phase==='journey' && item.day>=0 && cd > ed;
       rows.push({m,item,key,overdue});
@@ -3259,7 +3308,9 @@ function todayCardHtml(r){
   // check-in involve without being told on every card, and the colour carries it.
   const chClass = item.ch==='inperson'?'inperson':item.ch;
   const cd = currentDay(m);
-  const dayLabel = item.phase==='intro' ? 'Not started yet' : 'Day '+cd;
+  const dayLabel = item.phase==='intro' ? 'Not started yet'
+                 : usesRealDays(m,item) ? 'Free weeks, day '+realDay(m)
+                 : 'Day '+cd;
   // the expandable detail (the action, plus a checklist where there is one)
   const cl = item.checklist ? buildChecklist(m,item) : '';
   const seedBlock = item.seed ? `<div class="seed-line">
@@ -3369,7 +3420,7 @@ function buildStartBlock(m){
     return `<div class="startblock started">
       <div class="sb-row">
         <span class="sb-tick">✓</span>
-        <span class="sb-txt">Clock started — Day 0 was <b>${fmt(m.day0)}</b></span>
+        <span class="sb-txt">${(m.sixStart && m.sixStart > m.day0) ? `First session was <b>${fmt(m.day0)}</b> · six weeks ${today0() < m.sixStart ? 'start' : 'started'} <b>${fmt(m.sixStart)}</b>` : `Clock started — Day 0 was <b>${fmt(m.day0)}</b>`}</span>
         <button class="btn sm ghost" onclick="event.stopPropagation();markFirstSession('${m.id}',false)">Undo</button>
       </div>
     </div>`;
@@ -3752,8 +3803,11 @@ function memberCardHtml(m){
       ? `<div class="paybox"><b>Paid for a membership through the link.</b> Move their next payment to
            <b>${endTs?fmt(monthAfter(endTs)):'a month after their challenge ends'}</b> in GHL: Payments, Subscriptions, their name, change the next payment date.
            <button class="btn sm primary" onclick="paymentMoved('${m.id}')">Done, payment moved</button></div>` : '';
+    const free = inFreeWeeks(m);
+    const sixNote = (m.sixStart && (free || !started) && m.outcome!=='left')
+      ? `<div class="mstart-note six-note">${free?'On their free weeks. ':''}Six weeks start ${fmt(m.sixStart)}</div>` : '';
     const tag = s==='notstarted' ? `<span class="tag notstarted">Not started</span>`
-              : s==='live'?`<span class="tag live">Day ${cd} of ${tot}</span>`
+              : s==='live'?(free?`<span class="tag live">Free weeks</span>`:`<span class="tag live">Day ${cd} of ${tot}</span>`)
               : s==='paused'?`<span class="tag paused">Paused</span>`
               : `<span class="tag done">Finished 6 weeks</span>`;
     const outcomeTag = m.outcome==='stayed' ? `<span class="tag member">Stayed ✓</span>`
@@ -3776,6 +3830,7 @@ function memberCardHtml(m){
           </div>
           <div class="day-no"><div class="n">—</div><div class="l">not started</div></div>
         </div>
+        ${sixNote}
         <div class="start-box">
           <div class="start-txt">Their 6 weeks begin when you run the intro and start the clock. ${introPending?'The intro is still to run.':'Intro done — their start-the-clock task is waiting on Today\u2019s moves.'}</div>
           <button class="btn sm start-btn" onclick="goToIntro('${m.id}')">${introPending?'Go to the intro on Today\u2019s moves →':'Go to their start-the-clock task →'}</button>
@@ -3816,6 +3871,7 @@ function memberCardHtml(m){
         <div class="ticks"><span>Day 0</span><span>Day ${tot}</span></div>
       </div>
       ${ext}
+      ${sixNote}
       ${startNote}
       <div class="sub" style="margin-top:8px">${doneCount} of ${applicable.length} touchpoints done</div>
       ${payBox}
@@ -4213,7 +4269,8 @@ function finishDate(m){
   const remainingDays = totalDays(m) - currentDay(m);
   let base = today0();
   if(m.pausedAt) base = m.pausedAt; // while paused the finish floats; show projected from now anyway
-  return today0() + remainingDays*MS_DAY;
+  const from = inFreeWeeks(m) ? m.sixStart : today0();   // on their free weeks: six weeks from the day they begin
+  return from + remainingDays*MS_DAY;
 }
 
 /* ---------------- Membership start ----------------
@@ -4251,7 +4308,7 @@ function pause(id){
 }
 function resume(id){
   const m=members.find(x=>x.id===id); if(!m||!m.pausedAt) return;
-  const banked = Math.floor((today0()-m.pausedAt)/MS_DAY);
+  const banked = pausedSpan(m, m.pausedAt);   // a pause during the free weeks banks nothing
   m.pausedDays = (m.pausedDays||0)+banked;
   m.pausedAt = null; save(); renderAll();
 }
@@ -4278,6 +4335,7 @@ function openAdd(){
   document.getElementById('f-dob').value='';
   document.getElementById('f-personal').value='';
   document.getElementById('f-noalcohol').checked=false;
+  document.getElementById('f-sixstart').value='';
   document.getElementById('f-mstart').value='';
   document.getElementById('f-mstart-field').style.display='none';   // nothing to override until they've started
   document.getElementById('modalBg').classList.add('show');
@@ -4292,6 +4350,7 @@ function openEdit(id){
   document.getElementById('f-dob').value=m.dob||'';
   document.getElementById('f-personal').value=m.personal||'';
   document.getElementById('f-noalcohol').checked=!!m.noAlcohol;
+  document.getElementById('f-sixstart').value=m.sixStart?toDateInput(m.sixStart):'';
   document.getElementById('f-mstart').value=m.memberStart?toDateInput(m.memberStart):'';
   document.getElementById('f-mstart-field').style.display='';
   document.getElementById('modalBg').classList.add('show');
@@ -4304,14 +4363,17 @@ function saveMember(){
   const personal=document.getElementById('f-personal').value.trim();
   const dob=normalizeDob(document.getElementById('f-dob').value);   // '' or nonsense -> null
   const noAlcohol=document.getElementById('f-noalcohol').checked;   // the morning job leaves out the Alcohol guide
+  const six=document.getElementById('f-sixstart').value;            // the day their six weeks begin, if later than their first session
   if(editTarget){
     const m=members.find(x=>x.id===editTarget);
     m.name=name; m.coach=coach; m.personal=personal; m.dob=dob; m.noAlcohol=noAlcohol;
+    m.sixStart = six ? parseDate(six) : null;
     const ms=document.getElementById('f-mstart').value;
     m.memberStart = ms ? parseDate(ms) : null;
   }else{
     members.push({id:'m'+Date.now()+Math.random().toString(36).slice(2,6),
       name,booked:null,day0:null,firstSessionDone:false,coach,personal,dob,noAlcohol,
+      sixStart: six ? parseDate(six) : null,
       extraDays:0,pausedDays:0,pausedAt:null,signedUp:false,outcome:null,completed:[],doneMeta:{},checks:{},
       followUpOn:null,followUpStatus:null,notes:''});
   }

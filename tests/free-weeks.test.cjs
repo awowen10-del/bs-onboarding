@@ -121,7 +121,7 @@ const challenger = (id, name, day, extra) => Object.assign({
   assert.deepEqual(ids(app, "a"), ["fw2"]);
   // no check-in is planned on or after the day the six weeks begin
   app = boot({ members: [challenger("a", "Annie", 14, { sixStart: daysFromToday(0), completed: ["intro", "d1_text", "fw1"] })] });
-  assert.deepEqual(ids(app, "a"), [], "day 0 of the six weeks: nothing from the free weeks");
+  assert.deepEqual(ids(app, "a"), [], "day 0 of the six weeks: no free weeks check-in");
   // once the six weeks are running, the normal check-ins come due from that day
   app = boot({ members: [challenger("a", "Annie", 50, { sixStart: daysFromToday(-7), completed: ["intro", "d1_text"] })] });
   assert.deepEqual(ids(app, "a"), ["wk2"], "the Week 2 check-in, seven days into the six weeks");
@@ -140,31 +140,53 @@ const challenger = (id, name, day, extra) => Object.assign({
   assert.ok(tick.currentDay(m(), t0) < 0, "before the six weeks, the day is negative");
 
   let p = tick.plan(m(), [], t0);
-  assert.deepEqual(p.add, ["6wc day 0"], "the welcome email still goes at the start");
+  assert.deepEqual(p.add, ["bf first session"], "their own first-session email goes at the start");
   assert.strictEqual(p.guides.length, 3, "and the three welcome guides");
   assert.deepEqual(p.weekly, [], "no weekly nutrition guide on a Thursday in the free weeks");
 
-  p = tick.plan(m(), ["6wc day 0"], t0);
+  p = tick.plan(m(), ["bf first session"], t0);
   assert.deepEqual(p.add, [], "then nothing: no day 2, 7 or 14 email in December");
-  assert.deepEqual(tick.plan(m(), ["6wc day 0"], Date.UTC(2026, 11, 30)).add, [], "nor the membership emails, six weeks after their first session");
-  assert.ok(!tick.plan(m(), ["6wc day 0"], Date.UTC(2027, 0, 3)).add.includes("6wc finished"), "and they are not finished");
+  assert.deepEqual(tick.plan(m(), ["bf first session", "bf six weeks soon"], Date.UTC(2026, 11, 30)).add, [], "nor the membership emails, six weeks after their first session");
+  assert.ok(!tick.plan(m(), ["bf first session", "bf six weeks soon"], Date.UTC(2027, 0, 3)).add.includes("6wc finished"), "and they are not finished");
 
   assert.strictEqual(tick.currentDay(m(), SIX), 0, "4 January is day 0");
-  assert.deepEqual(tick.plan(m(), ["6wc day 0"], SIX).add, [], "day 0 was already sent");
-  assert.deepEqual(tick.plan(m(), ["6wc day 0"], SIX + 2 * DAY).add, ["6wc day 2"], "day 2 goes on 6 January");
-  assert.deepEqual(tick.plan(m(), ["6wc day 2"], SIX + 7 * DAY).add, ["6wc day 7"]);
+  assert.deepEqual(tick.plan(m(), ["bf first session", "bf six weeks soon"], SIX).add, [], "no Day 0 email on the day");
+  assert.deepEqual(tick.plan(m(), ["bf first session", "bf six weeks soon"], SIX + 2 * DAY).add, ["6wc day 2"], "day 2 goes on 6 January");
+  assert.deepEqual(tick.plan(m(), ["6wc day 2", "bf first session", "bf six weeks soon"], SIX + 7 * DAY).add, ["6wc day 7"]);
   const thu = Date.UTC(2027, 0, 7);                                  // the first Thursday of their six weeks
-  assert.ok(tick.plan(m(), ["6wc day 2"], thu).weekly.length > 0, "the weekly guides start in week 1");
-  assert.deepEqual(tick.plan(m(), ["6wc day 41"], SIX + 42 * DAY).add, ["6wc finished"], "finished six weeks after 4 January");
+  assert.ok(tick.plan(m(), ["6wc day 2", "bf first session", "bf six weeks soon"], thu).weekly.length > 0, "the weekly guides start in week 1");
+  assert.deepEqual(tick.plan(m(), ["6wc day 41", "bf first session", "bf six weeks soon"], SIX + 42 * DAY).add, ["6wc finished"], "finished six weeks after 4 January");
 
   // not started yet, first session booked for November: nothing fires off the booked date either
   const booked = { email: "a@b.c", completed: ["intro"], booked: Date.UTC(2026, 10, 18), sixStart: SIX };
-  assert.deepEqual(tick.plan(booked, ["6wc day 0"], t0).add, []);
+  assert.deepEqual(tick.plan(booked, ["bf first session"], t0).add, []);
 
   // someone without the date is untouched
   const plain = { email: "a@b.c", completed: ["intro"], firstSessionDone: true, day0: t0 - 7 * DAY };
   assert.deepEqual(tick.plan(plain, ["6wc day 2"], t0).add, ["6wc day 7"]);
   assert.deepEqual(tick.plan(Object.assign({ sixStart: null }, plain), ["6wc day 2"], t0).add, ["6wc day 7"]);
+}
+
+/* ---------- free weeks emails: their own first-session email and a reminder ---------- */
+{
+  const DAY = 86400000, SIX = Date.UTC(2027, 0, 4);
+  const m = (o) => Object.assign({ email: "a@b.c", completed: ["intro"], firstSessionDone: true, day0: Date.UTC(2026, 10, 18), sixStart: SIX }, o || {});
+  let p = tick.plan(m(), [], Date.UTC(2026, 10, 18));
+  assert.deepEqual(p.add, ["bf first session"], "their own first-session email, not the normal Day 0 one");
+  assert.ok(!p.add.includes("6wc day 0"));
+  assert.deepEqual(tick.plan(m(), ["bf first session"], Date.UTC(2026, 11, 10)).add, [], "nothing in December");
+  assert.deepEqual(tick.plan(m(), ["bf first session"], Date.UTC(2026, 11, 28)).add, [], "not yet on Monday 28th");
+  assert.deepEqual(tick.plan(m(), ["bf first session"], Date.UTC(2026, 11, 29)).add, ["bf six weeks soon"], "the reminder on Tuesday 29 December");
+  assert.deepEqual(tick.plan(m(), ["bf first session", "bf six weeks soon"], Date.UTC(2026, 11, 30)).add, [], "once");
+  assert.deepEqual(tick.plan(m(), ["bf first session", "bf six weeks soon"], SIX).add, [], "no Day 0 email on 4 January either");
+  assert.deepEqual(tick.plan(m(), ["bf first session", "bf six weeks soon"], SIX + 2 * DAY).add, ["6wc day 2"], "then the normal emails from day 2");
+  assert.deepEqual(tick.plan(m(), ["bf first session"], SIX + DAY).add, [], "no late reminder once the six weeks have started");
+  const plain = { email: "a@b.c", completed: ["intro"], firstSessionDone: true, day0: Date.UTC(2026, 10, 18) };
+  assert.deepEqual(tick.plan(plain, [], Date.UTC(2026, 10, 18)).add, ["6wc day 0"], "everyone else still gets the normal Day 0 email");
+  // Intro ticked, first session not done yet: nothing yet, and never the normal Day 0 email
+  const introOnly = { email: "a@b.c", completed: ["intro"], sixStart: SIX };
+  assert.deepEqual(tick.plan(introOnly, [], Date.UTC(2026, 10, 17)).add, [], "waits for the first session tick");
+  assert.deepEqual(tick.plan(Object.assign({ booked: Date.UTC(2026, 10, 19) }, introOnly), [], Date.UTC(2026, 10, 17)).add, []);
 }
 
 /* ---------- who gets the date when they pay ---------- */

@@ -53,6 +53,7 @@
 
 const MS_DAY = 86400000;
 const EMAIL_DAYS = [0, 2, 7, 14, 21, 28, 35, 37, 39, 41];
+const BF_FIRST = 'bf first session', BF_SOON = 'bf six weeks soon';
 const SIGN_UP_DAYS = [37, 39, 41];   // the "join here" emails: nobody who has joined gets these
 const LAPSE_AFTER = 7;
 const GHL = 'https://services.leadconnectorhq.com';
@@ -168,10 +169,22 @@ function plan(m, tags, t0, fromMs) {
   const remove = [];
   if (joined && !has('6wc joined')) add.push('6wc joined');   // first, so it's on before that day's email
   if (m.noAlcohol && !has(NO_ALCOHOL)) add.push(NO_ALCOHOL);   // the same: on before the Week 2 email
+  /* Free weeks (Black Friday): the normal Day 0 email promises a food how-to "in a couple of
+     days", which for them is weeks away. So they get their own first-session email instead
+     ('bf first session'), a "your six weeks start Monday" email the Tuesday before ('bf six
+     weeks soon'), and the normal emails from day 2 of their six weeks. GHL's Black Friday
+     workflows send both on those tags. */
+  const begin = m.day0 || m.booked;
+  const free = !!(m.sixStart && (!begin || m.sixStart > begin));
+  if (free) {
+    // the morning after a coach ticks their first session done, not their Intro
+    if (!has(BF_FIRST) && m.firstSessionDone && m.day0) add.push(BF_FIRST);
+    if (!has(BF_SOON) && t0 >= m.sixStart - 6 * MS_DAY && t0 < m.sixStart) add.push(BF_SOON);
+  }
   {
     const sent = tags.map((t) => /^6wc day (\d+)$/.exec(t)).filter(Boolean).map((x) => Number(x[1]));
     const last = sent.length ? Math.max(...sent) : -1;
-    const days = joined ? EMAIL_DAYS.filter((d) => !SIGN_UP_DAYS.includes(d)) : EMAIL_DAYS;
+    const days = (joined ? EMAIL_DAYS.filter((d) => !SIGN_UP_DAYS.includes(d)) : EMAIL_DAYS).filter((d) => !(free && d === 0));
     const due = days.find((d) => d > last && (d === 0 || (day !== null && day >= d)));   // Day 0 goes on the Intro being done; the next unsent, one a day
     if (due !== undefined) {
       add.push('6wc day ' + due);

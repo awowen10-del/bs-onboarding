@@ -26,17 +26,23 @@ const SERVICE_KEY  = process.env.SUPABASE_SERVICE_KEY;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const ROW_KEY = 'roster';
 
-/* Free weeks (Black Friday). A workflow that wants someone's six weeks to begin later than their
-   first session says so when it calls this: "sixStart" in the body, or "six" on the end of the
-   URL, as a date like 2027-01-04. The tracker then holds their clock at day 0 until that day
-   (m.sixStart), and a coach can change or clear it on the Edit form. The normal sign-up
-   workflow sends neither, so its payers start their six weeks at their first session.
-   The date is stored as that day's midnight in Warrington, like every date on the tracker. */
+/* Free weeks (Black Friday). Someone who pays through a Black Friday checkout trains free until
+   their six weeks begin on a set day. GHL's "Black Friday - Paid" workflow tags them
+   'black friday' and then hands them to the normal "6WC - Paid" workflow, which calls this. So
+   the normal workflow is never touched: this looks the payer up in GHL, and if they carry the
+   tag their six weeks start on BF_SIX_START. Anyone else starts at their first session.
+   A workflow can also send the day itself ("sixStart" in the body, or "six" on the URL, as
+   2027-01-04), which wins. The tracker holds their clock at day 0 until that day (m.sixStart),
+   and a coach can change or clear it on the Edit form.
+   NEXT YEAR: change BF_SIX_START to the Monday the six weeks begin.
+   Dates are that day's midnight in Warrington, like every date on the tracker. */
+const BF_TAG = 'black friday';
 function ukMidnight(y, mo, d) {
   const t = Date.UTC(y, mo - 1, d);
   const h = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }).format(t)) % 24;
   return t - h * 3600000;
 }
+const BF_SIX_START = ukMidnight(2027, 1, 4);   // Monday 4 January 2027
 function sixStartFrom(data, query) {
   const raw = String((data && (data.sixStart || data.six_start || data.six)) || (query && (query.six || query.sixStart)) || '').trim();
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
@@ -48,6 +54,7 @@ function sixStartFrom(data, query) {
 
 const trainerize = require('./trainerize-new-client');
 const teamup = require('./teamup-new-client');
+const { findContact } = require('./challenge-tick');
 
 exports.handler = async (event) => {
   const res = await addToTracker(event);
@@ -140,6 +147,10 @@ async function addToTracker(event) {
       return resp(200, { ok: true, skipped: 'duplicate', name });
     }
 
+    // Black Friday payers: the day their six weeks begin. Null for everyone else.
+    const sixStart = await sixStartFor(data, event.queryStringParameters, email);
+    if (sixStart) console.log('FREE WEEKS: ' + name + ' starts their six weeks on ' + new Date(sixStart).toISOString().slice(0, 10));
+
     // 7. Build the new challenger in the EXACT shape the app expects.
     //    "Exact" means: every field index.html's migrateList() would otherwise have to
     //    back-fill. The app copes either way — migrateList defaults anything missing — but a
@@ -152,7 +163,7 @@ async function addToTracker(event) {
       name,
       booked: null,
       day0: null,
-      sixStart: sixStartFrom(data, event.queryStringParameters),   // free weeks: the day their six weeks begin, when the workflow sends one
+      sixStart,   // free weeks: the day their six weeks begin (Black Friday payers), else null
       firstSessionDone: false,
       coach,
       personal: '',
@@ -201,4 +212,24 @@ function authHeaders() {
 function resp(status, body) {
   return { statusCode: status, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
 }
+/* The day this payer's six weeks begin, or null for the day of their first session.
+   If GHL can't be reached it tries once more, then gives up and says so in the log: they are
+   still added to the tracker, and a coach can type the date on their card. */
+async function sixStartFor(data, query, email, lookup = findContact) {
+  const sent = sixStartFrom(data, query);
+  if (sent) return sent;
+  if (!email) return null;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const c = await lookup(email);
+      const tags = ((c && c.tags) || []).map((x) => String(x).trim().toLowerCase());
+      return tags.includes(BF_TAG) ? BF_SIX_START : null;
+    } catch (e) {
+      console.log(`FREE WEEKS: could not read GHL tags for ${email} (try ${attempt}): ${e.message}`);
+    }
+  }
+  return null;
+}
 exports.sixStartFrom = sixStartFrom;
+exports.sixStartFor = sixStartFor;
+exports.BF_SIX_START = BF_SIX_START;

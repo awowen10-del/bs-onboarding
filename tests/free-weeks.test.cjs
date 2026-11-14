@@ -9,7 +9,7 @@
 const assert = require("assert");
 const { boot, daysFromToday, dateInput } = require("./lib/env.cjs");
 const tick = require("../netlify/functions/challenge-tick.js");
-const { sixStartFrom } = require("../netlify/functions/new-challenger.js");
+const { sixStartFrom, sixStartFor, BF_SIX_START } = require("../netlify/functions/new-challenger.js");
 
 const fmt = (ts) => new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 const challenger = (id, name, day, extra) => Object.assign({
@@ -181,4 +181,22 @@ const challenger = (id, name, day, extra) => Object.assign({
   assert.strictEqual(new Date(JAN4).getUTCDay(), 1, "4 January 2027 is a Monday");
 }
 
-console.log("free-weeks: ok");
+/* ---------- Black Friday payers are known by their GHL tag ---------- */
+(async () => {
+  const JAN4 = Date.UTC(2027, 0, 4);
+  assert.strictEqual(BF_SIX_START, JAN4);
+  const tagged = async () => ({ tags: ["6wc signed up", "Black Friday "] });
+  const plain = async () => ({ tags: ["6wc signed up", "email list"] });
+  const nobody = async () => null;
+  assert.strictEqual(await sixStartFor({}, {}, "a@b.c", tagged), JAN4, "tagged black friday: six weeks start 4 January");
+  assert.strictEqual(await sixStartFor({}, {}, "a@b.c", plain), null, "a normal payer starts at their first session");
+  assert.strictEqual(await sixStartFor({}, {}, "a@b.c", nobody), null, "not found in GHL: a normal start");
+  assert.strictEqual(await sixStartFor({}, {}, "", tagged), null, "no email, nothing to look up");
+  assert.strictEqual(await sixStartFor({ sixStart: "2027-02-01" }, {}, "a@b.c", plain), Date.UTC(2027, 1, 1), "a date the workflow sends wins");
+  let calls = 0;
+  const flaky = async () => { calls++; if (calls === 1) throw new Error("GHL down"); return { tags: ["black friday"] }; };
+  assert.strictEqual(await sixStartFor({}, {}, "a@b.c", flaky), JAN4, "GHL failing once is tried again");
+  const down = async () => { throw new Error("GHL down"); };
+  assert.strictEqual(await sixStartFor({}, {}, "a@b.c", down), null, "GHL down twice: they are still added, with a normal start");
+  console.log("free-weeks: ok");
+})().catch((e) => { console.error(e); process.exit(1); });

@@ -510,4 +510,5 @@ exports.safeToPost = safeToPost;
 exports.chatState = chatState;
 exports.guidesNow = guidesNow;
 exports.currentDay = currentDay;
+exports.findContact = findContact;
 exports.startDecision = startDecision;

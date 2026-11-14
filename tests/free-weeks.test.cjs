@@ -4,11 +4,12 @@
 // welcome email and welcome guides sent) but the clock sits at day 0: no day 2, 7, 14... email, no
 // weekly nutrition guide, no membership email, no "finished". On that day the clock starts by
 // itself and everything runs as it always has. A coach can set, change or clear the date on the
-// Edit form, and the new-payer webhook sets it for anyone who pays inside the Black Friday week.
+// Edit form, and the new-payer webhook sets it when the workflow calling it sends the date
+// (the Black Friday paid workflow does; the normal sign-up workflow doesn't).
 const assert = require("assert");
 const { boot, daysFromToday, dateInput } = require("./lib/env.cjs");
 const tick = require("../netlify/functions/challenge-tick.js");
-const { sixStartFor } = require("../netlify/functions/new-challenger.js");
+const { sixStartFrom } = require("../netlify/functions/new-challenger.js");
 
 const fmt = (ts) => new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 const challenger = (id, name, day, extra) => Object.assign({
@@ -168,11 +169,16 @@ const challenger = (id, name, day, extra) => Object.assign({
 
 /* ---------- who gets the date when they pay ---------- */
 {
-  assert.strictEqual(sixStartFor(Date.UTC(2026, 10, 14, 23, 59)), null, "Saturday 14 November: before the offer");
-  assert.strictEqual(sixStartFor(Date.UTC(2026, 10, 15, 0, 0)), Date.UTC(2027, 0, 4), "Sunday 15 November: in");
-  assert.strictEqual(sixStartFor(Date.UTC(2026, 10, 22, 23, 59)), Date.UTC(2027, 0, 4), "Sunday 22 November, 11:59pm: in");
-  assert.strictEqual(sixStartFor(Date.UTC(2026, 10, 23, 0, 0)), null, "midnight: closed");
-  assert.strictEqual(new Date(Date.UTC(2027, 0, 4)).getUTCDay(), 1, "4 January 2027 is a Monday");
+  const JAN4 = Date.UTC(2027, 0, 4);
+  assert.strictEqual(sixStartFrom({ sixStart: "2027-01-04" }, null), JAN4, "the Black Friday workflow sends the date in the body");
+  assert.strictEqual(sixStartFrom({}, { six: "2027-01-04" }), JAN4, "or on the end of the URL");
+  assert.strictEqual(sixStartFrom({ six_start: " 2027-01-04 " }, {}), JAN4);
+  assert.strictEqual(sixStartFrom({}, {}), null, "the normal sign-up workflow sends nothing: six weeks from their first session");
+  assert.strictEqual(sixStartFrom({ name: "Annie", email: "a@b.c" }, null), null);
+  assert.strictEqual(sixStartFrom({ sixStart: "4 January" }, null), null, "anything that is not a date is ignored");
+  assert.strictEqual(sixStartFrom({ sixStart: "2027-02-31" }, null), null);
+  assert.strictEqual(sixStartFrom({ sixStart: "2027-07-05" }, null), Date.UTC(2027, 6, 4, 23), "a summer date is midnight in Warrington, not UTC");
+  assert.strictEqual(new Date(JAN4).getUTCDay(), 1, "4 January 2027 is a Monday");
 }
 
 console.log("free-weeks: ok");

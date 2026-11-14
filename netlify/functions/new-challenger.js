@@ -26,12 +26,25 @@ const SERVICE_KEY  = process.env.SUPABASE_SERVICE_KEY;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const ROW_KEY = 'roster';
 
-/* Black Friday 2026: anyone who pays from Sunday 15 to Sunday 22 November trains free until
-   their six weeks start on Monday 4 January 2027. The tracker holds their clock at day 0 until
-   then (m.sixStart), and a coach can change or clear the date on the Edit form.
-   Times are UK midnights, which are UTC midnights in winter. */
-const BF_FROM = Date.UTC(2026, 10, 15), BF_TO = Date.UTC(2026, 10, 23), BF_SIX_START = Date.UTC(2027, 0, 4);
-const sixStartFor = (now) => (now >= BF_FROM && now < BF_TO ? BF_SIX_START : null);
+/* Free weeks (Black Friday). A workflow that wants someone's six weeks to begin later than their
+   first session says so when it calls this: "sixStart" in the body, or "six" on the end of the
+   URL, as a date like 2027-01-04. The tracker then holds their clock at day 0 until that day
+   (m.sixStart), and a coach can change or clear it on the Edit form. The normal sign-up
+   workflow sends neither, so its payers start their six weeks at their first session.
+   The date is stored as that day's midnight in Warrington, like every date on the tracker. */
+function ukMidnight(y, mo, d) {
+  const t = Date.UTC(y, mo - 1, d);
+  const h = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }).format(t)) % 24;
+  return t - h * 3600000;
+}
+function sixStartFrom(data, query) {
+  const raw = String((data && (data.sixStart || data.six_start || data.six)) || (query && (query.six || query.sixStart)) || '').trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  if (!m) return null;
+  const t = ukMidnight(Number(m[1]), Number(m[2]), Number(m[3]));
+  const back = new Date(t + 12 * 3600000);                       // reject 2027-02-31 and the like
+  return (back.getUTCMonth() + 1 === Number(m[2]) && back.getUTCDate() === Number(m[3])) ? t : null;
+}
 
 const trainerize = require('./trainerize-new-client');
 const teamup = require('./teamup-new-client');
@@ -139,7 +152,7 @@ async function addToTracker(event) {
       name,
       booked: null,
       day0: null,
-      sixStart: sixStartFor(Date.now()),   // Black Friday payers: six weeks start 4 January
+      sixStart: sixStartFrom(data, event.queryStringParameters),   // free weeks: the day their six weeks begin, when the workflow sends one
       firstSessionDone: false,
       coach,
       personal: '',
@@ -188,4 +201,4 @@ function authHeaders() {
 function resp(status, body) {
   return { statusCode: status, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
 }
-exports.sixStartFor = sixStartFor;
+exports.sixStartFrom = sixStartFrom;

@@ -22,6 +22,15 @@
  *   'email list'        added with '6wc lapsed': Ash's list for regular offers and content.
  *   '6wc guide ...'     that guide has been sent to them in a Trainerize message, so it's never sent twice.
  *
+ * TRAINERIZE ACCESS (GHL decides, not Ontraport or Zapier). See accessSweep below.
+ *   'members'              on Trainerize they get the 'Full Time Member' tag, lose 'Trialist', and are switched
+ *                          back on if they'd been switched off. Skipped while they're cancelling.
+ *   'cancel approved'      Trainerize is switched off 60 days after this job first sees the tag (30 days'
+ *   'cancel approved now'  notice, then a month of training), or 30 days for 'now'. Never while they
+ *                          have an active GHL subscription. A note goes on their GHL contact.
+ *   The dates live in the 'trainerize-access' row. Rows can also be added by hand (kind 'ontraport')
+ *   for people Ontraport/Zapier had already queued.
+ *
  *   '6wc guide failed'  a guide couldn't be added. The tag starts a text to Ash in GHL.
  *   '6wc guide held'    a weekly guide was due but the client may be waiting on a reply in their
  *                       Trainerize chat, so nothing was posted (see safeToPost). It's tried again
@@ -243,6 +252,52 @@ function startDecision(c, m, t0) {
   const day = currentDay(m, t0);
   return day >= totalDays(m) ? 'start' : 'wait';
 }
+/* ---------- Trainerize access: GHL is the only source of truth ---------- */
+const TZ_MEMBER = 'Full Time Member', TZ_TRIALIST = 'Trialist';
+const ACCESS_KEY = 'trainerize-access';
+const CANCEL_DAYS = { 'cancel approved': 60, 'cancel approved now': 30 };
+const LEAVING = ['cancel approved', 'cancel approved now', 'lapsed member'];
+const ymd = (ms) => new Date(ms).toISOString().slice(0, 10);
+const dayMs = (s) => Date.parse(s + 'T00:00:00Z');
+/* A paying member's Trainerize account: what needs changing. Pure. */
+function memberFix(ghlTags, tz) {
+  const tags = (ghlTags || []).map(norm);
+  if (LEAVING.some((t) => tags.includes(t))) return { skip: 'cancelling' };
+  if (!tz) return { skip: 'not on Trainerize' };
+  const have = (tz.tags || []).map(norm);
+  return {
+    addMember: !have.includes(norm(TZ_MEMBER)),
+    removeTrialist: have.includes(norm(TZ_TRIALIST)),
+    reactivate: tz.status === 'deactivated',
+  };
+}
+/* The 'trainerize-access' row after today's look at GHL: who is cancelling and when they're due off.
+   Pure. records = { [email]: { name, kind, seen, due, done?, contactId? } } */
+function accessRecords(records, cancelling, t0) {
+  const out = Object.assign({}, records);
+  for (const c of cancelling) {
+    const email = norm(c.email); if (!email) continue;
+    const tags = (c.tags || []).map(norm);
+    const kind = tags.includes('cancel approved now') ? 'cancel approved now' : 'cancel approved';
+    if (out[email]) continue;
+    out[email] = { name: [c.firstName, c.lastName].filter(Boolean).join(' ') || email, contactId: c.id, kind,
+      seen: ymd(t0), due: ymd(t0 + CANCEL_DAYS[kind] * MS_DAY) };
+  }
+  return out;
+}
+/* Should this person be switched off today? Pure. ghlTags = their tags now (null if no GHL contact),
+   activeSub = they have an active GHL subscription. */
+function offDecision(rec, ghlTags, activeSub, t0) {
+  if (rec.done) return 'done';
+  if (t0 < dayMs(rec.due)) return 'wait';
+  if (rec.kind !== 'ontraport') {
+    const tags = (ghlTags || []).map(norm);
+    if (!tags.includes('cancel approved') && !tags.includes('cancel approved now')) return 'dropped';  // the cancel tag came off: they stayed
+  }
+  if (activeSub) return 'active subscription';
+  return 'off';
+}
+
 async function addTags(id, tags) {
   return json(`${GHL}/contacts/${id}/tags`, { method: 'POST', headers: ghlHeaders(), body: JSON.stringify({ tags }) });
 }
@@ -263,6 +318,73 @@ async function deactivateTrainerize(email) {
   if (!u) return 'not on Trainerize';
   await json(TZ_API + '/user/setStatus', { method: 'POST', headers: tzHeaders(), body: JSON.stringify({ userID: u.id, accountStatus: 'deactivated' }) });
   return 'deactivated';
+}
+async function tzProfile(id) {
+  const r = await json(TZ_API + '/user/getProfile', { method: 'POST', headers: tzHeaders(), body: JSON.stringify({ usersid: [id], unitBodystats: 'cm' }) });
+  const p = (r.usrProfile || [])[0];
+  return p ? { id: p.id, status: p.status, tags: (p.tags && p.tags.user) || [] } : null;
+}
+const tzPost = (path, body) => json(TZ_API + path, { method: 'POST', headers: tzHeaders(), body: JSON.stringify(body) });
+async function hasActiveSub(contactId) {
+  const r = await json(`${GHL}/payments/subscriptions?altId=${LOCATION}&altType=location&contactId=${contactId}`, { headers: ghlHeaders() });
+  return (r.data || []).some((x) => ['active', 'trialing', 'past_due', 'scheduled'].includes(norm(x.status)));
+}
+async function readRow(key, fallback) {
+  const url = `${process.env.SUPABASE_URL}/rest/v1/bodysculpt?key=eq.${key}&select=value`;
+  const k = process.env.SUPABASE_SERVICE_KEY;
+  const rows = await json(url, { headers: { apikey: k, Authorization: 'Bearer ' + k } });
+  const v = rows[0] && rows[0].value;
+  return (v && typeof v === 'object' && !Array.isArray(v)) ? v : fallback;
+}
+async function writeRow(key, value) {
+  const k = process.env.SUPABASE_SERVICE_KEY;
+  await json(`${process.env.SUPABASE_URL}/rest/v1/bodysculpt`, {
+    method: 'POST',
+    headers: { apikey: k, Authorization: 'Bearer ' + k, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+    body: JSON.stringify({ key, value, updated_at: new Date().toISOString() }),
+  });
+}
+/* accessSweep: members kept on Trainerize with the right tag; cancellations switched off on time. */
+async function accessSweep(members, live, t0) {
+  const rep = { tagged: [], reactivated: [], off: [], kept: [], waiting: [], errors: [] };
+  for (const c of members) {
+    const who = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email;
+    try {
+      if (!c.email) continue;
+      const u = await findTrainerize(c.email);
+      const tz = u ? await tzProfile(u.id) : null;
+      const f = memberFix(c.tags, tz);
+      if (f.skip) continue;
+      if (live && f.reactivate) await tzPost('/user/setStatus', { userID: tz.id, accountStatus: 'active' });
+      if (live && f.addMember) await tzPost('/user/addTag', { userID: tz.id, userTag: TZ_MEMBER });
+      if (live && f.removeTrialist) await tzPost('/user/deleteTag', { userID: tz.id, userTag: TZ_TRIALIST });
+      if (f.addMember || f.removeTrialist) rep.tagged.push(who);
+      if (f.reactivate) rep.reactivated.push(who);
+    } catch (e) { rep.errors.push(`${who}: ${e.message}`); }
+  }
+  const cancelling = [...await contactsWithTag('cancel approved'), ...await contactsWithTag('cancel approved now')];
+  const before = await readRow(ACCESS_KEY, {});
+  const recs = accessRecords(before, cancelling, t0);
+  for (const [email, rec] of Object.entries(recs)) {
+    try {
+      if (rec.done) continue;
+      if (t0 < dayMs(rec.due)) { rep.waiting.push(`${rec.name} (${rec.due})`); continue; }
+      const c = await findContact(email);
+      const sub = c ? await hasActiveSub(c.id) : false;
+      const d = offDecision(rec, c ? c.tags : null, sub, t0);
+      if (d === 'dropped') { delete recs[email]; rep.kept.push(`${rec.name}: cancel tag removed`); continue; }
+      if (d === 'active subscription') { rep.kept.push(`${rec.name}: still has an active GHL subscription`); continue; }
+      if (d !== 'off') continue;
+      if (live) {
+        const r = await deactivateTrainerize(email);
+        rec.done = ymd(t0); rec.result = r;
+        if (c) await json(`${GHL}/contacts/${c.id}/notes`, { method: 'POST', headers: ghlHeaders(), body: JSON.stringify({ body: `Trainerize switched off ${ymd(t0)} (${rec.kind}, due ${rec.due}).` }) });
+      }
+      rep.off.push(rec.name);
+    } catch (e) { rep.errors.push(`${rec.name}: ${e.message}`); }
+  }
+  if (live && JSON.stringify(recs) !== JSON.stringify(before)) await writeRow(ACCESS_KEY, recs);
+  return rep;
 }
 /* The guides go to the client as a Trainerize message from Bodysculpt Support, with the PDFs attached in that chat.
    (Profile attachments are coach-only: clients can't see them.) */
@@ -477,9 +599,11 @@ async function run({ dryRun }) {
   if (live && flagsChanged) await writeFlags(flags);
   /* startSweep: 'member start' for everyone who has paid and isn't waiting on a challenge. */
   report.started = []; report.waiting = [];
+  let paidMembers = [];
   try {
     const list = await roster();
-    for (const c of await contactsWithTag('members')) {
+    paidMembers = await contactsWithTag('members');
+    for (const c of paidMembers) {
       const m = list.find((x) => norm(x.email) && norm(x.email) === norm(c.email));
       const d = startDecision(c, m, t0);
       const who = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.email;
@@ -491,6 +615,8 @@ async function run({ dryRun }) {
   } catch (e) {
     report.errors.push('start sweep: ' + e.message);
   }
+  try { report.access = await accessSweep(paidMembers, live, t0); }
+  catch (e) { report.errors.push('access sweep: ' + e.message); }
   console.log('TICK ' + JSON.stringify(report));
   return report;
 }
@@ -525,3 +651,6 @@ exports.guidesNow = guidesNow;
 exports.currentDay = currentDay;
 exports.findContact = findContact;
 exports.startDecision = startDecision;
+exports.memberFix = memberFix;
+exports.accessRecords = accessRecords;
+exports.offDecision = offDecision;

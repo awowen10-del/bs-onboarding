@@ -8,7 +8,8 @@
  *
  *   '6wc day N'         the email for day N is due. Only the latest stays on the contact: the
  *                       one before comes off, and the one left is the record of how far they got.
- *   'members'           added by GHL's "Membership - Paid" workflow when they pay for a membership
+ *   'member'            the one tag for a member, whoever added it: GHL's "Membership - Paid" workflow
+ *                       when they pay for a membership, the Ontraport import, or a coach by hand
  *                       (read here, never added). With outcome 'stayed' on the tracker, it means
  *                       they've JOINED: the sign-up emails (days 37, 39, 41) stop, the coaching
  *                       emails carry on to the end of their six weeks.
@@ -16,14 +17,14 @@
  *                       emails check it in GHL to leave out the "have a look at our memberships" line.
  *   'member start'      their membership has started. This is what starts the members automation in
  *                       GHL. A challenger gets it when their challenge ends (or on the start date a coach
- *                       typed). Anyone else with 'members' gets it the next morning (see startSweep).
+ *                       typed). Anyone else with 'member' gets it the next morning (see startSweep).
  *   '6wc finished'      their six weeks are up.
  *   '6wc lapsed'        a week after finishing, with no membership: Trainerize is deactivated.
  *   'email list'        added with '6wc lapsed': Ash's list for regular offers and content.
  *   '6wc guide ...'     that guide has been sent to them in a Trainerize message, so it's never sent twice.
  *
  * TRAINERIZE ACCESS (GHL decides, not Ontraport or Zapier). See accessSweep below.
- *   'members'              on Trainerize they get the 'Full Time Member' tag, lose 'Trialist', and are switched
+ *   'member'               on Trainerize they get the 'Full Time Member' tag, lose 'Trialist', and are switched
  *                          back on if they'd been switched off. Skipped while they're cancelling.
  *   'cancel approved'      Trainerize is switched off 60 days after this job first sees the tag (30 days'
  *   'cancel approved now'  notice, then a month of training), or 30 days for 'now'. Never while they
@@ -171,7 +172,7 @@ function plan(m, tags, t0, fromMs) {
   const start = m.day0 || m.booked;
   if (fromMs && start && start < fromMs - MS_DAY / 2) return { skip: 'started before launch' };
   const has = (t) => tags.includes(t);
-  const paid = has('members') || has('member');
+  const paid = has('member');
   const joined = paid || m.outcome === 'stayed';
   const add = [];
   let lapse = false;
@@ -240,7 +241,7 @@ async function contactsWithTag(tag) {
   }
   return out;
 }
-/* Someone has paid for a membership ('members'). Should their membership start now?
+/* Someone is a member ('member'). Should their membership start now?
    'wait' while they're still on a challenge on the tracker (their end date adds it instead, in
    plan()), 'start' for anyone else: they joined straight off the website, or their challenge is over. */
 function startDecision(c, m, t0) {
@@ -256,7 +257,7 @@ function startDecision(c, m, t0) {
 const TZ_MEMBER = 'Full Time Member', TZ_TRIALIST = 'Trialist';
 const ACCESS_KEY = 'trainerize-access';
 const CANCEL_DAYS = { 'cancel approved': 60, 'cancel approved now': 30 };
-const LEAVING = ['cancel approved', 'cancel approved now', 'lapsed member'];
+const LEAVING = ['cancel approved', 'cancel approved now', 'lapsed member', 'cancelled member'];
 const ymd = (ms) => new Date(ms).toISOString().slice(0, 10);
 const dayMs = (s) => Date.parse(s + 'T00:00:00Z');
 /* A paying member's Trainerize account: what needs changing. Pure. */
@@ -597,12 +598,13 @@ async function run({ dryRun }) {
     }
   }
   if (live && flagsChanged) await writeFlags(flags);
-  /* startSweep: 'member start' for everyone who has paid and isn't waiting on a challenge. */
+  /* startSweep: 'member start' for every member who isn't waiting on a challenge. */
   report.started = []; report.waiting = [];
   let paidMembers = [];
   try {
     const list = await roster();
-    paidMembers = await contactsWithTag('members');
+    // exactly 'member': the search can also match 'member start', 'lapsed member', 'cancelled member'
+    paidMembers = (await contactsWithTag('member')).filter((c) => (c.tags || []).map(norm).includes('member'));
     for (const c of paidMembers) {
       const m = list.find((x) => norm(x.email) && norm(x.email) === norm(c.email));
       const d = startDecision(c, m, t0);

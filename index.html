@@ -5788,8 +5788,8 @@ function renderRetentionToday(){
         <span class="ch attention">Check in</span>
         <div class="body" onclick="openTaProfile('${esc(r.t.id)}')">
           <div class="who"><span class="nm">${esc(r.t.name)}</span>${taNoteBtn(r.t)}
-            <span class="ttl">Nothing booked this week · ${r.prev4} → ${r.last4} visits</span>
-            <span class="day">${r.i.daysSince===null?'no sessions yet':'last in '+(r.i.daysSince===0?'today':r.i.daysSince+'d ago')}</span></div>
+            <span class="ttl">No sessions booked this week · ${taTimes(r.prev4)} the month before, ${r.last4?taTimes(r.last4).toLowerCase():'none'} in the last 4 weeks</span>
+            <span class="day">${r.i.daysSince===null?'no sessions yet':'Last session '+(r.i.daysSince===0?'today':r.i.daysSince===1?'yesterday':r.i.daysSince+' days ago')}</span></div>
         </div>
         <div class="mark-btns">
           <button class="btn sm" onclick="event.stopPropagation();taCopyMsg('${esc(r.t.id)}',this)">Copy message</button>
@@ -6348,6 +6348,7 @@ async function taMarkCheckedIn(id){
   }catch(e){ alert('Couldn\'t save: '+e.message); return; }
   renderAll();
 }
+const taTimes = n => n===1 ? 'Came once' : 'Came '+n+' times';
 function taRiskTable(list, opts){
   if(!list.length) return '';
   const head = `<thead><tr><th>Member</th><th>Last session</th><th>Last 4 weeks</th><th>4 weeks before</th><th>Change</th><th>Booked, next 7 days</th>${opts.top?'<th></th>':''}</tr></thead>`;

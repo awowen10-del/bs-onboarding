@@ -6,3 +6,7 @@
 # 6 Week Challenge emails: every morning at 08:00 UTC (08:00 or 09:00 in Warrington)
 [functions."challenge-tick-daily"]
   schedule = "0 8 * * *"
+
+# TeamUp attendance into the tracker: every morning at 06:30 UTC, before the coaches start
+[functions."attendance-sync-daily"]
+  schedule = "30 6 * * *"

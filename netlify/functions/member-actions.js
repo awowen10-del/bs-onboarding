@@ -108,12 +108,16 @@ async function doOne(a, member) {
     lines.push("GHL: 'cancelled member' added, so 'member' comes off and the member journey stops.");
     for (const m of free) { await tu(`customer_memberships/${m.id}/cancel`, 'POST', { forced_expiration_date: ymd(today) }); }
     if (free.length) lines.push(`TeamUp: ${free.map((m) => m.membership.name).join(', ')} ended today, so they can't book.`);
-    if (contact.email) {
-      const f = await json(TZ_API + '/user/find', { method: 'POST', headers: tzH(), body: JSON.stringify({ searchTerm: contact.email, view: 'allClient', start: 0, count: 10 }) }).catch(() => ({}));
-      const u = (f.users || []).find((x) => norm(x.email) === norm(contact.email));
-      if (u) { await json(TZ_API + '/user/setStatus', { method: 'POST', headers: tzH(), body: JSON.stringify({ userID: u.id, accountStatus: 'deactivated' }) }); lines.push('Trainerize: switched off.'); }
-      else lines.push('Trainerize: not found with their GHL email, nothing switched off.');
+    // Trainerize: try their GHL email, then their TeamUp one (they differ for some people, e.g. Gaynor Wright)
+    const emails = [contact.email];
+    if (member.tid) { const cu = await tu(`customers/${member.tid}?fields=email`).catch(() => ({})); emails.push(cu.email); }
+    let u = null;
+    for (const em of [...new Set(emails.filter(Boolean).map(norm))]) {
+      const f = await json(TZ_API + '/user/find', { method: 'POST', headers: tzH(), body: JSON.stringify({ searchTerm: em, view: 'allClient', start: 0, count: 10 }) }).catch(() => ({}));
+      u = (f.users || []).find((x) => norm(x.email) === em); if (u) break;
     }
+    if (u) { await json(TZ_API + '/user/setStatus', { method: 'POST', headers: tzH(), body: JSON.stringify({ userID: u.id, accountStatus: 'deactivated' }) }); lines.push('Trainerize: switched off.'); }
+    else lines.push('Trainerize: not found with their GHL or TeamUp email, nothing switched off.');
   } else if (a.type === 'pause') {
     const end = ymd(today + a.days * DAY);
     await ghl(`/contacts/${a.ghlId}/tags`, 'POST', { tags: [d.tag] });

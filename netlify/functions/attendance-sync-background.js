@@ -137,13 +137,19 @@ async function writeRow(key, value) {
 const ATT_Q = (from, to) => `attendances?status=attended&event_starts_at_gte=${from}T00:00:00Z&event_starts_at_lte=${to}T23:59:59Z`
   + `&expand=event,event.offering_type&fields=customer,status,event.starts_at,event.offering_type.name&page_size=100&sort=event_starts_at`;
 
+/* Progress and errors go to a small row of their own, because background function logs are hard to reach. */
+async function status(stage, extra) {
+  await writeRow(ROW + '-status', Object.assign({ at: new Date().toISOString(), stage }, extra || {})).catch(() => {});
+}
 async function run({ full = false } = {}) {
   const t0 = Date.now(), now = Date.now();
+  await status('started');
   let before = full ? null : await readRow(ROW).catch(() => null);
   if (before && !before.attendedOnly) before = null;   // written before the attended-only rule: rebuild it whole
 
   // 1. who is a member (GHL), 2. their TeamUp memberships
   const contacts = await ghlMembers();
+  await status('ghl members read', { count: contacts.length });
   const cms = await tuAll('customer_memberships?membership_type=recurring&page_size=100&expand=membership,customer'
     + '&fields=customer.id,customer.email,customer.first_name,customer.last_name,start_date,expiration_date,status,membership.name');
   const byEmail = {};
@@ -167,6 +173,7 @@ async function run({ full = false } = {}) {
       plan: live ? live.plan : null, paused: live ? live.status === 'hold' : false });
   }
   const keep = new Set(members.map((m) => m.tid).filter(Boolean));
+  await status('matched to TeamUp', { members: members.length, matched: keep.size, memberships: cms.length });
 
   // 3. attendance: whole history the first time (or for anyone whose start is earlier than we hold), else the last three weeks
   const weeks = (before && before.weeks) || {}, last = (before && before.last) || {};
@@ -192,12 +199,14 @@ async function run({ full = false } = {}) {
     const from = ymd(Math.max(m.getTime(), Date.parse(earliest)));
     foldAttendances(await tuAll(ATT_Q(from, to)), weeks, last, keep);
     held = from;
+    await status('backfilling', { heldFrom: held, seconds: Math.round((Date.now() - t0) / 1000) });
   }
   // last attended day for anyone whose last session is before the recheck window: from their weeks we can't tell the day,
   // so keep what we had (cleared above only when inside the window)
   const value = { updated: new Date().toISOString(), heldFrom: held, complete: done, attendedOnly: true,
     counted: 'attended training sessions only (not intros, reviews, workshops or socials; never no-shows or late cancels)', members, weeks, last };
   await writeRow(ROW, value);
+  await status('done', { members: members.length, matched: keep.size, heldFrom: held, complete: done, seconds: Math.round((Date.now() - t0) / 1000) });
   const unmatched = members.filter((m) => !m.tid).map((m) => m.name);
   console.log(`ATTENDANCE: ${members.length} members, ${keep.size} matched to TeamUp, held from ${held}, ${Math.round((Date.now() - t0) / 1000)}s. Not in TeamUp: ${unmatched.join(', ') || 'none'}`);
   return { members: members.length, matched: keep.size, unmatched };
@@ -207,7 +216,7 @@ exports.handler = async (event) => {
   const h = event.headers || {};
   if (!process.env.WEBHOOK_SECRET || h['x-webhook-secret'] !== process.env.WEBHOOK_SECRET) return { statusCode: 401, body: 'Unauthorized' };
   let body = {}; try { body = JSON.parse(event.body || '{}'); } catch (e) { /* empty */ }
-  try { await run({ full: !!body.full }); } catch (e) { console.error('ATTENDANCE failed: ' + e.message); }
+  try { await run({ full: !!body.full }); } catch (e) { console.error('ATTENDANCE failed: ' + e.message); await status('failed', { error: String(e.message).slice(0, 500) }); }
   return { statusCode: 202 };
 };
 exports.run = run;

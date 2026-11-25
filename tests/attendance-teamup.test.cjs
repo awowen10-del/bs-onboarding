@@ -143,7 +143,7 @@ assert.ok(app.html("retMemberList").includes("Stays") && !app.html("retMemberLis
   const tm = app.html("retTodayList");
   assert.ok(tm.includes("Check in: no sessions booked") && tm.includes("Small Drop") && !tm.includes("Big Drop"));
   // plain words a coach reads at a glance, not "x → y visits"
-  assert.ok(!tm.includes("→") && /Came \d+ times the month before, (came \d+ times?|came once|none) in the last 4 weeks/.test(tm), tm.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 400));
+  assert.ok(!tm.includes("→") && /\d+ sessions? in the last 4 weeks \(\d+ \w{3,4} – \d+ \w{3,4}\), down from \d+ in the 4 weeks before \(\d+ \w{3,4} – \d+ \w{3,4}\)/.test(tm), tm.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 400));
   assert.ok(/Last session (today|yesterday|\d+ days ago)|no sessions yet/.test(tm));
   console.log("  line:", tm.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").match(/No sessions booked[^]*?(ago|today|yesterday|yet)/)[0]);
 }

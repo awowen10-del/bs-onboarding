@@ -50,4 +50,37 @@ assert.ok(/first load hasn't happened/.test(app.html("taTable")));
 c.__t.tuAtt = { updated: new Date().toISOString(), members: [{ id: "a", name: "Sarah Doyle", email: "s@x", tid: "1", since: ymd(45), plan: "Membership - Gold" }], weeks, last: {} };
 c.openTaProfile("a");
 assert.ok(!/missed|late-cancel/i.test(app.html("taProfileBody").replace(/never no-shows or late cancels/g, "")));
+// actions + notes
+{
+  const DAY2 = 864e5, ymd2 = (d) => new Date(Date.now() - d * DAY2).toISOString().slice(0, 10);
+  const until = new Date(Date.now() + 20 * DAY2).toISOString().slice(0, 10);
+  c.__t.tuAtt = { updated: new Date().toISOString(), members: [
+    { id: "a", name: "Sarah Doyle", email: "s@x", tid: "1", since: ymd2(45), plan: "Membership - Gold" },
+    { id: "b", name: "Mark Lee", email: "m@x", tid: "2", since: ymd2(38), plan: "Membership - Silver" },
+    { id: "c", name: "Gone Person", email: "g@x", tid: "3", since: ymd2(300), plan: "Membership - Gold" }],
+    weeks, last: { "1": ymd2(1), "2": ymd2(30), "3": ymd2(2) } };
+  c.__t.taExtrasLoaded = true;
+  c.__t.taActions = { items: [
+    { id: "x1", type: "pause", days: 30, ghlId: "b", at: new Date().toISOString(), status: "done", until },
+    { id: "x2", type: "left", ghlId: "c", at: new Date().toISOString(), status: "done" }] };
+  c.__t.taNotes = { a: [{ id: "n1", type: "training", text: "Knee niggle", by: "Dan", at: new Date().toISOString() },
+                        { id: "n2", type: "attendance", text: "Away 1-14 Dec", by: "Gaz", at: new Date().toISOString() }] };
+  c.setTaView("all");
+  const tb = app.html("taTable");
+  assert.ok(tb.includes("Paused") && !/Mark Lee[\s\S]*Gone quiet/.test(tb.split("</tr>").find((r) => r.includes("Mark Lee"))), "a paused member reads Paused, not Gone quiet");
+  assert.ok(!tb.includes("Gone Person"), "someone marked as left drops off the list");
+  assert.ok(/aria-label="2 notes for Sarah Doyle"/.test(tb), "notes marker shows the count");
+  c.setTaView("nudge");
+  assert.ok(!app.html("taTable").includes("Mark Lee"), "paused people are not on the nudge list");
+  c.openTaProfile("a");
+  let pr = app.html("taProfileBody");
+  assert.ok(pr.includes("Pause 30 days") && pr.includes("Mark as left"));
+  assert.ok(pr.includes("Knee niggle") && !pr.includes("Away 1-14 Dec"), "training notes by default, attendance notes kept apart");
+  c.taSetNoteType("attendance"); pr = app.html("taProfileBody");
+  assert.ok(pr.includes("Away 1-14 Dec") && !pr.includes("Knee niggle"));
+  c.openTaProfile("b");
+  assert.ok(app.html("taProfileBody").includes("Resume now") && !app.html("taProfileBody").includes("Pause 30 days"), "paused: offer resume");
+  c.__t.taPanel = "left"; c.openTaProfile("a", true);
+  assert.ok(/Mark Sarah as left\?/.test(app.html("taProfileBody")) && /task on Ash/.test(app.html("taProfileBody")), "confirm says exactly what happens");
+}
 console.log("attendance-teamup: ok");

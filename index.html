@@ -972,6 +972,35 @@
   @media (max-width:520px){.ta-facts{grid-template-columns:minmax(0,1fr)}}
   .mcard .name .ta-open{appearance:none;background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:left}
   .mcard .name .ta-open:hover{color:var(--orange-soft);text-decoration:underline}
+
+  /* profile actions + notes */
+  .ta-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .ta-actions .btn{min-height:40px}
+  .btn.warn{color:var(--red);border-color:rgba(var(--red-rgb),.35)}
+  .btn.warn:hover{background:rgba(var(--red-rgb),.06);border-color:var(--red)}
+  .ta-confirm{margin-top:12px;border:1px solid var(--line);background:var(--card-2);border-radius:12px;padding:14px 16px}
+  .ta-confirm h5{font-size:14px;font-weight:800;color:var(--ink);margin-bottom:8px}
+  .ta-confirm ul{margin:0 0 12px 18px;font-size:13px;color:var(--ink-dim);line-height:1.55}
+  .ta-confirm .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .ta-confirm label{font-size:12px;font-weight:700;color:var(--ink-dim)}
+  .ta-confirm select,.ta-notes select{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+  .ta-result{margin-top:12px;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.55}
+  .ta-result.ok{background:rgba(var(--green-rgb),.08);border:1px solid rgba(var(--green-rgb),.3);color:var(--ink)}
+  .ta-result.bad{background:rgba(var(--red-rgb),.07);border:1px solid rgba(var(--red-rgb),.3);color:var(--ink)}
+  .ta-result b{display:block;margin-bottom:4px}
+  .ta-chip.paused{background:rgba(var(--orange-rgb),.12);color:var(--orange-soft)}
+  .ta-seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--navy-2)}
+  .ta-seg button{appearance:none;border:0;background:transparent;font:inherit;font-size:13px;font-weight:700;color:var(--ink-dim);padding:8px 14px;min-height:38px;cursor:pointer}
+  .ta-seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(var(--shadow-rgb),.4)}
+  .ta-notes textarea{width:100%;min-height:70px;font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);resize:vertical;margin-top:10px}
+  .ta-notes .row{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:8px;flex-wrap:wrap}
+  .ta-note{border-top:1px solid var(--line);padding:10px 0;font-size:13.5px;color:var(--ink);line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+  .ta-note:first-of-type{border-top:0}
+  .ta-note .by{font-size:11.5px;color:var(--ink-faint);font-weight:700;margin-top:3px;white-space:normal}
+  .ta-note-empty{font-size:13px;color:var(--ink-faint);padding:8px 0}
+  .ta-nbtn{appearance:none;border:0;background:transparent;cursor:pointer;display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:4px 6px;border-radius:6px;color:var(--orange-soft);font:inherit;font-size:11.5px;font-weight:800;vertical-align:middle}
+  .ta-nbtn:hover{background:rgba(var(--orange-rgb),.1)}
+  .ta-nbtn svg{width:14px;height:14px}
   @media (prefers-reduced-motion:no-preference){.ta-col .b{transition:height .25s ease}}
   /* an attendance alert is a "watch this" task, not one of the three journey channels */
   .action.attention{border-left-color:var(--amber)}
@@ -6034,7 +6063,10 @@ function taInfo(t){
   const r = done.slice(-4).map(n);
   const dropping = r.length===4 && r[0]>r[1] && r[1]>r[2] && r[2]>r[3];
   let status = 'ok';
-  if(!t.tid) status = 'unknown';
+  const st = taState(t.id);
+  if(st.left) status = 'left';
+  else if(st.pausedUntil || t.paused) status = 'paused';
+  else if(!t.tid) status = 'unknown';
   else if(done.length < 2) status = 'new';
   else if(daysSince===null ? (sinceDays!==null && sinceDays>=TA_QUIET_DAYS) : daysSince>=TA_QUIET_DAYS) status = 'quiet';
   else if(dropping) status = 'dropping';
@@ -6044,7 +6076,8 @@ function taInfo(t){
 }
 const TA_STATUS = {
   ok:{cls:'ok',label:'On track'}, new:{cls:'new',label:'Just started'}, quiet:{cls:'quiet',label:'Gone quiet'},
-  dropping:{cls:'slip',label:'Dropping'}, low:{cls:'slip',label:'Below aim'}, unknown:{cls:'new',label:'Not on TeamUp'}
+  dropping:{cls:'slip',label:'Dropping'}, low:{cls:'slip',label:'Below aim'}, unknown:{cls:'new',label:'Not on TeamUp'},
+  paused:{cls:'paused',label:'Paused'}, left:{cls:'new',label:'Left'}
 };
 /* The nudge list is who a coach should message today: gone quiet or sliding. Below aim is shown but not
    counted here: on 25 Nov 2026 the typical member trained 1.4 times a week against an aim of 2-3, so it
@@ -6069,7 +6102,8 @@ function renderAttendance(){
     document.getElementById('taStats').innerHTML=''; if(upd) upd.textContent=''; return;
   }
   if(upd) upd.textContent = 'From TeamUp · updated '+new Date(tuAtt.updated).toLocaleString('en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit'});
-  const rows = tuMembers().map(t=>({t, i:taInfo(t)}));
+  if(!taExtrasLoaded) taLoadExtras();
+  const rows = tuMembers().map(t=>({t, i:taInfo(t)})).filter(r=>r.i.status!=='left');
   const first = rows.filter(r=>r.i.inFirst), nudge = rows.filter(r=>taNeedsNudge(r.i));
   // headline: new members (joined in the last 12 months), their average over their first 90 days so far
   const yearAgo = today0() - 365*86400000;
@@ -6086,7 +6120,7 @@ function renderAttendance(){
   const q = normName((document.getElementById('taSearch')||{}).value||'');
   let list = taView==='first90' ? first : taView==='nudge' ? nudge : rows;
   if(q) list = list.filter(r=>normName(r.t.name).includes(q));
-  const order = {quiet:0,dropping:1,low:2,new:3,ok:4,unknown:5};
+  const order = {quiet:0,dropping:1,low:2,new:3,ok:4,paused:5,unknown:6};
   list = list.slice().sort((a,b)=>(order[a.i.status]-order[b.i.status]) || String(a.t.name).localeCompare(String(b.t.name)));
   if(!list.length){
     host.innerHTML = `<div class="tbl-scroll"><div class="ta-empty">${q?'Nobody matches that name.':taView==='nudge'?'Nobody needs a nudge right now.':taView==='first90'?'Nobody is in their first 90 days right now.':'No members yet.'}</div></div>`;
@@ -6100,7 +6134,7 @@ function renderAttendance(){
       : `<div class="ta-wk">${t.since?new Date(t.since).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'–'}</div>`;
     const wks = i.recent4.length ? `<span class="ta-weeks" aria-label="Last ${i.recent4.length} weeks: ${i.recent4.join(', ')}">${i.recent4.map(n=>`<span${n===0?' class="z"':''}>${n}</span>`).join('')}</span>` : '<span class="ta-last">–</span>';
     return `<tr tabindex="0" onclick="openTaProfile('${esc(t.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openTaProfile('${esc(t.id)}')}" aria-label="Open ${esc(t.name)}">
-      <td class="ta-who"><div class="ta-name">${esc(t.name)}</div><div class="ta-plan">${esc(t.plan||'')}${t.paused?' · on hold':''}</div></td>
+      <td class="ta-who"><div class="ta-name">${esc(t.name)}${taNoteBtn(t)}</div><div class="ta-plan">${esc(t.plan||'')}${t.paused?' · on hold':''}</div></td>
       <td data-l="${isFirst||i.inFirst?'Week':'Member since'}">${second}</td><td data-l="${isFirst?'Average a week':'Average, last 8 weeks'}">${taAvgHtml(i)}</td><td data-l="Last 4 weeks">${wks}</td><td data-l="Last session">${taLastHtml(i)}</td><td class="ta-st">${taChip(i)}</td></tr>`;
   }).join('');
   host.innerHTML = `<div class="tbl-scroll"><table class="ta">${head}<tbody>${body}</tbody></table></div>
@@ -6122,16 +6156,132 @@ function taChartHtml(t, keys, opts){
   const aimBottom = 20 + Math.round(opts.aim/max*H);
   return `<div class="ta-chart">${cols}<div class="ta-aim" style="bottom:${aimBottom}px"><span>aim ${opts.aim}</span></div></div>`;
 }
+
+/* ===== Actions (left / pause / resume) and notes, per member =====
+   Actions: the request goes into the 'member-actions' row and member-actions.js does it in GHL,
+   TeamUp and Trainerize, then puts a "check payment" task on Ash. Money is never moved from here.
+   Notes: one 'member-notes' row, keyed by the member's GHL id, each note Training or Attendance. */
+const TA_COACHES = ['Ash','Dan','Grace','Gaz'];
+let taActions = { items: [] }, taNotes = {}, taExtrasLoaded = false, taPanel = null, taResult = null, taNoteType = 'training';
+async function taLoadExtras(force){
+  if((taExtrasLoaded && !force) || typeof sb==='undefined' || !sb) return;
+  try{
+    const { data } = await sb.from('bodysculpt').select('key,value').in('key', ['member-actions','member-notes']);
+    const a = (data||[]).find(r=>r.key==='member-actions'), n = (data||[]).find(r=>r.key==='member-notes');
+    taActions = (a && a.value && Array.isArray(a.value.items)) ? a.value : { items: [] };
+    taNotes = (n && n.value && typeof n.value==='object') ? n.value : {};
+    taExtrasLoaded = true;
+    renderAttendance(); if(taOpen) openTaProfile(taOpen, true);
+  }catch(e){ /* offline: the tab still works, just without actions/notes */ }
+}
+function taWho(){ try{ return localStorage.getItem('bsj_ta_who') || ''; }catch(e){ return ''; } }
+function taSetWho(v){ try{ localStorage.setItem('bsj_ta_who', v); }catch(e){} }
+/* Where a member stands after anything done from here: left, or paused until a date. */
+function taState(id){
+  const mine = (taActions.items||[]).filter(a=>a.ghlId===id && a.status!=='failed').sort((a,b)=>String(a.at).localeCompare(String(b.at)));
+  const last = mine[mine.length-1];
+  if(!last) return {};
+  if(last.type==='left') return { left:true };
+  if(last.type==='pause' && (last.until || '') >= new Date().toISOString().slice(0,10)) return { pausedUntil:last.until || null };
+  return {};
+}
+const taNotesFor = id => Array.isArray(taNotes[id]) ? taNotes[id] : [];
+function taNoteBtn(t){
+  const n = taNotesFor(t.id).length; if(!n) return '';
+  return `<button type="button" class="ta-nbtn" title="${n} note${n===1?'':'s'}" aria-label="${n} note${n===1?'':'s'} for ${esc(t.name)}" onclick="event.stopPropagation();openTaProfile('${esc(t.id)}');setTimeout(()=>{const e=document.getElementById('taNotesSec');if(e)e.scrollIntoView({block:'start'})},50)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v12H8l-4 4z"/></svg>${n}</button>`;
+}
+function taWhoSelect(id){
+  const w = taWho();
+  return `<label for="${id}">Who's doing this?</label> <select id="${id}" onchange="taSetWho(this.value)"><option value="">Choose…</option>${TA_COACHES.map(c=>`<option${c===w?' selected':''}>${c}</option>`).join('')}</select>`;
+}
+function taPanelHtml(t){
+  if(!taPanel) return '';
+  const first = esc(t.name.split(' ')[0]);
+  const what = {
+    left: { h:`Mark ${first} as left?`, li:["Takes <b>member</b> off in GHL and stops their member emails","Ends their TeamUp membership today so they can't book (not if TeamUp bills them, that's left for Ash)","Switches off their Trainerize","Puts a task on Ash to check and stop any payment"], btn:'Yes, mark as left', cls:'warn' },
+    pause30: { h:`Pause ${first} for 30 days?`, li:["Starts the pause in GHL (the usual 30-day pause)","Puts their TeamUp membership on hold for 30 days","Puts a task on Ash to move their next payment"], btn:'Pause 30 days', cls:'primary' },
+    pause60: { h:`Pause ${first} for 60 days?`, li:["Starts the pause in GHL (the usual 60-day pause)","Puts their TeamUp membership on hold for 60 days","Puts a task on Ash to move their next payment"], btn:'Pause 60 days', cls:'primary' },
+    resume: { h:`Bring ${first} back now?`, li:["Ends the pause in GHL straight away","Ends their TeamUp hold today","Puts a task on Ash to move their payment back if it was moved"], btn:'Yes, resume now', cls:'primary' }
+  }[taPanel];
+  return `<div class="ta-confirm" role="group" aria-label="${what.h}"><h5>${what.h}</h5><ul>${what.li.map(x=>'<li>'+x+'</li>').join('')}</ul>
+    <div class="row">${taWhoSelect('taWhoAct')}<span style="flex:1"></span>
+    <button type="button" class="btn sm ghost" onclick="taPanel=null;openTaProfile(taOpen,true)">Cancel</button>
+    <button type="button" class="btn sm ${what.cls}" id="taGo" onclick="taRunAction('${esc(t.id)}','${taPanel}')">${what.btn}</button></div></div>`;
+}
+async function taRunAction(id, kind){
+  const t = tuMembers().find(x=>x.id===id); if(!t) return;
+  const who = (document.getElementById('taWhoAct')||{}).value || '';
+  if(!who){ alert("Choose who's doing this first."); return; }
+  taSetWho(who);
+  const go = document.getElementById('taGo'); if(go){ go.disabled = true; go.textContent = 'Working…'; }
+  const item = { id: 'a'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), type: kind.startsWith('pause')?'pause':kind,
+    days: kind==='pause30'?30:kind==='pause60'?60:undefined, ghlId: id, name: t.name, by: who, at: new Date().toISOString(), status:'queued' };
+  try{
+    const { data } = await sb.from('bodysculpt').select('value').eq('key','member-actions');
+    const row = (data && data[0] && data[0].value && Array.isArray(data[0].value.items)) ? data[0].value : { items: [] };
+    row.items.push(item);
+    await sb.from('bodysculpt').upsert({ key:'member-actions', value: row, updated_at: new Date().toISOString() }, { onConflict:'key' });
+    const r = await fetch('/.netlify/functions/member-actions', { method:'POST' });
+    const out = await r.json();
+    const mine = (out.processed||[]).find(x=>x.id===item.id) || { status:'failed', result:['No answer from the server. Nothing may have happened: check GHL.'] };
+    Object.assign(item, mine);
+    taResult = { ok: mine.status==='done', lines: mine.result||[] };
+  }catch(e){ taResult = { ok:false, lines:['Couldn\'t reach the server: '+e.message] }; }
+  taPanel = null;
+  await taLoadExtras(true);
+  openTaProfile(id, true); renderAttendance();
+}
+async function taAddNote(id){
+  const box = document.getElementById('taNoteText'); const text = (box && box.value || '').trim();
+  const who = (document.getElementById('taWhoNote')||{}).value || '';
+  if(!text) return;
+  if(!who){ alert("Choose who's writing this first."); return; }
+  taSetWho(who);
+  const note = { id:'n'+Date.now().toString(36), type: taNoteType, text, by: who, at: new Date().toISOString() };
+  try{
+    const { data } = await sb.from('bodysculpt').select('value').eq('key','member-notes');
+    const all = (data && data[0] && data[0].value && typeof data[0].value==='object') ? data[0].value : {};
+    all[id] = (Array.isArray(all[id]) ? all[id] : []).concat(note);
+    await sb.from('bodysculpt').upsert({ key:'member-notes', value: all, updated_at: new Date().toISOString() }, { onConflict:'key' });
+    taNotes = all;
+  }catch(e){ alert('Couldn\'t save the note: '+e.message); return; }
+  openTaProfile(id, true); renderAttendance();
+}
+function taSetNoteType(v){ taNoteType = v; if(taOpen) openTaProfile(taOpen, true); }
+function taNotesHtml(t){
+  const all = taNotesFor(t.id).slice().sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  const n = k => all.filter(x=>x.type===k).length;
+  const list = all.filter(x=>x.type===taNoteType);
+  return `<div class="ta-sec ta-notes" id="taNotesSec"><h4>Notes</h4>
+    <div class="ta-seg" role="group" aria-label="Which notes">
+      <button type="button" aria-pressed="${taNoteType==='training'}" onclick="taSetNoteType('training')">Training (${n('training')})</button>
+      <button type="button" aria-pressed="${taNoteType==='attendance'}" onclick="taSetNoteType('attendance')">Attendance (${n('attendance')})</button>
+    </div>
+    <div style="margin-top:6px">${list.length ? list.map(x=>`<div class="ta-note">${esc(x.text)}<div class="by">${esc(x.by||'')} · ${esc(new Date(x.at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}))}</div></div>`).join('')
+      : `<div class="ta-note-empty">No ${taNoteType} notes yet.</div>`}</div>
+    <textarea id="taNoteText" placeholder="${taNoteType==='training'?'e.g. Knee niggle, swap lunges for step-ups':'e.g. Away 1 to 14 Dec, back on the 15th'}" aria-label="New ${taNoteType} note"></textarea>
+    <div class="row">${taWhoSelect('taWhoNote')}<button type="button" class="btn sm primary" onclick="taAddNote('${esc(t.id)}')">Add ${taNoteType} note</button></div></div>`;
+}
+
 let taOpen = null;
-function openTaProfile(id){
+function openTaProfile(id, keep){
   const t = tuMembers().find(x=>String(x.id)===String(id)); if(!t) return;
+  if(!keep){ taPanel = null; taResult = null; }
   taOpen = id;
-  const i = taInfo(t), now = thisWeekKey();
+  const i = taInfo(t), now = thisWeekKey(), st = taState(t.id);
   const since = t.since ? new Date(t.since).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : 'start date not in TeamUp';
   let html = `<div class="ta-ph"><div><h3 id="taProfileName">${esc(t.name)}</h3>
       <div class="meta">${esc(t.plan||'No plan on TeamUp')}${t.paused?' · on hold':''} · Member since ${esc(since)}</div></div>
       <button type="button" class="btn sm ghost" onclick="closeTaProfile()">Close</button></div>
-    <div style="margin-top:10px">${taChip(i)}</div>`;
+    <div style="margin-top:10px">${taChip(i)}${st.pausedUntil?` <span class="ta-last" style="margin-left:6px">until ${esc(new Date(st.pausedUntil).toLocaleDateString('en-GB',{day:'numeric',month:'short'}))}</span>`:''}</div>`;
+  if(taExtrasLoaded && !st.left){
+    html += taPanel ? taPanelHtml(t) : `<div class="ta-actions">${(st.pausedUntil||t.paused)
+      ? `<button type="button" class="btn sm primary" onclick="taPanel='resume';openTaProfile(taOpen,true)">Resume now</button>`
+      : `<button type="button" class="btn sm" onclick="taPanel='pause30';openTaProfile(taOpen,true)">Pause 30 days</button><button type="button" class="btn sm" onclick="taPanel='pause60';openTaProfile(taOpen,true)">Pause 60 days</button>`}
+      <button type="button" class="btn sm warn" onclick="taPanel='left';openTaProfile(taOpen,true)">Mark as left</button></div>`;
+  }
+  if(taResult) html += `<div class="ta-result ${taResult.ok?'ok':'bad'}" role="status"><b>${taResult.ok?'Done':'That didn\'t work'}</b>${taResult.lines.map(esc).join('<br>')}${taResult.ok?'<br>Ash has a task to check the payment.':''}</div>`;
+  if(st.left) html += `<div class="ta-result ok" role="status"><b>Marked as left</b>They'll drop off this list after tomorrow morning's update.</div>`;
   if(!t.tid){
     html += `<div class="ta-sec"><p class="sub" style="margin:0">We couldn't find ${esc(t.name.split(' ')[0])} on TeamUp with the email in GHL${t.email?' ('+esc(t.email)+')':''}. Once the emails match, their weeks show up here the next morning.</p></div>`;
   } else {
@@ -6153,6 +6303,7 @@ function openTaProfile(id){
       <div>This week so far<b>${i.thisWeek}</b></div>
       <div>Sessions in first 90 days<b>${total}</b></div></div>`;
   }
+  if(taExtrasLoaded) html += taNotesHtml(t);
   html += `<p class="ta-foot">From TeamUp, updated ${esc(new Date(tuAtt.updated).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'}))}. Sessions attended only, never no-shows or late cancels. The week in progress is shown lighter and isn't in any average.</p>`;
   document.getElementById('taProfileBody').innerHTML = html;
   document.getElementById('taProfileBg').classList.add('show');

@@ -975,6 +975,9 @@
 
   /* profile actions + notes */
   .ta-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .ta-manage{margin-top:12px;border:1px solid var(--line);background:var(--card-2);border-radius:12px;padding:12px 14px}
+  .ta-manage p{font-size:12.5px;color:var(--ink-dim);margin:0}
+  .ta-manage .ta-actions{margin-top:10px}
   .ta-actions .btn{min-height:40px}
   .btn.warn{color:var(--red);border-color:rgba(var(--red-rgb),.35)}
   .btn.warn:hover{background:rgba(var(--red-rgb),.06);border-color:var(--red)}
@@ -6066,6 +6069,7 @@ function taInfo(t){
   const st = taState(t.id);
   if(st.left) status = 'left';
   else if(st.pausedUntil || t.paused) status = 'paused';
+  else if(t.leaving) status = 'leaving';
   else if(!t.tid) status = 'unknown';
   else if(done.length < 2) status = 'new';
   else if(daysSince===null ? (sinceDays!==null && sinceDays>=TA_QUIET_DAYS) : daysSince>=TA_QUIET_DAYS) status = 'quiet';
@@ -6077,7 +6081,7 @@ function taInfo(t){
 const TA_STATUS = {
   ok:{cls:'ok',label:'On track'}, new:{cls:'new',label:'Just started'}, quiet:{cls:'quiet',label:'Gone quiet'},
   dropping:{cls:'slip',label:'Dropping'}, low:{cls:'slip',label:'Below aim'}, unknown:{cls:'new',label:'Not on TeamUp'},
-  paused:{cls:'paused',label:'Paused'}, left:{cls:'new',label:'Left'}
+  paused:{cls:'paused',label:'Paused'}, left:{cls:'new',label:'Left'}, leaving:{cls:'new',label:'Leaving'}
 };
 /* The nudge list is who a coach should message today: gone quiet or sliding. Below aim is shown but not
    counted here: on 25 Nov 2026 the typical member trained 1.4 times a week against an aim of 2-3, so it
@@ -6120,7 +6124,7 @@ function renderAttendance(){
   const q = normName((document.getElementById('taSearch')||{}).value||'');
   let list = taView==='first90' ? first : taView==='nudge' ? nudge : rows;
   if(q) list = list.filter(r=>normName(r.t.name).includes(q));
-  const order = {quiet:0,dropping:1,low:2,new:3,ok:4,paused:5,unknown:6};
+  const order = {quiet:0,dropping:1,low:2,new:3,ok:4,paused:5,leaving:6,unknown:7};
   list = list.slice().sort((a,b)=>(order[a.i.status]-order[b.i.status]) || String(a.t.name).localeCompare(String(b.t.name)));
   if(!list.length){
     host.innerHTML = `<div class="tbl-scroll"><div class="ta-empty">${q?'Nobody matches that name.':taView==='nudge'?'Nobody needs a nudge right now.':taView==='first90'?'Nobody is in their first 90 days right now.':'No members yet.'}</div></div>`;
@@ -6162,7 +6166,7 @@ function taChartHtml(t, keys, opts){
    TeamUp and Trainerize, then puts a "check payment" task on Ash. Money is never moved from here.
    Notes: one 'member-notes' row, keyed by the member's GHL id, each note Training or Attendance. */
 const TA_COACHES = ['Ash','Dan','Grace','Gaz'];
-let taActions = { items: [] }, taNotes = {}, taExtrasLoaded = false, taPanel = null, taResult = null, taNoteType = 'training';
+let taActions = { items: [] }, taNotes = {}, taExtrasLoaded = false, taPanel = null, taResult = null, taNoteType = 'training', taMenu = false;
 async function taLoadExtras(force){
   if((taExtrasLoaded && !force) || typeof sb==='undefined' || !sb) return;
   try{
@@ -6266,7 +6270,7 @@ function taNotesHtml(t){
 let taOpen = null;
 function openTaProfile(id, keep){
   const t = tuMembers().find(x=>String(x.id)===String(id)); if(!t) return;
-  if(!keep){ taPanel = null; taResult = null; }
+  if(!keep){ taPanel = null; taResult = null; taMenu = false; }
   taOpen = id;
   const i = taInfo(t), now = thisWeekKey(), st = taState(t.id);
   const since = t.since ? new Date(t.since).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : 'start date not in TeamUp';
@@ -6275,10 +6279,13 @@ function openTaProfile(id, keep){
       <button type="button" class="btn sm ghost" onclick="closeTaProfile()">Close</button></div>
     <div style="margin-top:10px">${taChip(i)}${st.pausedUntil?` <span class="ta-last" style="margin-left:6px">until ${esc(new Date(st.pausedUntil).toLocaleDateString('en-GB',{day:'numeric',month:'short'}))}</span>`:''}</div>`;
   if(taExtrasLoaded && !st.left){
-    html += taPanel ? taPanelHtml(t) : `<div class="ta-actions">${(st.pausedUntil||t.paused)
+    html += taPanel ? taPanelHtml(t) : !taMenu
+      ? `<div class="ta-actions"><button type="button" class="btn sm ghost" aria-expanded="false" onclick="taMenu=true;openTaProfile(taOpen,true)">Manage membership ▾</button></div>`
+      : `<div class="ta-manage"><p>Normally the pause and cancellation forms do this. Use these if one was missed.</p><div class="ta-actions">${(st.pausedUntil||t.paused)
       ? `<button type="button" class="btn sm primary" onclick="taPanel='resume';openTaProfile(taOpen,true)">Resume now</button>`
       : `<button type="button" class="btn sm" onclick="taPanel='pause30';openTaProfile(taOpen,true)">Pause 30 days</button><button type="button" class="btn sm" onclick="taPanel='pause60';openTaProfile(taOpen,true)">Pause 60 days</button>`}
-      <button type="button" class="btn sm warn" onclick="taPanel='left';openTaProfile(taOpen,true)">Mark as left</button></div>`;
+      <button type="button" class="btn sm warn" onclick="taPanel='left';openTaProfile(taOpen,true)">Mark as left</button>
+      <button type="button" class="btn sm ghost" aria-expanded="true" onclick="taMenu=false;openTaProfile(taOpen,true)">Close</button></div></div>`;
   }
   if(taResult) html += `<div class="ta-result ${taResult.ok?'ok':'bad'}" role="status"><b>${taResult.ok?'Done':'That didn\'t work'}</b>${taResult.lines.map(esc).join('<br>')}${taResult.ok?'<br>Ash has a task to check the payment.':''}</div>`;
   if(st.left) html += `<div class="ta-result ok" role="status"><b>Marked as left</b>They'll drop off this list after tomorrow morning's update.</div>`;
@@ -6410,16 +6417,18 @@ function renderAttendanceUploadList(){
 function renderRetentionMembers(){
   const host=document.getElementById('retMemberList'); if(!host) return;
   const tally=document.getElementById('retCount');
-  if(tally) tally.textContent = retention.length;
+  if(tally) tally.textContent = retention.filter(m=>!hasLeft(m)).length;
 
   const box=document.getElementById('retSearch');
   const q=String((box&&box.value)||'').toLowerCase();
+  const gone = retention.filter(m=>hasLeft(m)).length;
   const arr = retention
+    .filter(m=>!hasLeft(m))   // marked left (by GHL each morning, or the Manage button) — still on Birthdays under Left
     .filter(m=>String(m.name||'').toLowerCase().includes(q))
     .sort((a,b)=> String(a.name||'').localeCompare(String(b.name||'')));
 
   if(!arr.length){
-    host.innerHTML = retention.length
+    host.innerHTML = retention.filter(m=>!hasLeft(m)).length
       ? `<div class="empty"><div class="big">Nobody matches that.</div>Try a different search.</div>`
       : `<div class="empty"><div class="big">No members yet.</div>
          Anyone marked <b>Stayed on</b> in the Onboarding tracker arrives here automatically — or add somebody by hand.</div>`;
@@ -6438,7 +6447,10 @@ function renderRetentionMembers(){
     // the attendance trend, right on the card, so the state is visible without opening anything
     const flagged = isAttendanceFlagged(m);
     const spark = attendanceSpark(m);
-    const attTag = flagged ? `<span class="tag dropping">Attendance dropping</span>` : '';
+    const tu = tuFor(m), tst = tu ? taState(tu.id) : {};
+    const attTag = (flagged ? `<span class="tag dropping">Attendance dropping</span>` : '')
+      + (tu && (tu.paused || tst.pausedUntil) ? `<span class="tag paused">Paused</span>` : '')
+      + (tu && tu.leaving ? `<span class="tag paused">Leaving</span>` : '');
     return `<div class="mcard${flagged?' att-flagged':''}">
       <div class="top">
         <div>
@@ -6452,7 +6464,7 @@ function renderRetentionMembers(){
         <button class="btn sm ghost danger" onclick="removeRetMember('${m.id}')">Remove</button>
       </div>
     </div>`;
-  }).join('');
+  }).join('') + (gone ? `<p class="ta-foot">${gone} ${gone===1?'person who has':'people who have'} left ${gone===1?'is':'are'} hidden here (they're still on Birthdays under Left).</p>` : '');
 }
 
 /* add/edit a member — its own modal so the challenger one, and everything that leans on it,

@@ -214,6 +214,7 @@ function boot(opts = {}) {
   get taNotes(){ return taNotes; }, set taNotes(v){ taNotes = v; },
   get taExtrasLoaded(){ return taExtrasLoaded; }, set taExtrasLoaded(v){ taExtrasLoaded = v; },
   get taPanel(){ return taPanel; }, set taPanel(v){ taPanel = v; },
+  get taMenu(){ return taMenu; }, set taMenu(v){ taMenu = v; },
   get tracker(){ return tracker; },
   get activeTab(){ return activeTab; },
   get memberFilter(){ return memberFilter; },

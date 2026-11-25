@@ -74,13 +74,32 @@ assert.ok(!/missed|late-cancel/i.test(app.html("taProfileBody").replace(/never n
   assert.ok(!app.html("taTable").includes("Mark Lee"), "paused people are not on the nudge list");
   c.openTaProfile("a");
   let pr = app.html("taProfileBody");
-  assert.ok(pr.includes("Pause 30 days") && pr.includes("Mark as left"));
+  assert.ok(pr.includes("Manage membership") && !pr.includes("Mark as left"), "one Manage button, options folded away");
+  c.__t.taMenu = true; c.openTaProfile("a", true); pr = app.html("taProfileBody");
+  assert.ok(pr.includes("Pause 30 days") && pr.includes("Mark as left") && /forms/.test(pr), "the options, and that the forms come first");
   assert.ok(pr.includes("Knee niggle") && !pr.includes("Away 1-14 Dec"), "training notes by default, attendance notes kept apart");
   c.taSetNoteType("attendance"); pr = app.html("taProfileBody");
   assert.ok(pr.includes("Away 1-14 Dec") && !pr.includes("Knee niggle"));
   c.openTaProfile("b");
+  c.__t.taMenu = true; c.openTaProfile("b", true);
   assert.ok(app.html("taProfileBody").includes("Resume now") && !app.html("taProfileBody").includes("Pause 30 days"), "paused: offer resume");
   c.__t.taPanel = "left"; c.openTaProfile("a", true);
   assert.ok(/Mark Sarah as left\?/.test(app.html("taProfileBody")) && /task on Ash/.test(app.html("taProfileBody")), "confirm says exactly what happens");
 }
+// paused or leaving in GHL (the forms) shows up here too
+{
+  const DAY3 = 864e5, y3 = (d) => new Date(Date.now() - d * DAY3).toISOString().slice(0, 10);
+  c.__t.taActions = { items: [] };
+  c.__t.tuAtt = { updated: new Date().toISOString(), members: [
+    { id: "p", name: "Paused Person", tid: "1", since: y3(200), plan: "Membership - Gold", paused: true },
+    { id: "l", name: "Leaving Person", tid: "1", since: y3(200), plan: "Membership - Gold", leaving: true }], weeks, last: { "1": y3(30) } };
+  c.setTaView("all"); const tb = app.html("taTable");
+  assert.ok(/Paused Person[\s\S]*?Paused/.test(tb) && /Leaving Person[\s\S]*?Leaving/.test(tb));
+  c.setTaView("nudge");
+  assert.ok(!app.html("taTable").includes("Paused Person") && !app.html("taTable").includes("Leaving Person"), "neither is on the nudge list");
+}
+// the Members tab hides people who have left
+c.__t.retention = [{ id: "r1", name: "Stays", joined: Date.now(), attendance: {} }, { id: "r2", name: "Went", joined: Date.now(), attendance: {}, left: true }];
+c.renderRetentionMembers();
+assert.ok(app.html("retMemberList").includes("Stays") && !app.html("retMemberList").includes(">Went<") && /1 person who has left is hidden/.test(app.html("retMemberList")));
 console.log("attendance-teamup: ok");

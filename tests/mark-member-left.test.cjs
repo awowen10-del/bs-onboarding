@@ -319,7 +319,8 @@ const memberList = () => ([
   const gail = app.findMember("r2");
   assert.strictEqual(gail.name, "Gone Gail", "the record is intact");
   assert.strictEqual(gail.dob, dobToday, "…date of birth and all");
-  assert.ok(app.html("retMemberList").includes("Gone Gail"), "…and she is still on the Members list");
+  // Ash, 25 Nov 2026: someone who has left comes off the Members list (still on Birthdays under Left)
+  assert.ok(!app.html("retMemberList").includes("Gone Gail") && /who has left is hidden/.test(app.html("retMemberList")), "…and she is off the Members list, with a line saying so");
 
   // …and on the Birthdays tab, under Left, where a card is a decision
   assert.ok(!app.html("birthdayList").includes("Gone Gail"), "not on the routine birthday list");

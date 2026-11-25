@@ -1,6 +1,6 @@
 // TeamUp attendance sync: weeks, what counts, and when someone became a member.
 const assert = require("assert");
-const { isoWeekKey, memberSince, foldAttendances, isTraining } = require("../netlify/functions/attendance-sync-background.js");
+const { isoWeekKey, memberSince, foldAttendances, isTraining, goneFromTracker } = require("../netlify/functions/attendance-sync-background.js");
 const U = (s) => Date.parse(s + "T12:00:00Z");
 // ISO weeks, Monday start
 assert.equal(isoWeekKey(U("2026-11-23")), "2026-W48");   // Monday
@@ -29,4 +29,8 @@ foldAttendances([
 ], weeks, last, new Set(["1"]));
 assert.deepEqual(weeks, { "1": { "2026-W48": 2 } });   // the no-show is not counted anywhere
 assert.deepEqual(last, { "1": "2026-11-26" });
+// the Members tab follows GHL: gone by email, else full name; already-left people untouched
+const ret = [{ id: "1", name: "Sarah  Doyle" }, { id: "2", name: "Mark Lee", email: "MARK@x.com" }, { id: "3", name: "Amy Ray", left: true }, { id: "4", name: "Kim Day" }];
+const gone = [{ firstName: "sarah", lastName: "doyle" }, { email: "mark@x.com", firstName: "Marcus", lastName: "Lee" }, { firstName: "Amy", lastName: "Ray" }];
+assert.deepEqual(goneFromTracker(ret, gone).map((m) => m.id), ["1", "2"]);
 console.log("attendance-sync: ok");

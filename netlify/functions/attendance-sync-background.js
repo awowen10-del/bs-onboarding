@@ -126,13 +126,22 @@ async function tuAll(path) {
   return out;
 }
 const ghlHeaders = () => ({ Authorization: 'Bearer ' + (process.env.GHL_TOKEN || '').trim(), Version: '2021-07-28', 'Content-Type': 'application/json', Accept: 'application/json' });
-async function ghlMembers() {
+async function ghlTagged(tag) {
   const out = [];
   for (let page = 1; page <= 20; page++) {
-    const r = await json(`${GHL}/contacts/search`, { method: 'POST', headers: ghlHeaders(), body: JSON.stringify({ locationId: LOCATION, page, pageLimit: 100, filters: [{ field: 'tags', operator: 'contains', value: ['member'] }] }) });
+    const r = await json(`${GHL}/contacts/search`, { method: 'POST', headers: ghlHeaders(), body: JSON.stringify({ locationId: LOCATION, page, pageLimit: 100, filters: [{ field: 'tags', operator: 'contains', value: [tag] }] }) });
     const got = r.contacts || []; out.push(...got); if (got.length < 100) break;
   }
-  return out.filter((c) => (c.tags || []).map(norm).includes('member'));   // exactly 'member', not 'member start' etc.
+  return out.filter((c) => (c.tags || []).map(norm).includes(tag));   // exactly this tag ('member' also matches 'member start' in GHL's search)
+}
+const ghlMembers = () => ghlTagged('member');
+const LEAVING_TAGS = ['cancel approved', 'cancel approved now'];
+const GONE_TAGS = ['cancelled member', 'lapsed member'];
+/* Members-tab people GHL says have gone (a gone tag and no 'member'), matched by email, else full name. Pure. */
+function goneFromTracker(retention, gone) {
+  const em = new Set(gone.map((c) => norm(c.email)).filter(Boolean));
+  const nm = new Set(gone.map((c) => norm([c.firstName, c.lastName].filter(Boolean).join(' ')).replace(/\s+/g, ' ')).filter(Boolean));
+  return (retention || []).filter((m) => m && !m.left && ((m.email && em.has(norm(m.email))) || nm.has(norm(m.name).replace(/\s+/g, ' '))));
 }
 async function readRow(key) {
   const k = process.env.SUPABASE_SERVICE_KEY;
@@ -180,9 +189,12 @@ async function run({ full = false } = {}) {
       if (cust) hit = { tid: String(cust.id), memberships: [] };
     }
     const live = hit && hit.memberships.filter((m) => ['active', 'hold'].includes(m.status)).sort((a, b) => (b.start || '').localeCompare(a.start || ''))[0];
+    const tags = (c.tags || []).map(norm);
     members.push({ id: c.id, name: [c.firstName, c.lastName].filter(Boolean).join(' ').replace(/\b\w/g, (x) => x.toUpperCase()) || c.email,
       email: c.email || null, tid: hit ? hit.tid : null, since: hit ? memberSince(hit.memberships) : null,
-      plan: live ? live.plan : null, paused: live ? live.status === 'hold' : false });
+      plan: live ? live.plan : null,
+      paused: (live ? live.status === 'hold' : false) || tags.includes('paused'),          // the pause form's tag counts as much as a TeamUp hold
+      leaving: LEAVING_TAGS.some((t) => tags.includes(t)) });
   }
   const keep = new Set(members.map((m) => m.tid).filter(Boolean));
   await status('matched to TeamUp', { members: members.length, matched: keep.size, memberships: cms.length });
@@ -218,7 +230,22 @@ async function run({ full = false } = {}) {
   const value = { updated: new Date().toISOString(), heldFrom: held, complete: done, attendedOnly: true,
     counted: 'attended training sessions only (not intros, reviews, workshops or socials; never no-shows or late cancels)', members, weeks, last };
   await writeRow(ROW, value);
-  await status('done', { members: members.length, matched: keep.size, heldFrom: held, complete: done, seconds: Math.round((Date.now() - t0) / 1000) });
+  // the Members tab: anyone GHL says has gone gets 'left' (same flag the old Ontraport webhook set)
+  let markedLeft = [];
+  try {
+    const gone = [];
+    for (const t of GONE_TAGS) for (const c of await ghlTagged(t)) if (!(c.tags || []).map(norm).includes('member')) gone.push(c);
+    const ret = await readRow('retention');
+    const hits = goneFromTracker(Array.isArray(ret) ? ret : [], gone);
+    if (hits.length) {
+      const ids = new Set(hits.map((m) => m.id));
+      const fresh = await readRow('retention');   // re-read just before writing, so a coach's edit in between isn't lost
+      const next = (Array.isArray(fresh) ? fresh : []).map((m) => (ids.has(m.id) && !m.left ? Object.assign({}, m, { left: true, leftAt: ymd(now), leftBy: 'GHL' }) : m));
+      await writeRow('retention', next);
+      markedLeft = hits.map((m) => m.name);
+    }
+  } catch (e) { console.log('ATTENDANCE: could not update the Members tab: ' + e.message); }
+  await status('done', { markedLeft, members: members.length, matched: keep.size, heldFrom: held, complete: done, seconds: Math.round((Date.now() - t0) / 1000) });
   const unmatched = members.filter((m) => !m.tid).map((m) => m.name);
   console.log(`ATTENDANCE: ${members.length} members, ${keep.size} matched to TeamUp, held from ${held}, ${Math.round((Date.now() - t0) / 1000)}s. Not in TeamUp: ${unmatched.join(', ') || 'none'}`);
   return { members: members.length, matched: keep.size, unmatched };
@@ -236,3 +263,4 @@ exports.isoWeekKey = isoWeekKey;
 exports.memberSince = memberSince;
 exports.foldAttendances = foldAttendances;
 exports.isTraining = isTraining;
+exports.goneFromTracker = goneFromTracker;

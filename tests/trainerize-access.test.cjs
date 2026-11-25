@@ -1,6 +1,6 @@
 // Trainerize access comes from GHL: paying members stay on with the right tag, cancellations go off on time.
 const assert = require("assert");
-const { memberFix, accessRecords, offDecision } = require("../netlify/functions/challenge-tick.js");
+const { memberFix, accessRecords, offDecision, membershipEnd, addMonths, parseDay } = require("../netlify/functions/challenge-tick.js");
 const DAY = 86400000, t0 = Date.UTC(2026, 10, 23);
 // members
 assert.deepEqual(memberFix(["member"], { status: "active", tags: ["Trialist"] }), { addMember: true, removeTrialist: true, reactivate: false });
@@ -24,4 +24,16 @@ assert.equal(offDecision(rec, ["cancel approved"], true, Date.UTC(2026, 11, 1)),
 assert.equal(offDecision(rec, ["member"], false, Date.UTC(2026, 11, 1)), "dropped");                     // cancel tag taken off: they stayed
 assert.equal(offDecision({ kind: "ontraport", due: "2026-12-02" }, null, false, Date.UTC(2026, 11, 2)), "off");   // carried over from Zapier, no GHL contact
 assert.equal(offDecision({ ...rec, done: "2026-12-01" }, ["cancel approved"], false, Date.UTC(2026, 11, 5)), "done");
+// real end dates (Ash, 25 Nov 2026): a payment inside the 30 days' notice goes out, then a month
+const U = (y, m, d) => Date.UTC(y, m - 1, d), Y = (ms) => new Date(ms).toISOString().slice(0, 10);
+assert.equal(Y(membershipEnd("cancel approved", U(2026, 11, 25), U(2026, 9, 26))), "2026-12-26");   // Ash's example
+assert.equal(Y(membershipEnd("cancel approved", U(2026, 11, 25), U(2026, 8, 20))), "2027-01-20");   // payment 20 Dec is inside 30 days
+assert.equal(Y(membershipEnd("cancel approved", U(2026, 11, 26), U(2026, 9, 26))), "2026-12-26");   // payment due the same day still goes out
+assert.equal(Y(membershipEnd("cancel approved", U(2026, 12, 25), U(2026, 1, 26))), "2027-01-26");   // payment 26 Dec, train to 26 Jan
+assert.equal(Y(membershipEnd("cancel approved now", U(2026, 11, 25), U(2026, 9, 26))), "2026-11-26"); // no more payments
+assert.equal(Y(membershipEnd("cancel approved", U(2026, 11, 25), U(2026, 12, 3))), "2027-01-03");   // scheduled start after notice
+assert.equal(membershipEnd("cancel approved", U(2026, 11, 25), null), null);                         // no GHL subscription: fall back
+assert.equal(Y(addMonths(U(2027, 1, 31), 1)), "2027-02-28");
+for (const v of ["26/12/2026", "26/12/26", "26-12-2026", "2026-12-26", String(Date.UTC(2026, 11, 26))]) assert.equal(parseDay(v), "2026-12-26", v);
+assert.equal(parseDay("rubbish"), null);
 console.log("trainerize-access: ok");

@@ -26,9 +26,15 @@
  * TRAINERIZE ACCESS (GHL decides, not Ontraport or Zapier). See accessSweep below.
  *   'member'               on Trainerize they get the 'Full Time Member' tag, lose 'Trialist', and are switched
  *                          back on if they'd been switched off. Skipped while they're cancelling.
- *   'cancel approved'      Trainerize is switched off 60 days after this job first sees the tag (30 days'
- *   'cancel approved now'  notice, then a month of training), or 30 days for 'now'. Never while they
- *                          have an active GHL subscription. A note goes on their GHL contact.
+ *   'cancel approved'      Their membership ends on a real date: the day they handed notice (first seen
+ *   'cancel approved now'  here), any payment due within 30 days still goes out, and they train for a month
+ *                          after it (notice 25 Nov, payment 26 Nov -> ends 26 Dec). 'now' = no more payments,
+ *                          so it ends on their next payment day. The payment day comes from their GHL
+ *                          membership subscription; with none, 60 days ('now': 30). The date is written to the
+ *                          contact's 'Membership end date' field with a note, and a date typed into that field
+ *                          wins. On the day: Trainerize off and 'cancelled member' added (GHL's
+ *                          "Membership - Cancelled" then takes 'member' off). Never while they still have an
+ *                          active GHL subscription.
  *   The dates live in the 'trainerize-access' row. Rows can also be added by hand (kind 'ontraport')
  *   for people Ontraport/Zapier had already queued.
  *
@@ -286,6 +292,22 @@ function accessRecords(records, cancelling, t0) {
   }
   return out;
 }
+/* Same day n months later, kept inside short months (31 Jan + 1 = 28/29 Feb). */
+function addMonths(ms, n) {
+  const d = new Date(ms), day = d.getUTCDate();
+  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n + 1, 0)).getUTCDate();
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, Math.min(day, last));
+}
+/* The day a cancelling member's membership ends. Pure. notice = day they handed notice, anchor = any
+   payment day of their monthly membership (its start), both ms. Null without an anchor. */
+function membershipEnd(kind, notice, anchor) {
+  if (anchor == null || isNaN(anchor)) return null;
+  const n = dayMs(ymd(notice)), a = dayMs(ymd(anchor));
+  let k = 0, next = a;
+  while (next < n) next = addMonths(a, ++k);            // first payment day on or after the notice
+  if (kind === 'cancel approved now') return next;       // no more payments: ends when the paid month runs out
+  return next - n <= 30 * MS_DAY ? addMonths(next, 1) : next;   // a payment inside the 30 days goes out, then a month
+}
 /* Should this person be switched off today? Pure. ghlTags = their tags now (null if no GHL contact),
    activeSub = they have an active GHL subscription. */
 function offDecision(rec, ghlTags, activeSub, t0) {
@@ -326,9 +348,48 @@ async function tzProfile(id) {
   return p ? { id: p.id, status: p.status, tags: (p.tags && p.tags.user) || [] } : null;
 }
 const tzPost = (path, body) => json(TZ_API + path, { method: 'POST', headers: tzHeaders(), body: JSON.stringify(body) });
+const LIVE_SUB = ['active', 'trialing', 'past_due', 'scheduled'];
+/* The start of their live monthly membership subscription in GHL (ms), or null. */
+async function membershipAnchor(contactId) {
+  const r = await json(`${GHL}/payments/subscriptions?altId=${LOCATION}&altType=location&contactId=${contactId}`, { headers: ghlHeaders() });
+  const s = (r.data || []).find((x) => LIVE_SUB.includes(norm(x.status)) && /membership/i.test((x.recurringProduct && x.recurringProduct.product && x.recurringProduct.product.name) || '')
+    && norm(x.recurringProduct && x.recurringProduct.price && x.recurringProduct.price.recurring && x.recurringProduct.price.recurring.interval) === 'month');
+  return s ? Date.parse(s.subscriptionStartDate || s.createdAt) : null;
+}
+/* The 'Membership end date' contact field: its id (looked up once by name), and reading/writing it. */
+let endFieldId;
+async function endField() {
+  if (endFieldId !== undefined) return endFieldId;
+  try {
+    const r = await json(`${GHL}/locations/${LOCATION}/customFields`, { headers: ghlHeaders() });
+    const f = (r.customFields || []).find((x) => norm(x.name) === 'membership end date');
+    endFieldId = f ? f.id : null;
+  } catch (e) { endFieldId = null; }
+  return endFieldId;
+}
+function fieldDate(c, id) {
+  const v = id && ((c.customFields || c.customField || []).find((x) => x.id === id) || {}).value;
+  if (v == null || v === '') return null;
+  return parseDay(v);
+}
+/* What a person types or GHL stores, as YYYY-MM-DD: 26/12/2026, 26/12/26, 2026-12-26 or a timestamp. Pure. */
+function parseDay(v) {
+  const t = String(v).trim();
+  const uk = /^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2}|\d{4})$/.exec(t);
+  if (uk) { const y = uk[3].length === 2 ? 2000 + +uk[3] : +uk[3]; const ms = Date.UTC(y, +uk[2] - 1, +uk[1]); return isNaN(ms) ? null : ymd(ms); }
+  const ms = /^\d{9,}$/.test(t) ? Number(t) : Date.parse(t);
+  return isNaN(ms) ? null : ymd(ms);
+}
+const ukDay = (d) => d.split('-').reverse().join('/');   // 2026-12-26 -> 26/12/2026
+async function setEndField(contactId, date) {
+  const id = await endField();
+  if (!id) return false;
+  await json(`${GHL}/contacts/${contactId}`, { method: 'PUT', headers: ghlHeaders(), body: JSON.stringify({ customFields: [{ id, field_value: ukDay(date) }] }) });
+  return true;
+}
 async function hasActiveSub(contactId) {
   const r = await json(`${GHL}/payments/subscriptions?altId=${LOCATION}&altType=location&contactId=${contactId}`, { headers: ghlHeaders() });
-  return (r.data || []).some((x) => ['active', 'trialing', 'past_due', 'scheduled'].includes(norm(x.status)));
+  return (r.data || []).some((x) => LIVE_SUB.includes(norm(x.status)));
 }
 async function readRow(key, fallback) {
   const url = `${process.env.SUPABASE_URL}/rest/v1/bodysculpt?key=eq.${key}&select=value`;
@@ -369,8 +430,25 @@ async function accessSweep(members, live, t0) {
   for (const [email, rec] of Object.entries(recs)) {
     try {
       if (rec.done) continue;
-      if (t0 < dayMs(rec.due)) { rep.waiting.push(`${rec.name} (${rec.due})`); continue; }
+      /* New this morning: work out the real end date, put it on the contact, say how it was worked out. */
+      if (!rec.how && rec.kind !== 'ontraport' && rec.contactId) {
+        const anchor = await membershipAnchor(rec.contactId);
+        const end = membershipEnd(rec.kind, dayMs(rec.seen), anchor);
+        if (end) rec.due = ymd(end);
+        rec.how = end ? 'payment day' : 'no GHL payment';
+        if (live) {
+          const saved = await setEndField(rec.contactId, rec.due).catch(() => false);
+          const why = end
+            ? `Notice given ${rec.seen}, monthly payment day ${new Date(anchor).getUTCDate()}${rec.kind === 'cancel approved now' ? ', no more payments' : ''}.`
+            : `I couldn't find a GHL membership subscription, so this is ${CANCEL_DAYS[rec.kind]} days from ${rec.seen}. Please check it.`;
+          await json(`${GHL}/contacts/${rec.contactId}/notes`, { method: 'POST', headers: ghlHeaders(), body: JSON.stringify({ body:
+            `Membership ends ${ukDay(rec.due)}. ${why} On that day Trainerize switches off and they get 'cancelled member'.${saved ? " To change it, edit the 'Membership end date' field." : ''}` }) });
+        }
+      }
       const c = await findContact(email);
+      const typed = c ? fieldDate(c, await endField()) : null;   // a date typed into the field wins
+      if (typed && typed !== rec.due) rec.due = typed;
+      if (t0 < dayMs(rec.due)) { rep.waiting.push(`${rec.name} (${rec.due})`); continue; }
       const sub = c ? await hasActiveSub(c.id) : false;
       const d = offDecision(rec, c ? c.tags : null, sub, t0);
       if (d === 'dropped') { delete recs[email]; rep.kept.push(`${rec.name}: cancel tag removed`); continue; }
@@ -379,7 +457,8 @@ async function accessSweep(members, live, t0) {
       if (live) {
         const r = await deactivateTrainerize(email);
         rec.done = ymd(t0); rec.result = r;
-        if (c) await json(`${GHL}/contacts/${c.id}/notes`, { method: 'POST', headers: ghlHeaders(), body: JSON.stringify({ body: `Trainerize switched off ${ymd(t0)} (${rec.kind}, due ${rec.due}).` }) });
+        if (c) await addTags(c.id, ['cancelled member']);   // starts GHL "Membership - Cancelled": member comes off
+        if (c) await json(`${GHL}/contacts/${c.id}/notes`, { method: 'POST', headers: ghlHeaders(), body: JSON.stringify({ body: `Membership ended ${ymd(t0)}: Trainerize switched off and 'cancelled member' added (${rec.kind}, due ${rec.due}).` }) });
       }
       rep.off.push(rec.name);
     } catch (e) { rep.errors.push(`${rec.name}: ${e.message}`); }
@@ -656,3 +735,6 @@ exports.startDecision = startDecision;
 exports.memberFix = memberFix;
 exports.accessRecords = accessRecords;
 exports.offDecision = offDecision;
+exports.membershipEnd = membershipEnd;
+exports.addMonths = addMonths;
+exports.parseDay = parseDay;

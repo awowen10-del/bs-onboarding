@@ -175,7 +175,7 @@ async function run({ full = false } = {}) {
   const byEmail = {}, byTid = {};
   for (const m of cms) {
     const c = m.customer || {}; const tid = String(c.id);
-    const e = (byTid[tid] = byTid[tid] || { tid, memberships: [] });
+    const e = (byTid[tid] = byTid[tid] || { tid, memberships: [], tuName: [c.first_name, c.last_name].filter(Boolean).join(' ') });
     e.memberships.push({ start: m.start_date, end: m.expiration_date, status: m.status, plan: m.membership && m.membership.name });
     const em = norm(c.email); if (em) byEmail[em] = e;
   }
@@ -184,13 +184,15 @@ async function run({ full = false } = {}) {
     const em = norm(c.email);
     let hit = (LINKS[c.id] && (byTid[LINKS[c.id]] || { tid: LINKS[c.id], memberships: [] })) || (em && byEmail[em]);
     if (!hit && em) {   // a joint partner or someone with no membership of their own: find the customer by email
-      const r = await tu(`customers?query=${encodeURIComponent(em)}&page_size=5&fields=id,email`).catch(() => ({}));
+      const r = await tu(`customers?query=${encodeURIComponent(em)}&page_size=5&fields=id,email,first_name,last_name`).catch(() => ({}));
       const cust = (r.results || []).find((x) => norm(x.email) === em);
-      if (cust) hit = { tid: String(cust.id), memberships: [] };
+      if (cust) hit = { tid: String(cust.id), memberships: [], tuName: [cust.first_name, cust.last_name].filter(Boolean).join(' ') };
     }
     const live = hit && hit.memberships.filter((m) => ['active', 'hold'].includes(m.status)).sort((a, b) => (b.start || '').localeCompare(a.start || ''))[0];
     const tags = (c.tags || []).map(norm);
-    members.push({ id: c.id, name: [c.firstName, c.lastName].filter(Boolean).join(' ').replace(/\b\w/g, (x) => x.toUpperCase()) || c.email,
+    let name = [c.firstName, c.lastName].filter(Boolean).join(' ').trim();
+    if (!/\s/.test(name) && hit && hit.tuName && /\s/.test(hit.tuName.trim())) name = hit.tuName.trim();   // GHL has a first name only: use TeamUp's full name
+    members.push({ id: c.id, name: name.replace(/\b\w/g, (x) => x.toUpperCase()) || c.email,
       email: c.email || null, tid: hit ? hit.tid : null, since: hit ? memberSince(hit.memberships) : null,
       plan: live ? live.plan : null,
       paused: (live ? live.status === 'hold' : false) || tags.includes('paused'),          // the pause form's tag counts as much as a TeamUp hold

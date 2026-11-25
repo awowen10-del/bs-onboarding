@@ -885,6 +885,94 @@
   .att-mini-l{font-size:10px;color:var(--ink-faint);font-weight:700;letter-spacing:.03em;margin-top:3px}
   .tag.dropping{background:rgba(var(--amber-rgb),.16);color:var(--amber)}
   .mcard.att-flagged{border-left:3px solid var(--amber)}
+
+  /* ===== ATTENDANCE FROM TEAMUP (ta-) =====
+     Built for a coach glancing at it between sessions: words before colours, one number per
+     idea, and every colour paired with the same meaning in text. Green = on track, amber =
+     slipping, red = gone quiet. The aim line is each plan's sessions a week (Gold/PT 12 = 3,
+     Silver/PT 8 = 2). */
+  .ta-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:2px 0 16px}
+  .ta-stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);min-width:0}
+  .ta-stat .v{font-size:28px;font-weight:800;line-height:1.05;color:var(--ink);letter-spacing:-.5px}
+  .ta-stat .v small{font-size:14px;font-weight:700;color:var(--ink-dim);letter-spacing:0}
+  .ta-stat .l{font-size:12px;font-weight:700;color:var(--ink-dim);margin-top:4px}
+  .ta-stat.warn .v{color:var(--amber)}
+  @media (max-width:560px){.ta-stats{gap:8px}.ta-stat{padding:10px 11px}.ta-stat .v{font-size:22px}.ta-stat .v small{font-size:12px}.ta-stat .l{font-size:11px;line-height:1.3}}
+  .ta-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .ta-bar .filterbar{margin:0}
+  .ta-bar input[type=search]{flex:1 1 200px;min-width:0;font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+  table.ta{border-collapse:collapse;width:100%;font-size:13.5px;min-width:720px}
+  table.ta th{position:sticky;top:0;background:var(--card-2);color:var(--ink-dim);font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.ta td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+  table.ta tr:last-child td{border-bottom:0}
+  table.ta tbody tr{cursor:pointer}
+  table.ta tbody tr:hover td{background:rgba(var(--lift-rgb),var(--lift-a))}
+  table.ta tbody tr:focus-visible{outline:2px solid var(--orange);outline-offset:-2px}
+  .ta-name{font-weight:800;color:var(--ink);font-size:14px}
+  .ta-plan{font-size:11.5px;color:var(--ink-faint);font-weight:600;margin-top:1px}
+  .ta-wk{font-weight:700;color:var(--ink);white-space:nowrap}
+  .ta-prog{height:5px;border-radius:3px;background:var(--navy-2);margin-top:5px;width:96px;overflow:hidden}
+  .ta-prog i{display:block;height:100%;background:var(--orange);border-radius:3px}
+  .ta-avg{font-size:18px;font-weight:800;color:var(--ink);white-space:nowrap}
+  .ta-avg small{font-size:12px;font-weight:700;color:var(--ink-faint)}
+  .ta-avg.low{color:var(--red)} .ta-avg.mid{color:var(--amber)} .ta-avg.good{color:var(--green)}
+  .ta-weeks{display:inline-flex;gap:4px}
+  .ta-weeks span{min-width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;background:var(--navy-2);color:var(--ink);border:1px solid var(--line)}
+  .ta-weeks span.z{color:var(--red);background:rgba(var(--red-rgb),.08);border-color:rgba(var(--red-rgb),.28)}
+  .ta-last{white-space:nowrap;color:var(--ink-dim);font-weight:600}
+  .ta-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;white-space:nowrap}
+  .ta-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+  .ta-chip.ok{background:rgba(var(--green-rgb),.12);color:var(--green)}
+  .ta-chip.slip{background:rgba(var(--amber-rgb),.14);color:var(--amber)}
+  .ta-chip.quiet{background:rgba(var(--red-rgb),.1);color:var(--red)}
+  .ta-chip.new{background:var(--navy-2);color:var(--ink-dim)}
+  .ta-foot{font-size:12px;color:var(--ink-faint);margin-top:10px;line-height:1.5}
+  .ta-empty{padding:28px 16px;text-align:center;color:var(--ink-dim);font-size:14px}
+  details.ta-manual{margin-top:22px;font-size:13px;color:var(--ink-dim)}
+  details.ta-manual summary{cursor:pointer;font-weight:700;color:var(--ink-dim);padding:6px 0}
+  details.ta-manual[open] summary{margin-bottom:12px}
+  /* On a phone each member becomes a small card: name and status on top, the numbers labelled underneath. */
+  @media (max-width:640px){
+    table.ta{min-width:0}
+    table.ta thead{display:none}
+    table.ta tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:14px 14px;border-bottom:1px solid var(--line)}
+    table.ta tbody tr:last-child{border-bottom:0}
+    table.ta td{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:0;border:0;grid-column:1 / -1;min-height:28px}
+    table.ta td.ta-who{grid-column:1;display:block}
+    table.ta td.ta-st{grid-column:2;grid-row:1;justify-content:flex-end;align-items:flex-start}
+    table.ta td[data-l]::before{content:attr(data-l);font-size:12px;font-weight:700;color:var(--ink-dim)}
+    table.ta td .ta-prog{display:none}
+  }
+  /* the profile */
+  .modal.ta-profile{max-width:640px;padding:20px 24px 24px}
+  .ta-ph{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .ta-ph h3{font-size:22px;font-weight:800;letter-spacing:-.3px;color:var(--ink)}
+  .ta-ph .meta{font-size:13px;color:var(--ink-dim);font-weight:600;margin-top:3px}
+  .ta-sec{margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+  .ta-sec h4{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-dim);font-weight:800;margin-bottom:10px;display:flex;justify-content:space-between;gap:10px}
+  .ta-sec h4 span{text-transform:none;letter-spacing:0;font-weight:700;color:var(--ink-faint)}
+  .ta-big{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .ta-big b{font-size:34px;font-weight:800;line-height:1;letter-spacing:-.5px}
+  .ta-big .t{font-size:14px;color:var(--ink-dim);font-weight:700}
+  .ta-chart{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:5px;align-items:end;height:150px}
+  .ta-col{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+  .ta-col .n{font-size:12px;font-weight:800;color:var(--ink);height:16px;line-height:16px}
+  .ta-col .b{width:100%;max-width:30px;border-radius:5px 5px 2px 2px;background:var(--orange);min-height:3px}
+  .ta-col.zero .b{background:var(--red);height:3px!important}
+  .ta-col.zero .n{color:var(--red)}
+  .ta-col.future .b{background:transparent;border:1.5px dashed var(--line);height:28px!important}
+  .ta-col.future .n{color:transparent}
+  .ta-col.now .b{opacity:.55}
+  .ta-col .x{font-size:10.5px;color:var(--ink-faint);font-weight:700;height:20px;line-height:20px;white-space:nowrap}
+  .ta-aim{position:absolute;left:0;right:0;border-top:1.5px dashed rgba(var(--ink-dim-rgb),.55);pointer-events:none}
+  .ta-aim span{position:absolute;right:0;top:-16px;font-size:10.5px;font-weight:800;color:var(--ink-dim);background:var(--card);padding:0 4px}
+  .ta-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+  .ta-facts div{background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:12px;color:var(--ink-dim);font-weight:600}
+  .ta-facts b{display:block;font-size:16px;color:var(--ink);font-weight:800}
+  @media (max-width:520px){.ta-facts{grid-template-columns:minmax(0,1fr)}}
+  .mcard .name .ta-open{appearance:none;background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:left}
+  .mcard .name .ta-open:hover{color:var(--orange-soft);text-decoration:underline}
+  @media (prefers-reduced-motion:no-preference){.ta-col .b{transition:height .25s ease}}
   /* an attendance alert is a "watch this" task, not one of the three journey channels */
   .action.attention{border-left-color:var(--amber)}
   .ch.attention{background:rgba(var(--amber-rgb),.16);color:var(--amber)}
@@ -1627,8 +1715,20 @@
   <section class="view" id="view-ret-attendance" data-tracker="retention">
     <div class="sec-head">
       <h2>Attendance</h2>
+      <span class="admin-hint" id="taUpdated"></span>
     </div>
-    <p class="sub" style="margin-top:-2px;margin-bottom:14px">Bodysculpt PT sessions attended, week by week. Export the week's attendance from GoTeamUp and drop the file in — people are matched by email, and anyone in the file who isn't a member here is ignored. Three weeks each lower than the last, inside someone's first six months, puts a check-in on Today's moves.</p>
+    <div id="taStats"></div>
+    <div class="ta-bar">
+      <div class="filterbar" role="tablist" aria-label="Which members">
+        <button role="tab" aria-selected="true" data-ta="first90" onclick="setTaView('first90')">First 90 days <span class="count tally" id="taN1">0</span></button>
+        <button role="tab" aria-selected="false" data-ta="nudge" onclick="setTaView('nudge')">Needs a nudge <span class="count tally" id="taN2">0</span></button>
+        <button role="tab" aria-selected="false" data-ta="all" onclick="setTaView('all')">Everyone <span class="count tally" id="taN3">0</span></button>
+      </div>
+      <input type="search" id="taSearch" placeholder="Search a name…" aria-label="Search a member" oninput="renderAttendance()">
+    </div>
+    <div id="taTable"></div>
+    <details class="ta-manual">
+      <summary>Add a week by hand from a TeamUp export</summary>
     <div class="att-upload">
       <label class="att-file">
         <span class="att-file-label">⇪ Upload weekly attendance</span>
@@ -1650,8 +1750,9 @@
         often opens on the wrong one, and a wrong year downloads either somebody else's week or
         an empty file — both of which look like the upload has failed when it has not.</p>
     </div>
-    <div id="attResult"></div>
-    <div id="attList" style="margin-top:16px"></div>
+      <div id="attResult"></div>
+      <div id="attList" style="margin-top:16px"></div>
+    </details>
   </section>
 
   <!-- ===== RETENTION · BIRTHDAYS =====
@@ -1661,6 +1762,13 @@
   </section>
 
 </main>
+
+<!-- ===== A member's attendance profile (TeamUp) ===== -->
+<div class="modal-bg" id="taProfileBg" onclick="if(event.target===this)closeTaProfile()">
+  <div class="modal ta-profile" role="dialog" aria-modal="true" aria-labelledby="taProfileName">
+    <div id="taProfileBody"></div>
+  </div>
+</div>
 
 <!-- ===== One challenger's card, opened from a name on Today's moves ===== -->
 <div class="modal-bg" id="personBg" onclick="if(event.target===this)closePerson()">
@@ -2035,6 +2143,8 @@ let retention = [];                        // full members
 const FLAGS_ROW_KEY = 'challenge-flags';     // written by the morning job only: who has paid through the memberships link
 const RET_ROW_KEY = 'retention';           // its row in the same `bodysculpt` table
 const RET_CACHE = 'bsj_retention_cache';   // its own offline cache
+const TU_ROW_KEY = 'attendance-teamup';    // written every morning by attendance-sync-background (TeamUp)
+let tuAtt = null;                           // { updated, members:[{id,name,email,tid,since,plan,paused}], weeks:{tid:{wk:attended}}, last:{tid:day} }
 
 /* ---- The Playbook's WORDS: an overrides layer over the journey ----------------
    Every touchpoint's wording is editable in the app. Nothing else about it is. Which day a
@@ -2463,13 +2573,15 @@ async function bootData(){
   try{
     // pull the roster, the member list and a one-time "seeded" marker in one go
     const { data, error } = await sb.from('bodysculpt').select('key,value,updated_at')
-      .in('key', [ROW_KEY, RET_ROW_KEY, PB_ROW_KEY, 'seeded', FLAGS_ROW_KEY]);
+      .in('key', [ROW_KEY, RET_ROW_KEY, PB_ROW_KEY, 'seeded', FLAGS_ROW_KEY, TU_ROW_KEY]);
     if(error) throw error;
     const rosterRow = (data||[]).find(r=>r.key===ROW_KEY);
     const retRow = (data||[]).find(r=>r.key===RET_ROW_KEY);
     const seededRow = (data||[]).find(r=>r.key==='seeded');
     const flagsRow = (data||[]).find(r=>r.key===FLAGS_ROW_KEY);
     challengeFlags = (flagsRow && flagsRow.value && typeof flagsRow.value==='object') ? flagsRow.value : {};
+    const tuRow = (data||[]).find(r=>r.key===TU_ROW_KEY);
+    tuAtt = (tuRow && tuRow.value && typeof tuRow.value==='object') ? tuRow.value : null;
     // No overrides row yet is the normal case on every device until somebody edits a word of
     // the Playbook, and it reads as "no overrides" rather than as an error.
     const pbRow = (data||[]).find(r=>r.key===PB_ROW_KEY);
@@ -5471,12 +5583,16 @@ function memberWeekNumber(m, wk){
    sparkline, the drop-off run and the grid agree on what a member's weeks are: they all
    come through here. */
 function attendanceWeeks(m){
+  const t = tuFor(m);
+  if(t && t.tid) return memberWeekKeys(m);     // TeamUp is complete: every week of theirs has a number, zeros included
   const one = memberWeekOneKey(m);
   return Object.keys((m && m.attendance) || {})
     .filter(k=>/^\d{4}-W\d{2}$/.test(k) && (!one || k >= one))
     .sort();
 }
 function attendedPTIn(m, wk){
+  const t = tuFor(m);
+  if(t && t.tid) return tuCount(t.tid, wk);
   const b = m && m.attendance && m.attendance[wk];
   return b ? (+b.attendedPT || 0) : 0;
 }
@@ -5864,7 +5980,193 @@ function attendanceSpark(m, n){
    fills in the numbers. Somebody who joined this morning belongs on this list this morning,
    with eight dashes across it, because the list is who we are watching and the dashes are the
    honest state of what we know about them. */
+
+/* ======================= ATTENDANCE FROM TEAMUP =======================
+   The morning job (attendance-sync-background) writes who our members are (GHL `member`), when
+   their membership started (TeamUp), and how many sessions they attended each week. Everything
+   below only reads it. A member's weeks start on the Monday after they join, the same way the
+   rest of the tracker counts them, and their first 90 days is their first 13 of those weeks.
+   The week we are in is shown but never averaged: it isn't over. */
+const TA_FIRST_WEEKS = 13, TA_QUIET_DAYS = 14;
+let taView = 'first90';
+function setTaView(v){
+  taView = v;
+  document.querySelectorAll('[data-ta]').forEach(b=>b.setAttribute('aria-selected', b.dataset.ta===v ? 'true':'false'));
+  renderAttendance();
+}
+function tuMembers(){ return (tuAtt && Array.isArray(tuAtt.members)) ? tuAtt.members : []; }
+/* Attended sessions that week. (Rows written before 25 Nov held [attended, missed]; only the first is ever read.) */
+function tuCount(tid, wk){ const w = tuAtt && tuAtt.weeks && tuAtt.weeks[tid]; const v = w && w[wk]; return Array.isArray(v) ? (+v[0]||0) : (+v||0); }
+/* A tracker member's TeamUp record: by email, else by name. */
+function tuFor(m){
+  if(!m || !tuAtt) return null;
+  const em = m.email ? normName(m.email) : '', nm = normName(m.name);
+  return tuMembers().find(t=>(em && t.email && normName(t.email)===em)) || tuMembers().find(t=>normName(t.name)===nm) || null;
+}
+function weekKeyOfTs(ts){ const d=new Date(ts); return isoWeekKeyFrom(d.getFullYear(), d.getMonth()+1, d.getDate()); }
+/* Their weeks, oldest first, from the Monday after they joined up to this week. */
+function tuWeeks(t){
+  if(!t || !t.since) return [];
+  const d = firstFullWeekMonday(Date.parse(t.since+'T12:00:00'));
+  const cur = new Date(); cur.setHours(0,0,0,0); cur.setDate(cur.getDate()-((cur.getDay()||7)-1));
+  const out=[]; while(d.getTime()<=cur.getTime() && out.length<800){ out.push(weekKeyOfTs(d.getTime())); d.setDate(d.getDate()+7); }
+  return out;
+}
+const thisWeekKey = () => weekKeyOfTs(Date.now());
+function tuAim(plan){ return /silver|pt 8\b/i.test(plan||'') ? 2 : 3; }
+const avgOf = (arr) => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+/* Everything the screens say about one member, worked out once. */
+function taInfo(t){
+  const weeks = tuWeeks(t), now = thisWeekKey();
+  const done = weeks.filter(w=>w!==now);                       // finished weeks only
+  const n = w => t.tid ? tuCount(t.tid,w) : 0;
+  const first = weeks.slice(0, TA_FIRST_WEEKS), firstDone = first.filter(w=>w!==now);
+  const inFirst = !!t.since && weeks.length <= TA_FIRST_WEEKS;
+  const lastDay = tuAtt && tuAtt.last && tuAtt.last[t.tid];
+  const daysSince = lastDay ? Math.floor((today0() - Date.parse(lastDay+'T00:00:00'))/86400000) : null;
+  const sinceDays = t.since ? Math.floor((today0() - Date.parse(t.since+'T00:00:00'))/86400000) : null;
+  const recent4 = done.slice(-4).map(n);
+  const aim = tuAim(t.plan);
+  const avgFirst = avgOf(firstDone.map(n));
+  const avgRecent = avgOf(done.slice(-8).map(n));
+  const avg = inFirst ? avgFirst : avgRecent;
+  // three finished weeks each lower than the one before
+  const r = done.slice(-4).map(n);
+  const dropping = r.length===4 && r[0]>r[1] && r[1]>r[2] && r[2]>r[3];
+  let status = 'ok';
+  if(!t.tid) status = 'unknown';
+  else if(done.length < 2) status = 'new';
+  else if(daysSince===null ? (sinceDays!==null && sinceDays>=TA_QUIET_DAYS) : daysSince>=TA_QUIET_DAYS) status = 'quiet';
+  else if(dropping) status = 'dropping';
+  else if(avg!==null && avg < aim*0.6) status = 'low';
+  return { weeks, done, first, inFirst, weekNo: Math.min(weeks.length, TA_FIRST_WEEKS), lastDay, daysSince,
+    recent4, aim, avg, avgFirst, avgRecent, status, thisWeek: n(now) };
+}
+const TA_STATUS = {
+  ok:{cls:'ok',label:'On track'}, new:{cls:'new',label:'Just started'}, quiet:{cls:'quiet',label:'Gone quiet'},
+  dropping:{cls:'slip',label:'Dropping'}, low:{cls:'slip',label:'Below aim'}, unknown:{cls:'new',label:'Not on TeamUp'}
+};
+/* The nudge list is who a coach should message today: gone quiet or sliding. Below aim is shown but not
+   counted here: on 25 Nov 2026 the typical member trained 1.4 times a week against an aim of 2-3, so it
+   would flag half the gym and stop meaning anything. */
+const taNeedsNudge = i => ['quiet','dropping'].includes(i.status);
+function taAvgHtml(i){
+  if(i.avg===null) return '<span class="ta-avg">–</span>';
+  const r = i.avg / i.aim, cls = r>=0.9?'good':(r>=0.6?'mid':'low');
+  return `<span class="ta-avg ${cls}">${i.avg.toFixed(1)} <small>of ${i.aim}</small></span>`;
+}
+function taLastHtml(i){
+  if(!i.lastDay) return '<span class="ta-last">No sessions yet</span>';
+  return `<span class="ta-last">${i.daysSince===0?'Today':i.daysSince===1?'Yesterday':i.daysSince+' days ago'}</span>`;
+}
+function taChip(i){ const s=TA_STATUS[i.status]||TA_STATUS.ok; return `<span class="ta-chip ${s.cls}">${s.label}</span>`; }
 function renderAttendance(){
+  renderAttendanceUploadList();     // the hand-upload grid, folded away under the table
+  const host = document.getElementById('taTable'); if(!host) return;
+  const upd = document.getElementById('taUpdated');
+  if(!tuAtt){
+    host.innerHTML = `<div class="tbl-scroll"><div class="ta-empty">Attendance comes from TeamUp every morning. The first load hasn't happened yet.</div></div>`;
+    document.getElementById('taStats').innerHTML=''; if(upd) upd.textContent=''; return;
+  }
+  if(upd) upd.textContent = 'From TeamUp · updated '+new Date(tuAtt.updated).toLocaleString('en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit'});
+  const rows = tuMembers().map(t=>({t, i:taInfo(t)}));
+  const first = rows.filter(r=>r.i.inFirst), nudge = rows.filter(r=>taNeedsNudge(r.i));
+  // headline: new members (joined in the last 12 months), their average over their first 90 days so far
+  const yearAgo = today0() - 365*86400000;
+  const cohort = rows.filter(r=>r.t.since && Date.parse(r.t.since)>=yearAgo && r.i.avgFirst!==null && r.i.first.filter(w=>w!==thisWeekKey()).length>=2);
+  const cohortAvg = avgOf(cohort.map(r=>r.i.avgFirst));
+  document.getElementById('taStats').innerHTML = `<div class="ta-stats">
+    <div class="ta-stat"><div class="v">${cohortAvg===null?'–':cohortAvg.toFixed(1)} <small>a week</small></div><div class="l" title="${cohort.length} members who joined in the last 12 months">New members, first 90 days</div></div>
+    <div class="ta-stat"><div class="v">${first.length}</div><div class="l">In their first 90 days now</div></div>
+    <div class="ta-stat${nudge.length?' warn':''}"><div class="v">${nudge.length}</div><div class="l">Need a nudge</div></div>
+  </div>`;
+  document.getElementById('taN1').textContent = first.length;
+  document.getElementById('taN2').textContent = nudge.length;
+  document.getElementById('taN3').textContent = rows.length;
+  const q = normName((document.getElementById('taSearch')||{}).value||'');
+  let list = taView==='first90' ? first : taView==='nudge' ? nudge : rows;
+  if(q) list = list.filter(r=>normName(r.t.name).includes(q));
+  const order = {quiet:0,dropping:1,low:2,new:3,ok:4,unknown:5};
+  list = list.slice().sort((a,b)=>(order[a.i.status]-order[b.i.status]) || String(a.t.name).localeCompare(String(b.t.name)));
+  if(!list.length){
+    host.innerHTML = `<div class="tbl-scroll"><div class="ta-empty">${q?'Nobody matches that name.':taView==='nudge'?'Nobody needs a nudge right now.':taView==='first90'?'Nobody is in their first 90 days right now.':'No members yet.'}</div></div>`;
+    return;
+  }
+  const isFirst = taView==='first90';
+  const head = `<thead><tr><th>Member</th><th>${isFirst?'Week':'Member since'}</th><th>${isFirst?'Average a week':'Average, last 8 weeks'}</th><th>Last 4 weeks</th><th>Last session</th><th>How they're doing</th></tr></thead>`;
+  const body = list.map(({t,i})=>{
+    const second = (isFirst || i.inFirst)
+      ? `<div class="ta-wk">Week ${i.weekNo} of ${TA_FIRST_WEEKS}</div><div class="ta-prog" aria-hidden="true"><i style="width:${Math.round(i.weekNo/TA_FIRST_WEEKS*100)}%"></i></div>`
+      : `<div class="ta-wk">${t.since?new Date(t.since).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'–'}</div>`;
+    const wks = i.recent4.length ? `<span class="ta-weeks" aria-label="Last ${i.recent4.length} weeks: ${i.recent4.join(', ')}">${i.recent4.map(n=>`<span${n===0?' class="z"':''}>${n}</span>`).join('')}</span>` : '<span class="ta-last">–</span>';
+    return `<tr tabindex="0" onclick="openTaProfile('${esc(t.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openTaProfile('${esc(t.id)}')}" aria-label="Open ${esc(t.name)}">
+      <td class="ta-who"><div class="ta-name">${esc(t.name)}</div><div class="ta-plan">${esc(t.plan||'')}${t.paused?' · on hold':''}</div></td>
+      <td data-l="${isFirst||i.inFirst?'Week':'Member since'}">${second}</td><td data-l="${isFirst?'Average a week':'Average, last 8 weeks'}">${taAvgHtml(i)}</td><td data-l="Last 4 weeks">${wks}</td><td data-l="Last session">${taLastHtml(i)}</td><td class="ta-st">${taChip(i)}</td></tr>`;
+  }).join('');
+  host.innerHTML = `<div class="tbl-scroll"><table class="ta">${head}<tbody>${body}</tbody></table></div>
+    <p class="ta-foot">Counts sessions they <b>attended</b> (PT, BUILD, SWEAT, Capacity): not intros or reviews, and never no-shows or late cancels. “Of 3” is the plan's aim a week. <b>Gone quiet</b>: no session in ${TA_QUIET_DAYS} days. <b>Dropping</b>: three weeks each lower than the last. <b>Below aim</b>: averaging under 60% of their aim (shown, not counted as a nudge). Tap a name for their weeks.</p>`;
+}
+/* The bars: one per week, the number on top, the aim as a dashed line. */
+function taChartHtml(t, keys, opts){
+  const now = thisWeekKey();
+  const vals = keys.map(w=>w ? tuCount(t.tid,w) : null);
+  const max = Math.max(opts.aim+1, ...vals.filter(v=>v!==null), 1);
+  const H = 100;   // px for the bars
+  const cols = keys.map((w,idx)=>{
+    const label = opts.labels ? opts.labels[idx] : '';
+    if(!w) return `<div class="ta-col future" aria-hidden="true"><span class="n">0</span><span class="b"></span><span class="x">${label}</span></div>`;
+    const v = vals[idx], cls = (w===now?' now':'') + (v===0 && w!==now?' zero':'');
+    return `<div class="ta-col${cls}" role="img" aria-label="${esc(label)}: ${v} session${v===1?'':'s'}${w===now?' so far':''}"><span class="n">${v}</span><span class="b" style="height:${Math.round(v/max*H)}px"></span><span class="x">${label}</span></div>`;
+  }).join('');
+  // bars stand on the label row (20px), so the aim sits that far up plus its own height
+  const aimBottom = 20 + Math.round(opts.aim/max*H);
+  return `<div class="ta-chart">${cols}<div class="ta-aim" style="bottom:${aimBottom}px"><span>aim ${opts.aim}</span></div></div>`;
+}
+let taOpen = null;
+function openTaProfile(id){
+  const t = tuMembers().find(x=>String(x.id)===String(id)); if(!t) return;
+  taOpen = id;
+  const i = taInfo(t), now = thisWeekKey();
+  const since = t.since ? new Date(t.since).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : 'start date not in TeamUp';
+  let html = `<div class="ta-ph"><div><h3 id="taProfileName">${esc(t.name)}</h3>
+      <div class="meta">${esc(t.plan||'No plan on TeamUp')}${t.paused?' · on hold':''} · Member since ${esc(since)}</div></div>
+      <button type="button" class="btn sm ghost" onclick="closeTaProfile()">Close</button></div>
+    <div style="margin-top:10px">${taChip(i)}</div>`;
+  if(!t.tid){
+    html += `<div class="ta-sec"><p class="sub" style="margin:0">We couldn't find ${esc(t.name.split(' ')[0])} on TeamUp with the email in GHL${t.email?' ('+esc(t.email)+')':''}. Once the emails match, their weeks show up here the next morning.</p></div>`;
+  } else {
+    // first 90 days: always 13 columns, the ones still to come drawn as dashed outlines
+    const firstKeys = i.first.concat(Array(Math.max(0, TA_FIRST_WEEKS - i.first.length)).fill(null));
+    const firstAvg = i.avgFirst;
+    html += `<div class="ta-sec"><h4>First 90 days <span>${i.inFirst?'Week '+i.weekNo+' of '+TA_FIRST_WEEKS:'Finished'}</span></h4>
+      <div class="ta-big"><b>${firstAvg===null?'–':firstAvg.toFixed(1)}</b><span class="t">sessions a week on average · aim ${i.aim}</span></div>
+      ${taChartHtml(t, firstKeys, {aim:i.aim, labels:firstKeys.map((w,idx)=>'W'+(idx+1))})}</div>`;
+    if(!i.inFirst){
+      const recent = i.weeks.slice(-12);
+      html += `<div class="ta-sec"><h4>Last 12 weeks <span>${i.avgRecent===null?'':i.avgRecent.toFixed(1)+' a week over the last 8'}</span></h4>
+        ${taChartHtml(t, recent, {aim:i.aim, labels:recent.map(w=>fmt(isoWeekStart(w)))})}</div>`;
+    }
+    const lastTxt = i.lastDay ? new Date(i.lastDay).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}) + (i.daysSince>1?' · '+i.daysSince+' days ago':'') : 'None yet';
+    const total = i.first.reduce((a,w)=>a+tuCount(t.tid,w),0);
+    html += `<div class="ta-facts">
+      <div>Last session<b>${esc(lastTxt)}</b></div>
+      <div>This week so far<b>${i.thisWeek}</b></div>
+      <div>Sessions in first 90 days<b>${total}</b></div></div>`;
+  }
+  html += `<p class="ta-foot">From TeamUp, updated ${esc(new Date(tuAtt.updated).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'}))}. Sessions attended only, never no-shows or late cancels. The week in progress is shown lighter and isn't in any average.</p>`;
+  document.getElementById('taProfileBody').innerHTML = html;
+  document.getElementById('taProfileBg').classList.add('show');
+  const c = document.querySelector('#taProfileBody .btn'); if(c) c.focus();
+}
+function closeTaProfile(){ taOpen=null; document.getElementById('taProfileBg').classList.remove('show'); }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && taOpen) closeTaProfile(); });
+/* From a tracker member's card. */
+function openTaFor(retId){
+  const m = retention.find(x=>x.id===retId); const t = tuFor(m);
+  if(t) openTaProfile(t.id);
+}
+
+function renderAttendanceUploadList(){
   const host = document.getElementById('attList'); if(!host) return;
 
   if(!retention.length){
@@ -5989,7 +6291,7 @@ function renderRetentionMembers(){
     return `<div class="mcard${flagged?' att-flagged':''}">
       <div class="top">
         <div>
-          <div class="name">${esc(m.name)}${notesBtn(m)}<span class="tag member">Member</span>${attTag}</div>
+          <div class="name">${tuFor(m)?`<button type="button" class="ta-open" onclick="openTaFor('${m.id}')" title="See their attendance">${esc(m.name)}</button>`:esc(m.name)}${notesBtn(m)}<span class="tag member">Member</span>${attTag}</div>
           <div class="sub">${bits.join(' · ') || 'No details on file yet'}</div>
         </div>
         ${spark?`<div class="att-mini">${spark}<div class="att-mini-l">PT · last ${recentAttendance(m).length}w</div></div>`:''}

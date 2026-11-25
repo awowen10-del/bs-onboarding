@@ -209,6 +209,7 @@ function boot(opts = {}) {
 ;globalThis.__t = {
   get members(){ return members; }, set members(v){ members = v; },
   get retention(){ return retention; }, set retention(v){ retention = v; },
+  get tuAtt(){ return tuAtt; }, set tuAtt(v){ tuAtt = v; },
   get tracker(){ return tracker; },
   get activeTab(){ return activeTab; },
   get memberFilter(){ return memberFilter; },

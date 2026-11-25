@@ -9,8 +9,9 @@
  *         were never closed when people left (269 "active" on 25 Nov 2026, 145 of them training).
  *   SINCE the start of their current unbroken run of TeamUp memberships, so moving from PT 12 to
  *         Gold doesn't restart the clock but leaving and coming back months later does.
- *   COUNT every session they attended except intros, reviews, workshops and socials
- *         (Bodysculpt PT, BUILD, SWEAT, Capacity...), and separately no-shows + late cancels.
+ *   COUNT ONLY sessions they ATTENDED, and only training ones (Bodysculpt PT, BUILD, SWEAT,
+ *         Capacity...), not intros, reviews, workshops or socials. No-shows and late cancels are
+ *         never read here (Ash, 25 Nov 2026: they'll be their own report).
  *
  * First run backfills each member's whole history (about a thousand TeamUp calls, kept under the
  * 250-a-minute limit). After that each morning re-reads the last three weeks, which catches
@@ -69,7 +70,8 @@ function memberSince(ms) {
   return since.slice(0, 10);
 }
 
-/* Fold attendances into weeks[tid][wk] = [attended, missed] and last[tid] = latest attended day. */
+/* Fold ATTENDED sessions into weeks[tid][wk] = count and last[tid] = latest attended day. Anything not
+   'attended' is ignored even if it arrives. */
 function foldAttendances(rows, weeks, last, keep) {
   for (const a of rows) {
     const tid = String(a.customer && a.customer.id != null ? a.customer.id : a.customer);
@@ -77,11 +79,11 @@ function foldAttendances(rows, weeks, last, keep) {
     const at = a.event && a.event.starts_at; if (!at) continue;
     const type = a.event.offering_type && a.event.offering_type.name;
     if (!isTraining(type)) continue;
+    if (a.status !== 'attended') continue;
     const wk = isoWeekKey(Date.parse(at));
     const w = (weeks[tid] = weeks[tid] || {});
-    const b = (w[wk] = w[wk] || [0, 0]);
-    if (a.status === 'attended') { b[0]++; const d = at.slice(0, 10); if (!last[tid] || d > last[tid]) last[tid] = d; }
-    else b[1]++;
+    w[wk] = (w[wk] || 0) + 1;
+    const d = at.slice(0, 10); if (!last[tid] || d > last[tid]) last[tid] = d;
   }
 }
 
@@ -132,12 +134,13 @@ async function writeRow(key, value) {
     headers: { apikey: k, Authorization: 'Bearer ' + k, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
     body: JSON.stringify({ key, value, updated_at: new Date().toISOString() }) });
 }
-const ATT_Q = (from, to) => `attendances?status=attended,no_show,late_cancelled&event_starts_at_gte=${from}T00:00:00Z&event_starts_at_lte=${to}T23:59:59Z`
+const ATT_Q = (from, to) => `attendances?status=attended&event_starts_at_gte=${from}T00:00:00Z&event_starts_at_lte=${to}T23:59:59Z`
   + `&expand=event,event.offering_type&fields=customer,status,event.starts_at,event.offering_type.name&page_size=100&sort=event_starts_at`;
 
 async function run({ full = false } = {}) {
   const t0 = Date.now(), now = Date.now();
-  const before = full ? null : await readRow(ROW).catch(() => null);
+  let before = full ? null : await readRow(ROW).catch(() => null);
+  if (before && !before.attendedOnly) before = null;   // written before the attended-only rule: rebuild it whole
 
   // 1. who is a member (GHL), 2. their TeamUp memberships
   const contacts = await ghlMembers();
@@ -192,8 +195,8 @@ async function run({ full = false } = {}) {
   }
   // last attended day for anyone whose last session is before the recheck window: from their weeks we can't tell the day,
   // so keep what we had (cleared above only when inside the window)
-  const value = { updated: new Date().toISOString(), heldFrom: held, complete: done,
-    countedTypes: 'everything except intros, reviews, workshops and socials', members, weeks, last };
+  const value = { updated: new Date().toISOString(), heldFrom: held, complete: done, attendedOnly: true,
+    counted: 'attended training sessions only (not intros, reviews, workshops or socials; never no-shows or late cancels)', members, weeks, last };
   await writeRow(ROW, value);
   const unmatched = members.filter((m) => !m.tid).map((m) => m.name);
   console.log(`ATTENDANCE: ${members.length} members, ${keep.size} matched to TeamUp, held from ${held}, ${Math.round((Date.now() - t0) / 1000)}s. Not in TeamUp: ${unmatched.join(', ') || 'none'}`);

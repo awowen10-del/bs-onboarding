@@ -17,15 +17,16 @@ assert.equal(memberSince([{ start: "2021-01-10", end: "2021-06-01", status: "can
 assert.equal(memberSince([{ start: "2024-02-01", end: null, status: "complete" }, { start: "2025-03-01", end: null, status: "active" }]), "2024-02-01");  // no end date on record: assume unbroken
 assert.equal(memberSince([{ start: "2026-10-01", end: null, status: "hold" }]), "2026-10-01");
 assert.equal(memberSince([]), null);
-// folding: attended vs missed, training only, members only, latest day
+// folding: attended only (no-shows and late cancels never counted), training only, members only, latest day
 const weeks = {}, last = {};
 foldAttendances([
   { customer: 1, status: "attended", event: { starts_at: "2026-11-24T07:00:00Z", offering_type: { name: "Bodysculpt PT" } } },
   { customer: 1, status: "attended", event: { starts_at: "2026-11-26T07:00:00Z", offering_type: { name: "BUILD" } } },
   { customer: 1, status: "no_show", event: { starts_at: "2026-11-27T07:00:00Z", offering_type: { name: "Bodysculpt PT" } } },
+  { customer: 1, status: "late_cancelled", event: { starts_at: "2026-11-28T07:00:00Z", offering_type: { name: "Bodysculpt PT" } } },
   { customer: 1, status: "attended", event: { starts_at: "2026-11-25T07:00:00Z", offering_type: { name: "Intro Session" } } },
   { customer: 2, status: "attended", event: { starts_at: "2026-11-24T07:00:00Z", offering_type: { name: "Bodysculpt PT" } } },
 ], weeks, last, new Set(["1"]));
-assert.deepEqual(weeks, { "1": { "2026-W48": [2, 1] } });
+assert.deepEqual(weeks, { "1": { "2026-W48": 2 } });   // the no-show is not counted anywhere
 assert.deepEqual(last, { "1": "2026-11-26" });
 console.log("attendance-sync: ok");

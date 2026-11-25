@@ -32,6 +32,17 @@ const ROW = 'attendance-teamup';
 const DAY = 86400000;
 const RECHECK_DAYS = 21;
 const CHAIN_GAP_DAYS = 45;     // a gap longer than this between memberships means they left and came back
+/* GHL contact id -> TeamUp customer id, for members whose email differs between the two systems.
+   Checked by hand on 25 Nov 2026 (same person, different address). Emails are left as they are:
+   GHL's also finds them on Trainerize, so changing it could break that. */
+const LINKS = {
+  zi4uXHo4tUrCduab2Yqx: '10096405',   // Beckie Finn = Rebecca Finn on TeamUp
+  kMAvpQMUPR9CyxcJpj3T: '13776995',   // Debbie MacMillan
+  BToWD8773bNKWhphBClw: '13590480',   // Gaynor Wright
+  ZkQLSUNf7IUJmd5xd7JE: '5316568',    // Lexander Wist
+  j2rtyl1zyMXpbPA1d0Fz: '13290359',   // Paul Wilde
+  eFDritqFr3l8IBVtTVik: '1946473',    // Emma Benson
+};
 const NOT_TRAINING = /intro|review|workshop|quiz|goal setting|cold water|games|social|consult|assessment/i;
 
 const norm = (s) => String(s == null ? '' : s).trim().toLowerCase();
@@ -152,16 +163,17 @@ async function run({ full = false } = {}) {
   await status('ghl members read', { count: contacts.length });
   const cms = await tuAll('customer_memberships?membership_type=recurring&page_size=100&expand=membership,customer'
     + '&fields=customer.id,customer.email,customer.first_name,customer.last_name,start_date,expiration_date,status,membership.name');
-  const byEmail = {};
+  const byEmail = {}, byTid = {};
   for (const m of cms) {
-    const c = m.customer || {}; const em = norm(c.email); if (!em) continue;
-    const e = (byEmail[em] = byEmail[em] || { tid: String(c.id), memberships: [] });
+    const c = m.customer || {}; const tid = String(c.id);
+    const e = (byTid[tid] = byTid[tid] || { tid, memberships: [] });
     e.memberships.push({ start: m.start_date, end: m.expiration_date, status: m.status, plan: m.membership && m.membership.name });
+    const em = norm(c.email); if (em) byEmail[em] = e;
   }
   const members = [];
   for (const c of contacts) {
     const em = norm(c.email);
-    let hit = em && byEmail[em];
+    let hit = (LINKS[c.id] && (byTid[LINKS[c.id]] || { tid: LINKS[c.id], memberships: [] })) || (em && byEmail[em]);
     if (!hit && em) {   // a joint partner or someone with no membership of their own: find the customer by email
       const r = await tu(`customers?query=${encodeURIComponent(em)}&page_size=5&fields=id,email`).catch(() => ({}));
       const cust = (r.results || []).find((x) => norm(x.email) === em);

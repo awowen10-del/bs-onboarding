@@ -1753,7 +1753,7 @@
     <div class="ta-bar">
       <div class="filterbar" role="tablist" aria-label="Which members">
         <button role="tab" aria-selected="true" data-ta="first90" onclick="setTaView('first90')">First 90 days <span class="count tally" id="taN1">0</span></button>
-        <button role="tab" aria-selected="false" data-ta="nudge" onclick="setTaView('nudge')">Needs a nudge <span class="count tally" id="taN2">0</span></button>
+        <button role="tab" aria-selected="false" data-ta="risk" onclick="setTaView('risk')">At risk <span class="count tally" id="taN2">0</span></button>
         <button role="tab" aria-selected="false" data-ta="all" onclick="setTaView('all')">Everyone <span class="count tally" id="taN3">0</span></button>
       </div>
       <input type="search" id="taSearch" placeholder="Search a name…" aria-label="Search a member" oninput="renderAttendance()">
@@ -5704,6 +5704,7 @@ function lastHandledDropWeek(m){
    actioned is the same slide, not a new one, so it stays quiet until a decline begins
    entirely after the last one we handled. */
 function attendanceAlert(m){
+  if(tuAtt && tuAtt.upcomingRead && tuFor(m)) return null;   // TeamUp's At Risk list covers them now: one check-in prompt per person
   if(!withinFirstMonths(m, ATT_WATCH_MONTHS)) return null;
   const run = attendanceDropRun(m);
   if(!run) return null;
@@ -5753,6 +5754,10 @@ function renderRetentionToday(){
     if(run) alerts.push({m, run});
   });
   alerts.sort((a,b)=> String(a.m.name||'').localeCompare(String(b.m.name||'')));
+  // …and the At Risk ten from TeamUp, minus anyone who already has a journey task today
+  const riskNow = taRisk();
+  const busyToday = new Set(rows.map(r=>{ const t = tuFor(r.m); return t && t.id; }).filter(Boolean));
+  const riskRows = riskNow ? riskNow.top.filter(r=>!busyToday.has(r.t.id)) : [];
 
   // Birthdays inside the next week — the same window, the same rule and the same card the
   // onboarding tracker uses, pointed at the member list. Gathered separately for the same
@@ -5767,15 +5772,32 @@ function renderRetentionToday(){
   // the badge is real work and nothing else — a prop must never make a coach think they have
   // something to do — while the empty state below is "is there anything on this screen"
   const tally = document.getElementById('retTodayCount');
-  if(tally) tally.textContent = rows.length + alerts.length + bdayRows.length;
+  if(tally) tally.textContent = rows.length + alerts.length + riskRows.length + bdayRows.length;
 
-  if(!rows.length && !alerts.length && !bdayRows.length && !egRows.length){
+  if(!rows.length && !alerts.length && !riskRows.length && !bdayRows.length && !egRows.length){
     list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
       Nothing due for a member right now. The quiet weeks are the ones that keep people — check the Members tab to see where everyone sits.</div>`;
     return;
   }
 
   let alertHtml = '';
+  if(riskRows.length){
+    alertHtml += `<div class="group-label">Check in: no sessions booked<span class="gcount">${riskRows.length}</span></div>`;
+    riskRows.forEach(r=>{
+      alertHtml += `<div class="action attention">
+        <span class="ch attention">Check in</span>
+        <div class="body" onclick="openTaProfile('${esc(r.t.id)}')">
+          <div class="who"><span class="nm">${esc(r.t.name)}</span>${taNoteBtn(r.t)}
+            <span class="ttl">Nothing booked this week · ${r.prev4} → ${r.last4} visits</span>
+            <span class="day">${r.i.daysSince===null?'no sessions yet':'last in '+(r.i.daysSince===0?'today':r.i.daysSince+'d ago')}</span></div>
+        </div>
+        <div class="mark-btns">
+          <button class="btn sm" onclick="event.stopPropagation();taCopyMsg('${esc(r.t.id)}',this)">Copy message</button>
+          <button class="btn sm primary mark" onclick="event.stopPropagation();taMarkCheckedIn('${esc(r.t.id)}')">Checked in</button>
+        </div>
+      </div>`;
+    });
+  }
   if(alerts.length){
     alertHtml += `<div class="group-label">Attendance to chase<span class="gcount">${alerts.length}</span></div>`;
     alerts.forEach(({m,run})=>{
@@ -6083,10 +6105,7 @@ const TA_STATUS = {
   dropping:{cls:'slip',label:'Dropping'}, low:{cls:'slip',label:'Below aim'}, unknown:{cls:'new',label:'Not on TeamUp'},
   paused:{cls:'paused',label:'Paused'}, left:{cls:'new',label:'Left'}, leaving:{cls:'new',label:'Leaving'}
 };
-/* The nudge list is who a coach should message today: gone quiet or sliding. Below aim is shown but not
-   counted here: on 25 Nov 2026 the typical member trained 1.4 times a week against an aim of 2-3, so it
-   would flag half the gym and stop meaning anything. */
-const taNeedsNudge = i => ['quiet','dropping'].includes(i.status);
+
 function taAvgHtml(i){
   if(i.avg===null) return '<span class="ta-avg">–</span>';
   const r = i.avg / i.aim, cls = r>=0.9?'good':(r>=0.6?'mid':'low');
@@ -6108,7 +6127,8 @@ function renderAttendance(){
   if(upd) upd.textContent = 'From TeamUp · updated '+new Date(tuAtt.updated).toLocaleString('en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit'});
   if(!taExtrasLoaded) taLoadExtras();
   const rows = tuMembers().map(t=>({t, i:taInfo(t)})).filter(r=>r.i.status!=='left');
-  const first = rows.filter(r=>r.i.inFirst), nudge = rows.filter(r=>taNeedsNudge(r.i));
+  const first = rows.filter(r=>r.i.inFirst), risk = taRisk();
+  const riskN = risk ? risk.top.length + risk.rest.length + risk.fresh.length : 0;
   // headline: new members (joined in the last 12 months), their average over their first 90 days so far
   const yearAgo = today0() - 365*86400000;
   const cohort = rows.filter(r=>r.t.since && Date.parse(r.t.since)>=yearAgo && r.i.avgFirst!==null && r.i.first.filter(w=>w!==thisWeekKey()).length>=2);
@@ -6116,18 +6136,19 @@ function renderAttendance(){
   document.getElementById('taStats').innerHTML = `<div class="ta-stats">
     <div class="ta-stat"><div class="v">${cohortAvg===null?'–':cohortAvg.toFixed(1)} <small>a week</small></div><div class="l" title="${cohort.length} members who joined in the last 12 months">New members, first 90 days</div></div>
     <div class="ta-stat"><div class="v">${first.length}</div><div class="l">In their first 90 days now</div></div>
-    <div class="ta-stat${nudge.length?' warn':''}"><div class="v">${nudge.length}</div><div class="l">Need a nudge</div></div>
+    <div class="ta-stat${risk && risk.top.length?' warn':''}"><div class="v">${risk?risk.top.length:'–'}</div><div class="l">To check in with (no bookings, visits down)</div></div>
   </div>`;
   document.getElementById('taN1').textContent = first.length;
-  document.getElementById('taN2').textContent = nudge.length;
+  document.getElementById('taN2').textContent = riskN;
   document.getElementById('taN3').textContent = rows.length;
   const q = normName((document.getElementById('taSearch')||{}).value||'');
-  let list = taView==='first90' ? first : taView==='nudge' ? nudge : rows;
+  if(taView==='risk'){ host.innerHTML = taRiskHtml(q); return; }
+  let list = taView==='first90' ? first : rows;
   if(q) list = list.filter(r=>normName(r.t.name).includes(q));
   const order = {quiet:0,dropping:1,low:2,new:3,ok:4,paused:5,leaving:6,unknown:7};
   list = list.slice().sort((a,b)=>(order[a.i.status]-order[b.i.status]) || String(a.t.name).localeCompare(String(b.t.name)));
   if(!list.length){
-    host.innerHTML = `<div class="tbl-scroll"><div class="ta-empty">${q?'Nobody matches that name.':taView==='nudge'?'Nobody needs a nudge right now.':taView==='first90'?'Nobody is in their first 90 days right now.':'No members yet.'}</div></div>`;
+    host.innerHTML = `<div class="tbl-scroll"><div class="ta-empty">${q?'Nobody matches that name.':taView==='first90'?'Nobody is in their first 90 days right now.':'No members yet.'}</div></div>`;
     return;
   }
   const isFirst = taView==='first90';
@@ -6142,7 +6163,7 @@ function renderAttendance(){
       <td data-l="${isFirst||i.inFirst?'Week':'Member since'}">${second}</td><td data-l="${isFirst?'Average a week':'Average, last 8 weeks'}">${taAvgHtml(i)}</td><td data-l="Last 4 weeks">${wks}</td><td data-l="Last session">${taLastHtml(i)}</td><td class="ta-st">${taChip(i)}</td></tr>`;
   }).join('');
   host.innerHTML = `<div class="tbl-scroll"><table class="ta">${head}<tbody>${body}</tbody></table></div>
-    <p class="ta-foot">Counts sessions they <b>attended</b> (PT, BUILD, SWEAT, Capacity): not intros or reviews, and never no-shows or late cancels. “Of 3” is the plan's aim a week. <b>Gone quiet</b>: no session in ${TA_QUIET_DAYS} days. <b>Dropping</b>: three weeks each lower than the last. <b>Below aim</b>: averaging under 60% of their aim (shown, not counted as a nudge). Tap a name for their weeks.</p>`;
+    <p class="ta-foot">Counts sessions they <b>attended</b> (PT, BUILD, SWEAT, Capacity): not intros or reviews, and never no-shows or late cancels. “Of 3” is the plan's aim a week. <b>Gone quiet</b>: no session in ${TA_QUIET_DAYS} days. <b>Dropping</b>: three weeks each lower than the last. <b>Below aim</b>: averaging under 60% of their aim. Who to message is on <b>At risk</b>. Tap a name for their weeks.</p>`;
 }
 /* The bars: one per week, the number on top, the aim as a dashed line. */
 function taChartHtml(t, keys, opts){
@@ -6265,6 +6286,101 @@ function taNotesHtml(t){
       : `<div class="ta-note-empty">No ${taNoteType} notes yet.</div>`}</div>
     <textarea id="taNoteText" placeholder="${taNoteType==='training'?'e.g. Knee niggle, swap lunges for step-ups':'e.g. Away 1 to 14 Dec, back on the 15th'}" aria-label="New ${taNoteType} note"></textarea>
     <div class="row">${taWhoSelect('taWhoNote')}<button type="button" class="btn sm primary" onclick="taAddNote('${esc(t.id)}')">Add ${taNoteType} note</button></div></div>`;
+}
+
+/* ===== AT RISK =====
+   One list, replacing "Needs a nudge": active members (not paused, leaving or left) with NOTHING
+   booked in the next 7 days. Anyone who joined in the last 30 days is shown apart, because the
+   onboarding journey already looks after them. The ten whose visits fell furthest against their
+   own previous 4 weeks are the ones to message. No booking is a reason to check in, not proof
+   someone will leave, and the message says so by tone. A coach marking "Checked in" adds an
+   Attendance note, which also keeps that person off the ten for 7 days. */
+const TA_RISK_TOP = 10, TA_NEW_DAYS = 30, TA_CHECKIN_QUIET_DAYS = 7;
+function taUpcoming(t){ const u = tuAtt && tuAtt.upcoming && tuAtt.upcoming[t.tid]; return Array.isArray(u) ? u : []; }
+function taCheckedInDays(t){
+  const n = taNotesFor(t.id).filter(x=>x.type==='attendance' && /^Checked in/i.test(x.text||'')).map(x=>Date.parse(x.at)).sort((a,b)=>b-a)[0];
+  return n ? Math.floor((Date.now()-n)/86400000) : null;
+}
+function taRisk(){
+  if(!tuAtt || !tuAtt.upcomingRead) return null;
+  const out = { top: [], rest: [], fresh: [] };
+  tuMembers().forEach(t=>{
+    if(!t.tid) return;
+    const i = taInfo(t);
+    if(['paused','leaving','left','unknown'].includes(i.status)) return;
+    if(taUpcoming(t).length) return;
+    const done = i.done, n = w => tuCount(t.tid, w);
+    const last4 = done.slice(-4).reduce((a,w)=>a+n(w),0), prev4 = done.slice(-8,-4).reduce((a,w)=>a+n(w),0);
+    const joinedDays = t.since ? Math.floor((today0()-Date.parse(t.since+'T00:00:00'))/86400000) : 9999;
+    const r = { t, i, last4, prev4, drop: prev4 - last4, joinedDays, checked: taCheckedInDays(t) };
+    if(joinedDays <= TA_NEW_DAYS) out.fresh.push(r); else out.rest.push(r);
+  });
+  const ds = r => r.i.daysSince===null ? 9999 : r.i.daysSince;
+  out.rest.sort((a,b)=> b.drop-a.drop || ds(b)-ds(a));
+  out.top = out.rest.filter(r=>r.drop>0 && !(r.checked!==null && r.checked < TA_CHECKIN_QUIET_DAYS)).slice(0, TA_RISK_TOP);
+  const topIds = new Set(out.top.map(r=>r.t.id));
+  out.rest = out.rest.filter(r=>!topIds.has(r.t.id)).sort((a,b)=> ds(b)-ds(a));
+  out.fresh.sort((a,b)=> ds(b)-ds(a));
+  return out;
+}
+/* The check-in, in Ash's voice, for a coach to personalise. */
+function taCheckinMsg(t){
+  const first = String(t.name||'').split(' ')[0];
+  return `Hi ${first}, hope you're OK! I noticed you've not got any sessions booked in for this week, so I just wanted to check in and see how you're doing. If life's got busy or the times aren't working for you, just let me know and we'll find something that fits. Here if you need anything 💪🏻`;
+}
+async function taCopyMsg(id, btn){
+  const t = tuMembers().find(x=>x.id===id); if(!t) return;
+  const txt = taCheckinMsg(t);
+  try{ await navigator.clipboard.writeText(txt); if(btn){ btn.textContent='Copied ✓'; setTimeout(()=>{btn.textContent='Copy message';},1600); } }
+  catch(e){ prompt('Copy this message:', txt); }
+}
+async function taMarkCheckedIn(id){
+  const who = taWho() || (prompt("Who checked in? (Ash, Dan, Grace or Gaz)") || '').trim();
+  if(!who) return;
+  taSetWho(who);
+  const note = { id:'n'+Date.now().toString(36), type:'attendance', text:'Checked in: no sessions booked', by: who, at: new Date().toISOString() };
+  try{
+    const { data } = await sb.from('bodysculpt').select('value').eq('key','member-notes');
+    const all = (data && data[0] && data[0].value && typeof data[0].value==='object') ? data[0].value : {};
+    all[id] = (Array.isArray(all[id]) ? all[id] : []).concat(note);
+    await sb.from('bodysculpt').upsert({ key:'member-notes', value: all, updated_at: new Date().toISOString() }, { onConflict:'key' });
+    taNotes = all;
+  }catch(e){ alert('Couldn\'t save: '+e.message); return; }
+  renderAll();
+}
+function taRiskTable(list, opts){
+  if(!list.length) return '';
+  const head = `<thead><tr><th>Member</th><th>Last session</th><th>Last 4 weeks</th><th>4 weeks before</th><th>Change</th><th>Booked, next 7 days</th>${opts.top?'<th></th>':''}</tr></thead>`;
+  const body = list.map(r=>{
+    const ch = r.drop>0 ? `<span class="ta-avg low">−${r.drop}</span>` : r.drop<0 ? `<span class="ta-avg good">+${-r.drop}</span>` : '<span class="ta-last">same</span>';
+    const checked = r.checked!==null && r.checked < TA_CHECKIN_QUIET_DAYS ? `<div class="ta-plan">Checked in ${r.checked===0?'today':r.checked===1?'yesterday':r.checked+' days ago'}</div>` : '';
+    return `<tr tabindex="0" onclick="openTaProfile('${esc(r.t.id)}')" onkeydown="if(event.key==='Enter'){openTaProfile('${esc(r.t.id)}')}">
+      <td class="ta-who"><div class="ta-name">${esc(r.t.name)}${taNoteBtn(r.t)}</div><div class="ta-plan">${esc(r.t.plan||'')}${opts.fresh?' · joined '+r.joinedDays+' days ago':''}</div>${checked}</td>
+      <td data-l="Last session">${taLastHtml(r.i)}</td>
+      <td data-l="Last 4 weeks"><span class="ta-avg">${r.last4}</span></td>
+      <td data-l="4 weeks before"><span class="ta-last">${r.prev4}</span></td>
+      <td data-l="Change">${ch}</td>
+      <td data-l="Booked, next 7 days"><span class="ta-weeks"><span class="z">0</span></span></td>
+      ${opts.top?`<td class="ta-st" onclick="event.stopPropagation()"><button type="button" class="btn sm" onclick="taCopyMsg('${esc(r.t.id)}',this)">Copy message</button> <button type="button" class="btn sm ghost" onclick="taMarkCheckedIn('${esc(r.t.id)}')">Checked in</button></td>`:''}
+    </tr>`;
+  }).join('');
+  return `<div class="tbl-scroll"><table class="ta">${head}<tbody>${body}</tbody></table></div>`;
+}
+function taRiskHtml(q){
+  const risk = taRisk();
+  if(!risk) return `<div class="tbl-scroll"><div class="ta-empty">Upcoming bookings come in with tomorrow morning's update.</div></div>`;
+  const f = list => q ? list.filter(r=>normName(r.t.name).includes(q)) : list;
+  const top = f(risk.top), rest = f(risk.rest), fresh = f(risk.fresh);
+  const sample = top[0] || rest[0];
+  return `<p class="sub" style="margin:0 0 12px">Members with <b>nothing booked in the next 7 days</b>, not counting anyone paused or leaving. No booking is a reason to check in, not proof someone will leave.</p>
+    <div class="group-label">Check in with these ${top.length}<span class="gcount">fell furthest against their own previous 4 weeks</span></div>
+    ${top.length ? taRiskTable(top, {top:true}) : '<div class="ta-empty">Nobody whose visits have dropped. 👍</div>'}
+    ${sample?`<div class="ta-confirm" style="margin-top:12px"><h5>The check-in message (tweak it for them before you send)</h5><p class="sub" style="margin:0;max-width:none">${esc(taCheckinMsg(sample.t)).replace(esc(String(sample.t.name).split(' ')[0]), '<b>[first name]</b>')}</p></div>`:''}
+    <div class="group-label" style="margin-top:22px">Also no bookings<span class="gcount">${rest.length}</span></div>
+    ${rest.length ? taRiskTable(rest, {}) : '<div class="ta-empty">Nobody else.</div>'}
+    <div class="group-label" style="margin-top:22px">Joined in the last 30 days<span class="gcount">${fresh.length} · the onboarding journey looks after these</span></div>
+    ${fresh.length ? taRiskTable(fresh, {fresh:true}) : '<div class="ta-empty">Nobody new without a booking.</div>'}
+    <p class="ta-foot">“Last 4 weeks” and “4 weeks before” count finished weeks only. Marking someone <b>Checked in</b> adds an Attendance note and takes them off the ten for 7 days.</p>`;
 }
 
 let taOpen = null;

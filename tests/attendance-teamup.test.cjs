@@ -28,8 +28,8 @@ assert.ok(/Gone quiet/.test(table), "16 days without a session reads as gone qui
 assert.ok(/of 2/.test(table) && /of 3/.test(table), "Silver aims at 2, Gold at 3");
 c.setTaView("all");
 assert.ok(app.html("taTable").includes("Long Timer") && app.html("taTable").includes("Not on TeamUp"));
-c.setTaView("nudge");
-assert.ok(app.html("taTable").includes("Mark Lee") && !app.html("taTable").includes("Long Timer"));
+c.setTaView("risk");
+assert.ok(/Upcoming bookings come in/.test(app.html("taTable")), "no upcoming data yet: says when it arrives");
 // profile
 c.openTaProfile("c");
 const p = app.html("taProfileBody");
@@ -70,8 +70,9 @@ assert.ok(!/missed|late-cancel/i.test(app.html("taProfileBody").replace(/never n
   assert.ok(tb.includes("Paused") && !/Mark Lee[\s\S]*Gone quiet/.test(tb.split("</tr>").find((r) => r.includes("Mark Lee"))), "a paused member reads Paused, not Gone quiet");
   assert.ok(!tb.includes("Gone Person"), "someone marked as left drops off the list");
   assert.ok(/aria-label="2 notes for Sarah Doyle"/.test(tb), "notes marker shows the count");
-  c.setTaView("nudge");
-  assert.ok(!app.html("taTable").includes("Mark Lee"), "paused people are not on the nudge list");
+  c.__t.tuAtt.upcomingRead = true; c.__t.tuAtt.upcoming = {};
+  c.setTaView("risk");
+  assert.ok(!app.html("taTable").includes("Mark Lee"), "paused people are not on the At Risk list");
   c.openTaProfile("a");
   let pr = app.html("taProfileBody");
   assert.ok(pr.includes("Manage membership") && !pr.includes("Mark as left"), "one Manage button, options folded away");
@@ -95,11 +96,51 @@ assert.ok(!/missed|late-cancel/i.test(app.html("taProfileBody").replace(/never n
     { id: "l", name: "Leaving Person", tid: "1", since: y3(200), plan: "Membership - Gold", leaving: true }], weeks, last: { "1": y3(30) } };
   c.setTaView("all"); const tb = app.html("taTable");
   assert.ok(/Paused Person[\s\S]*?Paused/.test(tb) && /Leaving Person[\s\S]*?Leaving/.test(tb));
-  c.setTaView("nudge");
-  assert.ok(!app.html("taTable").includes("Paused Person") && !app.html("taTable").includes("Leaving Person"), "neither is on the nudge list");
+  c.__t.tuAtt.upcomingRead = true; c.__t.tuAtt.upcoming = {};
+  c.setTaView("risk");
+  assert.ok(!app.html("taTable").includes("Paused Person") && !app.html("taTable").includes("Leaving Person"), "neither is on the At Risk list");
 }
 // the Members tab hides people who have left
 c.__t.retention = [{ id: "r1", name: "Stays", joined: Date.now(), attendance: {} }, { id: "r2", name: "Went", joined: Date.now(), attendance: {}, left: true }];
 c.renderRetentionMembers();
 assert.ok(app.html("retMemberList").includes("Stays") && !app.html("retMemberList").includes(">Went<") && /1 person who has left is hidden/.test(app.html("retMemberList")));
+// At Risk: nothing booked in 7 days; the ten whose visits fell most vs their own previous 4 weeks; new joiners apart
+{
+  const D = 864e5, y = (d) => new Date(Date.now() - d * D).toISOString().slice(0, 10);
+  const wk = (n) => c.isoWeekKeyOf(Date.now() - n * 7 * D);
+  const W = {};
+  const set = (tid, counts) => { W[tid] = {}; counts.forEach((n, i) => { W[tid][wk(counts.length - i)] = n; }); };  // oldest first, ending LAST week
+  set("1", [3, 3, 3, 3, 1, 1, 0, 0]);   // big drop
+  set("2", [2, 2, 2, 2, 2, 2, 1, 1]);   // small drop
+  set("3", [1, 1, 1, 1, 2, 2, 2, 2]);   // going up
+  set("4", [3, 3, 3, 3, 0, 0, 0, 0]);   // big drop but booked in next week
+  set("5", [0, 0, 0, 0, 0, 0, 1, 1]);   // new
+  c.__t.taActions = { items: [] }; c.__t.taNotes = {}; c.__t.taExtrasLoaded = true;
+  c.__t.tuAtt = { updated: new Date().toISOString(), upcomingRead: true, upcoming: { "4": [new Date(Date.now() + 2 * D).toISOString()] },
+    members: [
+      { id: "a", name: "Big Drop", tid: "1", since: y(300), plan: "Membership - Gold" },
+      { id: "b", name: "Small Drop", tid: "2", since: y(300), plan: "Membership - Gold" },
+      { id: "c", name: "Going Up", tid: "3", since: y(300), plan: "Membership - Gold" },
+      { id: "d", name: "Booked In", tid: "4", since: y(300), plan: "Membership - Gold" },
+      { id: "e", name: "New Joiner", tid: "5", since: y(20), plan: "Membership - Gold" }],
+    weeks: W, last: { "1": y(15), "2": y(9), "3": y(4), "4": y(30), "5": y(3) } };
+  const r = c.taRisk();
+  assert.deepEqual(r.top.map((x) => x.t.name), ["Big Drop", "Small Drop"], "ten = biggest drop first, only drops");
+  assert.deepEqual(r.rest.map((x) => x.t.name), ["Going Up"], "no booking but not dropping: listed, not in the ten");
+  assert.deepEqual(r.fresh.map((x) => x.t.name), ["New Joiner"], "joined in the last 30 days kept apart");
+  assert.ok(!JSON.stringify(r).includes("Booked In"), "anyone booked in the next 7 days is not at risk");
+  assert.equal(r.top[0].prev4, 12); assert.equal(r.top[0].last4, 2);
+  c.setTaView("risk"); const h = app.html("taTable");
+  assert.ok(h.includes("Check in with these 2") && h.includes("Copy message") && /not proof someone will leave/.test(h));
+  assert.ok(/\[first name\]/.test(h), "message shown with a placeholder to personalise");
+  assert.ok(/Hi Big, hope you're OK!/.test(c.taCheckinMsg(r.top[0].t)));
+  // a check-in note keeps them off the ten for a week
+  c.__t.taNotes = { a: [{ id: "n", type: "attendance", text: "Checked in: no sessions booked", by: "Dan", at: new Date().toISOString() }] };
+  assert.deepEqual(c.taRisk().top.map((x) => x.t.name), ["Small Drop"]);
+  // Today's moves carries the ten, once
+  c.__t.retention = [];
+  c.renderRetentionToday();
+  const tm = app.html("retTodayList");
+  assert.ok(tm.includes("Check in: no sessions booked") && tm.includes("Small Drop") && !tm.includes("Big Drop"));
+}
 console.log("attendance-teamup: ok");

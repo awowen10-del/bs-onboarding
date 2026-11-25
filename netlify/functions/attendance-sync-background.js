@@ -225,10 +225,22 @@ async function run({ full = false } = {}) {
     held = from;
     await status('backfilling', { heldFrom: held, seconds: Math.round((Date.now() - t0) / 1000) });
   }
+  /* Upcoming bookings, next 7 days (booked or on a waitlist): who has nothing in, for the At Risk list. */
+  const upcoming = {};
+  try {
+    const rows = await tuAll(`attendances?status=plans_to_attend&event_starts_at_gte=${new Date(now).toISOString()}&event_starts_at_lte=${new Date(now + 7 * DAY).toISOString()}`
+      + `&expand=event&fields=customer,event.starts_at&page_size=100&sort=event_starts_at`);
+    for (const a of rows) {
+      const tid = String(a.customer && a.customer.id != null ? a.customer.id : a.customer);
+      if (!keep.has(tid) || !a.event || !a.event.starts_at) continue;
+      (upcoming[tid] = upcoming[tid] || []).push(a.event.starts_at);
+    }
+  } catch (e) { console.log('ATTENDANCE: upcoming bookings not read: ' + e.message); }
   // last attended day for anyone whose last session is before the recheck window: from their weeks we can't tell the day,
   // so keep what we had (cleared above only when inside the window)
   const value = { updated: new Date().toISOString(), heldFrom: held, complete: done, attendedOnly: true,
-    counted: 'attended training sessions only (not intros, reviews, workshops or socials; never no-shows or late cancels)', members, weeks, last };
+    counted: 'attended training sessions only (not intros, reviews, workshops or socials; never no-shows or late cancels)', members, weeks, last,
+    upcoming, upcomingRead: true };
   await writeRow(ROW, value);
   // the Members tab: anyone GHL says has gone gets 'left' (same flag the old Ontraport webhook set)
   let markedLeft = [];

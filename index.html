@@ -17,23 +17,25 @@
      Every colour in this stylesheet resolves to one of these — there are no literal colours
      below this block. ONE palette, the light one: the app used to ship a dark navy alternative
      behind an attribute switch on <html>, and that has been removed entirely — no toggle, no
-     stored preference, no second token block. Same names and the same palette as the KPI
-     dashboard, so the two sites read as one product.
+     stored preference, no second token block.
      The *-rgb tokens are bare "r,g,b" triples so the rgba(<accent>,<alpha>) tints below stay
      tied to a single source of truth.
      The accents CARRY MEANING and stay distinct from each other:
-       orange = brand / physical touchpoints    amber = digital + watch
-       green  = in-person + done                red   = missed / problem
-     "orange" is a TOKEN NAME, not a promise of hue: it points at the dashboard's muted
-     slate-blue. The name was kept so the ~40 var(--orange*) references stay one switch. */
+       ink (--orange) = the key colour: buttons, the selected thing, a physical touchpoint
+       amber = digital + watch      green = in-person + done      red = missed / problem
+       --spark (real orange) = needs you now / you are here
+     "orange" and "navy" are TOKEN NAMES, not promises of hue. --orange is the key colour and
+     since v400 that is Bodysculpt's black; --navy is the page, a warm off-white. The names
+     were kept so the hundred-odd references to them stay one switch. The actual orange in the
+     app is --spark. */
   :root{
     color-scheme:light;
     /* metrics + type */
     --radius:16px;
     /* a darkening sat ON a solid accent fill (the count pill on the selected tab) */
-    --accent-inset:rgba(0,0,0,.25);
-    --display:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --accent-inset:rgba(255,255,255,.2);
+    --display:"Anton","Impact","Arial Narrow",sans-serif;
+    --body:"Hanken Grotesk",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     /* THREE TIERS OF DEPTH, and they must stay three: the page (--navy) is a soft, slightly
        cool grey; the card (--card) is near-white and therefore visibly LIFTS off it; --line
        is a fine neutral hairline that draws the card's edge. Tone step + hairline do the
@@ -41,29 +43,38 @@
        (toolbars, inputs, sub-panels), so it sits BELOW the card, not above.
        (--navy is a token NAME too: the surface is grey, not navy. Kept for the same reason
        as --orange — it is referenced everywhere and renaming buys nothing.) */
-    --navy:#f2f4f8; --navy-2:#e8ecf3; --card:#ffffff; --card-2:#f7f9fc;
-    --line:#dde2ea;
+    --navy:#f3f2ee; --navy-2:#e9e7e0; --card:#ffffff; --card-2:#f9f8f5;
+    --line:#dfdcd3;
     /* dark-but-soft ink — a cool near-black, never #000; --ink-dim/-faint are muted greys */
-    --ink:#1d2330; --ink-dim:#5a6474; --ink-faint:#6e7889;
-    --ink-dim-rgb:90,100,116;
+    --ink:#15161a; --ink-dim:#55534d; --ink-faint:#76726a;
+    --ink-dim-rgb:85,83,77;
     --on-accent:#fff;              /* text sitting ON a solid accent fill */
     --on-amber:#fff;               /* text on the solid amber sync banner */
     --on-green:#fff;               /* text on the solid green sync banner */
     /* the brand accent — a muted, low-strain SLATE-BLUE (see the note above about the name).
        -soft is the DARKER partner of each pair, because it is used for text on pale tinted
        chips where a paler hue would vanish. Green has no separate -soft and doubles as its own. */
-    --orange:#4a5f8a; --orange-soft:#3a4d73; --orange-rgb:74,95,138;
-    --green:#17804d; --green-rgb:23,128,77;
-    --amber:#9a6a05; --amber-rgb:154,106,5;
-    --red:#b81e28; --red-rgb:184,30,40;
-    --mark-bg:#eef1f7;             /* the letterbox behind the logo */
+    --orange:#15161a; --orange-soft:#15161a; --orange-rgb:21,22,26;
+    --green:#1b7a4a; --green-rgb:27,122,74;
+    --amber:#94600a; --amber-rgb:148,96,10;
+    --red:#c0272d; --red-rgb:192,39,45;
+    --mark-bg:#0c0c0c;             /* the letterbox behind the logo */
     /* a cool near-black scrim genuinely dims the page behind a modal, while the shadow and
        the hover "lift" are mid-greys — --lift-rgb is dark, so a hover DARKENS the surface. */
-    --backdrop-rgb:26,33,48;       /* modal scrim */
-    --shadow-rgb:116,127,148;      /* every box-shadow */
-    --lift-rgb:24,35,56;           /* hover lift over a surface */
-    --lift-a:.05;                  /* ...and how strong it is */
-    --shadow:0 10px 30px rgba(var(--shadow-rgb),.35);
+    --backdrop-rgb:12,12,12;       /* modal scrim */
+    --shadow-rgb:58,52,38;       /* every box-shadow */
+    --lift-rgb:21,22,26;           /* hover lift over a surface */
+    --lift-a:.035;                 /* ...and how strong it is */
+    --shadow:0 1px 2px rgba(var(--shadow-rgb),.07),0 14px 34px -14px rgba(var(--shadow-rgb),.22);
+    /* THE HOUSE STYLE's own tokens (see the block of that name further down).
+       --spark is Bodysculpt orange and the only loud colour in the app: it means "this needs
+       you" or "you are here", never decoration. -deep is its partner for orange WORDS on a
+       pale surface, where the bright one is too light to read. --watch is the amber of a
+       traffic light, for a tile's top edge. --side* dress the black masthead / side menu. */
+    --spark:#f3662e; --spark-deep:#b84311; --spark-rgb:243,102,46;
+    --watch:#c98a12;
+    --side:#0c0c0c; --side-2:#1c1c1d; --side-ink:#ffffff; --side-dim:#a5a29b; --side-line:#2c2c2d;
+    --side-w:252px;
   }
   /* border-box on pseudo-elements too, not just real ones — the bare "*" selector never
      matched ::before/::after, so those were still sizing on content-box. (The one rule that
@@ -350,7 +361,7 @@
   .cb-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
   @media (max-width:640px){ .cb-tiles{grid-template-columns:minmax(0,1fr)} }
   .cb-tile{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--line);border-radius:10px;padding:10px 12px}
-  .cb-tile.cb-good{border-top-color:var(--green)} .cb-tile.cb-watch{border-top-color:#c98a12} .cb-tile.cb-flag{border-top-color:var(--red)}
+  .cb-tile.cb-good{border-top-color:var(--green)} .cb-tile.cb-watch{border-top-color:var(--watch)} .cb-tile.cb-flag{border-top-color:var(--red)}
   .cb-tile-label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--ink-dim)}
   .cb-tile-big{font-size:26px;font-weight:800;line-height:1.15;margin:4px 0 3px;color:var(--ink)}
   .cb-tile-big small{font-size:13px;font-weight:700;color:var(--ink-dim);margin-left:3px}
@@ -359,7 +370,7 @@
   .cb-legend{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px;font-size:11.5px;color:var(--ink-faint);font-weight:600}
   .cb-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-left:6px}
   .cb-dot:first-child{margin-left:0}
-  .cb-dot.cb-good{background:var(--green)} .cb-dot.cb-watch{background:#c98a12} .cb-dot.cb-flag{background:var(--red)}
+  .cb-dot.cb-good{background:var(--green)} .cb-dot.cb-watch{background:var(--watch)} .cb-dot.cb-flag{background:var(--red)}
   .cb-notes{margin:0;padding:0;list-style:none;display:grid;gap:7px}
   .cb-notes li{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:13.5px;line-height:1.5;color:var(--ink)}
   .cb-note-meta{font-size:12px;color:var(--ink-faint);margin-bottom:2px}
@@ -1324,6 +1335,527 @@
   .notes-saved{font-size:11.5px;font-weight:700;color:var(--ink-faint);margin-top:10px;min-height:16px}
   .notes-saved.on{color:var(--green)}
 
+  /* ====================================================================================
+     THE HOUSE STYLE (v400) — everything from here to the phone blocks below.
+
+     The sheet above is the app's STRUCTURE: where things sit, how rows wrap, what shrinks. It
+     was tuned screen by screen and its tests pin it, so it is left alone. This block is the
+     LOOK, laid over it in one place so the whole app reads as one object:
+
+       - Bodysculpt's own colours. Black and white do the work; the brand orange (--spark) is
+         the one loud thing and it only ever means "this needs you" or "you are here".
+         Green, amber and red keep their meanings: done, watch, problem.
+       - Two typefaces. Anton, the gym's poster face, for the few big things on a screen: the
+         date, a number, a title. Hanken Grotesk for everything you read.
+       - Sentence case. The old sheet shouted its labels in tracked capitals; a screen people
+         sit in all day should talk, so the labels here are words in ordinary case.
+       - On a laptop the masthead becomes a side menu with both trackers in it, so every screen
+         is one click from every other. On a phone it is still a bar across the top.
+
+     It sits BEFORE the phone blocks on purpose: they still get the last word on a small
+     screen, exactly as they did. */
+  @font-face{font-family:"Anton";src:url(fonts/anton.woff2) format("woff2");font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:"Hanken Grotesk";src:url(fonts/hanken-grotesk.woff2) format("woff2");font-weight:400 800;font-style:normal;font-display:swap}
+  @font-face{font-family:"Hanken Grotesk";src:url(fonts/hanken-grotesk-italic.woff2) format("woff2");font-weight:400 800;font-style:italic;font-display:swap}
+
+  body{font-size:14px;font-synthesis:none;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  ::selection{background:rgba(var(--spark-rgb),.28)}
+  :focus-visible{outline:2px solid var(--spark);outline-offset:2px}
+  button,input,select,textarea{font-variant-numeric:inherit}
+
+  /* ---------- the masthead: black, at every width ---------- */
+  header.mast{background:var(--side);color:var(--side-ink);padding-bottom:6px}
+  .brand .mark{border-color:var(--side-line);border-radius:11px;width:42px;height:42px}
+  .brand h1{font-family:var(--display);font-weight:400;font-size:21px;letter-spacing:.025em;
+    text-transform:uppercase;line-height:1.05;color:var(--side-ink)}
+  .brand .sub{color:var(--side-dim);font-weight:500;font-size:12.5px;margin-top:2px}
+  .brand.is-link:hover h1{color:var(--spark)}
+  .homebtn{border-color:var(--side-line);color:var(--side-dim);font-weight:600;font-size:13px;
+    letter-spacing:0;border-radius:9px}
+  .homebtn:hover{color:var(--side-ink);background:var(--side-2);border-color:var(--side-dim)}
+  .homebtn svg{width:15px;height:15px;display:none}
+  .mast-meta{color:var(--side-dim);font-weight:500;font-size:12.5px}
+  .mast-meta strong{color:var(--side-ink);font-weight:400;font-size:30px;line-height:1;letter-spacing:.01em}
+  .nav-label,.brand .brand-fixed{display:none}
+  /* main carries .wrap, whose padding shorthand outranks a bare `main` rule — so the gap above
+     the first thing on a screen has to be asked for at .wrap's weight or it is never applied */
+  main.wrap{padding-top:22px}
+  .brand .brand-fixed{flex-direction:column;gap:3px;font-family:var(--display);font-size:23px;line-height:1;
+    letter-spacing:.025em;text-transform:uppercase;color:var(--side-ink)}
+  .brand .brand-fixed small{font-family:var(--body);font-size:12.5px;font-weight:500;letter-spacing:0;text-transform:none;
+    color:var(--side-dim)}
+
+  header.mast nav.tabs{margin-bottom:12px}
+  header.mast nav.tabs button{background:var(--side-2);border-color:var(--side-line);color:var(--side-dim);
+    font-weight:600;border-radius:10px}
+  header.mast nav.tabs button[aria-selected="false"]:hover{color:var(--side-ink);border-color:var(--side-dim)}
+  header.mast nav.tabs button.tab-lead[aria-selected="false"],
+  header.mast nav.tabs button.tab-core[aria-selected="false"]{color:var(--side-ink);
+    background:var(--side-2);border-color:var(--side-line)}
+  header.mast nav.tabs button[aria-selected="true"]{background:var(--side-ink);border-color:var(--side-ink);
+    color:var(--side)}
+  header.mast nav.tabs button .tab-star{color:var(--spark)}
+  header.mast nav.tabs button .count{background:var(--spark);color:var(--side);font-weight:800;
+    padding:1px 7px;min-width:20px;text-align:center;display:inline-block}
+  header.mast nav.tabs button .count.tally{background:transparent;color:var(--side-dim);
+    border-color:var(--side-line);font-weight:600}
+  header.mast nav.tabs button[aria-selected="true"] .count.tally{color:var(--side);border-color:var(--side-dim);
+    background:transparent}
+  header.mast nav.tabs button .tab-dot.on,
+  header.mast nav.tabs button[aria-selected="true"] .tab-dot.on{background:var(--spark)}
+
+  /* ---------- the side menu (laptops) ----------
+     The same masthead, stood on its end. .mast-inner and .mast-right dissolve (display:contents)
+     so the brand, the way home, the two lists of screens and the headcount all become rows of
+     one column. BOTH lists show here — the tracker you are not in is one click away instead of
+     a trip back through the home screen — so the "hide" the app puts on the other tracker's
+     list is overruled at this width, and the lit row is taken from the list that is NOT hidden.
+     At home both are hidden, so nothing is lit but Home. */
+  @media (min-width:1024px){
+    body{padding-left:var(--side-w)}
+    header.mast{position:fixed;left:0;top:0;bottom:0;width:var(--side-w);z-index:40;display:flex;
+      flex-direction:column;overflow-y:auto;padding-top:0;padding-bottom:22px;
+      border-right:1px solid var(--side-line)}
+    header.mast .wrap{max-width:none;margin:0;padding-left:14px;padding-right:14px}
+    header.mast .mast-inner,header.mast .mast-right{display:contents}
+    .brand{order:0;flex:0 0 auto;padding:26px 18px 22px;align-items:center}
+    .brand h1{font-size:23px}
+    header.mast .homebtn,header.mast .homebtn.hide{order:1;display:flex !important;margin:0 14px;border:0;
+      border-radius:9px;padding:9px 12px;font-size:14px;font-weight:500;gap:11px;position:relative}
+    header.mast .homebtn svg{display:block}
+    header.mast .homebtn .hb-arrow{display:none}
+    header.mast .homebtn:hover{background:var(--side-2)}
+    header.mast .homebtn.hide{background:var(--side-2);color:var(--side-ink);font-weight:650;cursor:default}
+    header.mast #nav-onboarding,header.mast #nav-onboarding.hide{order:2;display:block !important;margin-top:26px}
+    header.mast #nav-retention,header.mast #nav-retention.hide{order:3;display:block !important;margin-top:26px}
+    .nav-label{display:flex;align-items:baseline;gap:8px;padding:0 12px 9px;font-size:12px;
+      font-weight:600;color:var(--side-dim)}
+    .nav-label b{font-family:var(--display);font-weight:400;font-size:15px;letter-spacing:.05em;
+      text-transform:uppercase;color:var(--side-ink)}
+    header.mast nav.tabs{flex-direction:column;flex-wrap:nowrap;gap:2px;margin-bottom:0}
+    header.mast nav.tabs button,
+    header.mast nav.tabs button.tab-lead[aria-selected="false"],
+    header.mast nav.tabs button.tab-core[aria-selected="false"],
+    header.mast nav.tabs button[aria-selected="true"]{display:flex;align-items:center;width:100%;text-align:left;
+      border:0;border-radius:9px;padding:9px 12px;font-size:14px;font-weight:500;position:relative;
+      background:none;color:var(--side-dim)}
+    header.mast nav.tabs button:hover,
+    header.mast nav.tabs button.tab-lead[aria-selected="false"]:hover,
+    header.mast nav.tabs button.tab-core[aria-selected="false"]:hover{background:var(--side-2);color:var(--side-ink)}
+    header.mast nav.tabs button:active{transform:none}
+    header.mast div:not(.hide) > nav.tabs button[aria-selected="true"],
+    header.mast div:not(.hide) > nav.tabs button[aria-selected="true"]:hover{background:var(--side-2);
+      color:var(--side-ink);font-weight:650}
+    header.mast div:not(.hide) > nav.tabs button[aria-selected="true"]::before,
+    header.mast .homebtn.hide::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:3px;
+      border-radius:0 3px 3px 0;background:var(--spark)}
+    header.mast nav.tabs button .count,header.mast nav.tabs button .tab-dot.on{margin-left:auto}
+    header.mast nav.tabs button .count.tally,
+    header.mast nav.tabs button[aria-selected="true"] .count.tally{border:0;color:var(--side-dim);padding:0;
+      font-size:12.5px}
+    header.mast nav.tabs button .tab-star{order:2;margin:0 0 0 auto;width:13px;height:13px}
+    header.mast .mast-meta,header.mast .mast-meta.hide{order:9;display:flex !important;align-items:baseline;gap:9px;
+      margin-top:auto;padding:26px 26px 0;text-align:left;white-space:normal}
+    header.mast .mast-meta strong{display:inline;font-size:34px}
+    main.wrap{max-width:1200px;padding-left:44px;padding-right:44px;padding-top:40px}
+    .brand .btxt{display:none}
+    .brand .brand-fixed{display:flex}
+    .sync-banner{left:var(--side-w)}
+  }
+
+  /* ---------- buttons, chips, fields ---------- */
+  .btn{border-radius:9px;font-weight:650;font-size:13.5px;padding:8px 14px;letter-spacing:-.005em;
+    transition:transform .08s ease,border-color .15s ease,background .15s ease,color .15s ease,box-shadow .15s ease}
+  .btn:hover{border-color:var(--ink-faint);background:var(--card-2)}
+  .btn.primary{background:var(--ink);border-color:var(--ink);color:var(--on-accent)}
+  .btn.primary:hover{background:var(--ink-dim);border-color:var(--ink-dim)}
+  .btn.ghost{background:transparent;color:var(--ink-dim)}
+  .btn.ghost:hover{background:var(--card);color:var(--ink)}
+  .btn.sm{padding:6px 12px;font-size:13px;border-radius:8px}
+  .btn.danger:hover{background:rgba(var(--red-rgb),.06)}
+  .viewtoggle .vt,.filterbar button{border-radius:999px;font-weight:600;font-size:13.5px;padding:8px 16px}
+  .viewtoggle .vt.active,.filterbar button[aria-selected="true"]{font-weight:650}
+  .filterbar button .count{font-weight:700}
+  .toolbar input[type=search],.ta-bar input[type=search]{border-radius:10px;padding:10px 14px 10px 38px;font-size:14px;
+    background:var(--card) no-repeat 13px 50%/16px 16px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2377736b' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E")}
+  .toolbar input:focus,.ta-bar input[type=search]:focus,.field input:focus,.field select:focus,.field textarea:focus,
+  .nut-grid input:focus,.nut-grid select:focus,.notes-ed:focus{border-color:var(--ink);
+    box-shadow:0 0 0 3px rgba(var(--spark-rgb),.22);outline:none}
+  .field input,.field select,.field textarea{background:var(--card);border-radius:10px;padding:10px 12px}
+  .field label{font-size:13px;font-weight:650;color:var(--ink);letter-spacing:0;margin-bottom:6px}
+  .lbl-opt,.field-note{font-weight:500}
+
+  /* ---------- words that used to be capitals ---------- */
+  .group-label,.board-col-title,.sec-head h2,.cb-step,.status-day,.overdue-flag,.overdue,.cg-label,.wm-h,
+  .seed-line .seed-label,.startblock .sb-label,.nut-grid label,.conv-lbl,.att-howto-head,.bday-now,.bday-today,
+  .bday-type,.bday-example-tag,.today-example-label,.cu-heads,.ta-sec h4,table.ta th,table.journey thead th,
+  .action .ch,.mcard .name .tag,.home-card .hgo,.pbx-owner,.pbx-flag,.pbx-sub,.pbx-substep,.pbx-why-label,
+  .pbx-when,.pbx-tag,.pbx-edit-toggle,.pb-reset,.pbx-chapter-num,.pbx-eyebrow{text-transform:none;letter-spacing:0}
+
+  /* ---------- section headings inside a screen ---------- */
+  .group-label{margin:34px 0 12px;gap:10px;font-size:16px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+  .group-label::after{display:none}
+  .group-label .gcount,.board-col-head .gcount{font-size:12.5px;font-weight:650;color:var(--ink-dim);background:var(--navy-2);
+    border:0;border-radius:999px;padding:1px 9px;min-width:24px;text-align:center}
+  .sec-head{margin-bottom:10px}
+  .sec-head h2{font-family:var(--display);font-weight:400;font-size:34px;line-height:1;letter-spacing:.015em;
+    text-transform:uppercase}
+  .sub{font-size:14px;line-height:1.6;color:var(--ink-dim)}
+  .empty{padding:64px 20px}
+  .empty .big{font-family:var(--display);font-weight:400;font-size:30px;text-transform:uppercase;letter-spacing:.015em}
+
+  /* ---------- the date: the one headline on a Today screen ---------- */
+  .day-banner{background:none;border:0;box-shadow:none;border-radius:0;padding:14px 0 0;margin:0;
+    align-items:baseline;gap:14px;flex-wrap:wrap}
+  .day-banner .dot{display:none}
+  /* The banner's sentence is "It's <date>." and the tests pin those words. The date is the
+     headline, so the two scraps either side of it are set to nothing and only the date (and,
+     on Retention, the headcount sentence after it) is given a size. */
+  .day-banner .txt{font-size:0}
+  .day-banner .txt > strong{display:inline-block;margin-right:18px;font-family:var(--display);font-weight:400;
+    font-size:46px;line-height:1;text-transform:uppercase;letter-spacing:.012em;color:var(--ink)}
+  .day-banner .bn-rest{font-size:15px;font-weight:500;color:var(--ink-dim)}
+  .day-banner .bn-rest strong{font-weight:700;color:var(--ink)}
+
+  /* ---------- a row of work ---------- */
+  .board{gap:14px;margin-top:26px}
+  .board-col{background:none;border:0;border-radius:0;padding:0}
+  .board-col-head{margin:0 0 12px;padding:0;border:0}
+  .board-col-title{flex:0 1 auto;font-size:16px;font-weight:700;letter-spacing:-.01em}
+  .action,.board .action{border-radius:12px;border-color:var(--line);border-left-width:1px;padding:13px 16px 13px 20px;
+    position:relative;transition:border-color .15s ease,box-shadow .15s ease}
+  .action::before{content:"";position:absolute;left:7px;top:11px;bottom:11px;width:3px;border-radius:3px;
+    background:var(--line)}
+  .action.physical::before{background:var(--ink)}
+  .action.digital::before,.action.birthday::before,.action.attention::before{background:var(--amber)}
+  .action.inperson::before,.action.awaiting::before{background:var(--green)}
+  .action.followup::before{background:var(--ink-faint)}
+  .action.physical,.action.digital,.action.inperson,.action.birthday,.action.attention,.action.followup,
+  .action.awaiting{border-left-color:var(--line)}
+  .action:hover{border-color:var(--ink-faint)}
+  .action.open{border-color:var(--ink);box-shadow:var(--shadow)}
+  .action.birthday.milestone{border-left-color:rgba(var(--amber-rgb),.28)}
+  .action .who{font-size:14.5px;font-weight:700}
+  .action .who .ttl{font-weight:500;color:var(--ink-dim)}
+  .action .ch{font-size:12px;font-weight:650;border-radius:999px;padding:2px 10px}
+  .action .who .day{font-size:12px;font-weight:600;border:0;border-radius:999px;padding:1px 9px}
+  .status-day{font-size:12.5px;font-weight:500;color:var(--ink-faint)}
+  .status-sep{display:none}
+  .overdue-flag,.overdue{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--red);
+    background:rgba(var(--red-rgb),.09);border-radius:999px;padding:3px 10px 3px 8px}
+  .overdue-flag::before,.overdue::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--red)}
+  .action .chev{font-size:0;width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;
+    justify-content:center;cursor:pointer;transition:background .15s ease,transform .2s ease}
+  .action .chev::before{content:"";width:7px;height:7px;border-right:2px solid var(--ink-faint);
+    border-bottom:2px solid var(--ink-faint);transform:rotate(-45deg);margin-left:-3px}
+  .action .chev:hover{background:var(--navy-2)}
+  .action .missed-btn{font-size:13px;padding:6px 12px;border-color:transparent}
+  .action .missed-btn:hover{background:rgba(var(--red-rgb),.07);border-color:transparent}
+  .action .detail{border-top:1px solid var(--line);font-size:14px;line-height:1.65;color:var(--ink-dim)}
+  .board .action .detail{margin-top:4px;padding-top:14px}
+  .cb-chip{font-size:12.5px;font-weight:600;background:var(--navy);border:0;padding:3px 10px 3px 8px}
+  .cb svg,.cb-chip svg{stroke:var(--ink-dim)}
+  .board-empty{border-radius:12px;font-size:13.5px;padding:22px 12px;background:var(--card-2)}
+
+  /* the six weeks: a row of tabs with the open week's cards under it, no grey box round them */
+  .week-tabs{gap:6px;border-bottom:1px solid var(--line);padding-bottom:0}
+  .week-tab,.week-tab.on{background:none;border:0;border-radius:0;margin:0 0 -1px;padding:10px 14px 12px;font-size:14px;
+    font-weight:600;border-bottom:2px solid transparent}
+  .week-tab.on{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
+  .wk-count{border:0;font-size:12px;font-weight:700;padding:2px 7px;min-width:20px;text-align:center}
+  .week-tab.on .wk-count:not(.late){background:var(--navy-2)}
+  .week-panel{background:none;border:0;border-radius:0;padding:14px 0 0}
+
+  /* what is inside an opened row */
+  .seed-line,.pbx-seed{background:var(--card-2);border:1px solid var(--line);border-left:3px solid var(--spark);border-radius:10px}
+  .seed-line .seed-label{font-size:12.5px;font-weight:650;color:var(--ink-dim)}
+  .seed-line .seed-text{font-size:14.5px}
+  .walk-link{border-radius:9px;font-size:13px;font-weight:650;background:var(--card-2)}
+  .walk-link:hover{border-color:var(--ink)}
+  .checklist .ci{font-size:14px}
+  .checklist .ci .box{border-radius:6px;width:19px;height:19px;border-color:var(--ink-faint)}
+  .cg-label{font-size:13px;font-weight:700;color:var(--ink)}
+  .cg-note{font-size:12.5px}
+  .checklist-progress{font-size:12.5px;font-weight:600;letter-spacing:0}
+  .startblock,.start-box{border-radius:12px}
+  .startblock .sb-label{font-size:13px;font-weight:650;color:var(--ink)}
+  .startblock .sb-date{background:var(--card);border-radius:9px}
+  .wm,.nutblock{border-radius:12px;background:var(--card-2)}
+  .wm-toggle,.nut-toggle{font-size:13.5px;font-weight:650}
+  .wm-h{font-size:13px;font-weight:700;color:var(--ink)}
+  .nut-grid label{font-size:12.5px;font-weight:650}
+  .nut-grid input,.nut-grid select{background:var(--card);border-radius:9px}
+  .nut-big{background:var(--card);border-radius:10px}
+  .nut-num{font-family:var(--display);font-weight:400;font-size:34px;letter-spacing:.01em}
+
+  /* the check-in brief */
+  .cb{border-radius:14px;background:var(--card-2);padding:18px 18px 18px}
+  .cb-title{font-size:16px;font-weight:700}
+  .cb-step{font-size:13.5px;font-weight:700;color:var(--ink);margin:20px 0 10px;gap:10px}
+  .cb-num{width:22px;height:22px;font-size:12px;font-weight:700;background:var(--ink)}
+  .cb-tiles{gap:10px}
+  .cb-tile{border-radius:12px;border-top-width:1px;padding:13px 14px 14px;position:relative;overflow:hidden}
+  .cb-tile::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--line)}
+  .cb-tile.cb-good::before{background:var(--green)} .cb-tile.cb-watch::before{background:var(--watch)}
+  .cb-tile.cb-flag::before{background:var(--red)}
+  .cb-tile.cb-good,.cb-tile.cb-watch,.cb-tile.cb-flag{border-top-color:var(--line)}
+  .cb-dot.cb-watch{background:var(--watch)}
+  .cb-tile-label{font-size:12.5px;font-weight:650}
+  .cb-tile-big{font-family:var(--display);font-weight:400;font-size:36px;line-height:1.05;letter-spacing:.01em;margin:6px 0 4px}
+  .cb-tile-big small{font-family:var(--body);font-weight:600;font-size:13px}
+  .cb-notes li,.cb-send{border-radius:10px}
+  .cb-send-text{font-size:14px;line-height:1.6}
+
+  /* ---------- the home screen ---------- */
+  .home{padding:6px 0 40px}
+  .home-date{font-family:var(--display);font-size:clamp(44px,6vw,76px);line-height:.98;text-transform:uppercase;
+    letter-spacing:.012em;color:var(--ink);max-width:14ch}
+  .home-lead{font-size:16px;font-weight:500;color:var(--ink-dim);margin:14px 0 30px}
+  .home-grid{gap:20px}
+  .home-card{min-height:268px;padding:26px 28px 24px;border-radius:20px;background:var(--card);box-shadow:none;
+    transition:transform .18s cubic-bezier(.2,.7,.2,1),border-color .16s ease,box-shadow .18s ease}
+  .home-card::before{display:none}
+  .home-card .hicon{width:46px;height:46px;border-radius:13px;background:rgba(var(--accent-rgb),.08);border:0}
+  .home-card .hicon svg{width:24px;height:24px}
+  .home-card .ht{font-family:var(--display);font-weight:400;font-size:clamp(40px,4.4vw,58px);line-height:1;
+    text-transform:uppercase;letter-spacing:.012em}
+  .home-card .hs{font-size:15px;font-weight:500;margin-top:6px}
+  .home-card .hgo{width:100%;margin-top:22px;padding-top:16px;border-top:1px solid var(--line);font-size:14px;
+    font-weight:500;color:var(--ink-dim);gap:8px 22px;flex-wrap:wrap}
+  .home-card .hgo b{font-weight:700;color:var(--ink)}
+  .home-card .hgo > span:first-child{display:flex;flex-wrap:wrap;gap:6px 22px}
+  .home-card .hgo .hn{display:inline-flex;align-items:baseline;gap:6px}
+  .home-card .hgo .hn.hot b{color:var(--spark-deep)}
+  .home-card .harrow{margin-left:auto;width:34px;height:34px;border-radius:50%;background:var(--navy-2);color:var(--ink);
+    display:inline-flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;align-self:center;
+    transition:transform .18s ease,background .16s ease,color .16s ease}
+  .home-card:hover{transform:translateY(-3px);border-color:var(--ink);box-shadow:var(--shadow)}
+  .home-card:hover .hicon{background:var(--accent);color:var(--on-accent)}
+  .home-card:hover .harrow{transform:translateX(3px);background:var(--spark);color:var(--side)}
+
+  /* ---------- a person's card (Challengers, Members) ----------
+     One person, one card, and the card is mostly their line: the 42 days drawn left to right
+     with a mark for every moment — green when it happened, red when it was missed, orange when
+     it is the one waiting. On a laptop the line sits beside the name rather than under it, so a
+     card is three short rows instead of nine and a screen holds five people instead of two. */
+  .mcard{border-radius:16px;padding:18px 22px 16px;margin-bottom:10px;box-shadow:none;
+    transition:border-color .15s ease,box-shadow .15s ease}
+  .mcard:hover{border-color:var(--ink-faint)}
+  .mcard .name{font-size:17px;font-weight:700;letter-spacing:-.015em;display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px}
+  .mcard .name .tag{font-size:12px;font-weight:650;border-radius:999px;padding:2px 10px;margin-left:0}
+  .mcard .name .notes-btn{margin-left:-2px}
+  .mcard .sub{font-size:13.5px;margin-top:2px}
+  .mcard .day-no .n{font-family:var(--display);font-weight:400;font-size:40px;letter-spacing:.01em;color:var(--ink)}
+  .mcard .day-no .l{font-size:12.5px;font-weight:500;letter-spacing:0;margin-top:2px}
+  .rail{margin:16px 0 2px}
+  .rail .track{height:6px;border-radius:999px;overflow:visible;position:relative;background:var(--navy-2)}
+  .rail .fill{border-radius:999px;background:var(--ink)}
+  .rail .fill.paused-fill{background:var(--watch)}
+  .rail .ticks{margin-top:10px}
+  .rail .ticks span{font-size:12px;font-weight:500}
+  .rail .stop{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;
+    background:var(--card);border:2px solid var(--line);z-index:1}
+  .rail .stop.done{background:var(--green);border-color:var(--card)}
+  .rail .stop.missed{background:var(--red);border-color:var(--card)}
+  .rail .stop.due{background:var(--spark);border-color:var(--card);box-shadow:0 0 0 3px rgba(var(--spark-rgb),.28)}
+  .rail .stop.overdue{border-color:var(--red)}
+  .rail .now{position:absolute;top:50%;width:2px;height:16px;margin:-8px 0 0 -1px;border-radius:2px;background:var(--ink)}
+  .mcard .ext-note,.mcard .mstart-note{font-size:13px;font-weight:600}
+  .mcard .controls{gap:2px;margin-top:12px}
+  .mcard .controls .btn:not(.primary){border-color:transparent;background:none;padding:6px 10px;font-weight:600;
+    color:var(--ink-dim)}
+  .mcard .controls .btn:not(.primary):hover{background:var(--navy);color:var(--ink)}
+  .mcard .controls .btn.danger{color:var(--red)}
+  .mcard .controls .btn.danger:hover{background:rgba(var(--red-rgb),.07);color:var(--red)}
+  .decision{margin-top:14px}
+  .decision.prompt{background:rgba(var(--spark-rgb),.08);border-color:rgba(var(--spark-rgb),.35);border-radius:12px}
+  .decision .dlabel{font-size:13.5px;font-weight:700;color:var(--ink)}
+  .mcard .paybox{border-radius:12px}
+  .tag.live{background:rgba(var(--green-rgb),.11)}
+  @media (min-width:1024px){
+    #memberList .mcard:not(.notstarted){display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr) auto;
+      column-gap:34px;align-items:start}
+    #memberList .mcard:not(.notstarted) > *{grid-column:1 / -1}
+    #memberList .mcard:not(.notstarted) > .top{display:contents}
+    #memberList .mcard:not(.notstarted) > .top > div:first-child{grid-column:1;grid-row:1 / span 2}
+    #memberList .mcard:not(.notstarted) > .top > .day-no{grid-column:3;grid-row:1 / span 2;display:flex;
+      align-items:baseline;gap:7px;min-width:92px;justify-content:flex-end}
+    #memberList .mcard:not(.notstarted) > .rail{grid-column:2;grid-row:1;margin:12px 0 0}
+    #memberList .mcard:not(.notstarted) > .rail .ticks{display:none}
+    #memberList .mcard:not(.notstarted) > .mcard-facts{grid-column:2;grid-row:2;margin-top:15px}
+    #memberList .mcard:not(.notstarted) .tag-day{display:none}
+    #memberList .mcard:not(.notstarted) > .decision:not(.prompt){grid-column:1 / span 2;margin-top:16px}
+    #memberList .mcard:not(.notstarted) > .decision:not(.prompt) + .controls{grid-column:2 / -1;justify-self:end;
+      margin-top:-32px;align-self:end}
+  }
+  .mcard-facts{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:10px;font-size:13.5px;color:var(--ink-dim)}
+  .mcard-facts > *{margin:0 !important}
+  .mcard-facts .sub{font-size:13.5px}
+
+  /* the conversion strip at the top of Challengers */
+  .conv{gap:12px;margin-bottom:22px}
+  .conv-main{border-radius:16px;box-shadow:none;background:var(--card);padding:18px 24px 16px;min-width:210px}
+  .conv-main::before{width:4px;top:16px;bottom:16px;left:0;border-radius:0 4px 4px 0}
+  .conv-pct{font-family:var(--display);font-weight:400;font-size:54px;letter-spacing:.01em;color:var(--ink)}
+  .conv-lbl{font-size:13px;font-weight:500;color:var(--ink-dim);margin-top:8px}
+  .conv-split{gap:12px}
+  .conv-split .cs{border-radius:16px;padding:16px 20px}
+  .cs .csn{font-family:var(--display);font-weight:400;font-size:34px;letter-spacing:.01em}
+  .cs .csl{font-size:13px;font-weight:500;color:var(--ink-dim);letter-spacing:0;margin-top:6px}
+  .filterbar{margin-top:0}
+  .admin-strip{margin-top:34px}
+  .admin-hint{font-size:12.5px;font-weight:500}
+
+  /* ---------- the whole-journey grid ----------
+     Done is the quiet state and trouble is the loud one. The old grid painted every tick solid
+     green, so a healthy roster was a wall of colour and the three red squares in it had to be
+     hunted for. A done cell is now a pale tick; the eye goes to what is red or orange. */
+  .tbl-scroll{border-radius:16px}
+  table.journey{font-size:13.5px}
+  table.journey th,table.journey td{padding:10px 8px}
+  table.journey thead th{background:var(--card);font-size:12.5px;font-weight:650;color:var(--ink-dim);
+    border-bottom:1px solid var(--line);padding-top:13px;padding-bottom:13px}
+  table.journey thead th.grp{font-size:12px;color:var(--ink-faint)}
+  table.journey thead th.who{background:var(--card)}
+  table.journey td.who .nm{font-size:14px;font-weight:650}
+  table.journey td.who .meta{font-size:12.5px}
+  table.journey td.day{font-family:var(--display);font-weight:400;font-size:19px;color:var(--ink);letter-spacing:.01em}
+  table.journey tbody tr:last-child td{border-bottom:0}
+  .cell{width:26px;height:26px;border-radius:8px}
+  .cell.done{background:rgba(var(--green-rgb),.12);color:var(--green)}
+  .cell.due{background:var(--spark);color:var(--side);border:0}
+  .cell.overdue{background:rgba(var(--red-rgb),.1);border-color:rgba(var(--red-rgb),.45)}
+  .tbl-legend{font-size:12.5px;gap:18px;margin-top:14px}
+  .tbl-legend i{border-radius:5px}
+  .tbl-legend i.done{background:rgba(var(--green-rgb),.22)} .tbl-legend i.due{background:var(--spark);border:0}
+
+  /* ---------- birthdays ---------- */
+  .bday-row{border-radius:12px;border-left-width:1px;padding:12px 16px 12px 14px;gap:14px;position:relative}
+  .bday-row:hover{border-color:var(--ink-faint)}
+  .bday-day{min-width:58px;font-family:var(--display);font-weight:400;font-size:20px;letter-spacing:.02em;border:0;
+    border-radius:10px;padding:8px 8px 7px;line-height:1}
+  .bday-month.now .bday-day{color:var(--side);background:var(--spark);border:0}
+  .bday-month.now .group-label{color:var(--ink)}
+  .bday-now{font-size:12px;font-weight:700;color:var(--side);background:var(--spark);border-radius:999px;padding:2px 10px}
+  .bday-name{font-size:15px;font-weight:650;gap:2px 0}
+  .bday-meta{font-size:13px;font-weight:500}
+  .bday-type,.bday-milestone,.bday-example-tag,.bday-today{font-size:12px;font-weight:650;border-radius:999px;padding:2px 10px;border:0}
+  .bday-type.challenge{background:var(--navy-2);color:var(--ink-dim);border:0}
+  .bday-type.member{border:0}
+  .bday-act{font-size:13px;font-weight:650;border-radius:8px;padding:6px 12px}
+  .bday-none{border-radius:12px;font-size:13.5px}
+  .bday-examples-toggle button,.bday-missing,.bday-ignored-note,.bday-example-note{font-size:13px;font-weight:500}
+
+  /* ---------- the Playbook: the book the rest is run from ---------- */
+  .pbx-hero{background:var(--side);border:0;border-radius:22px;box-shadow:none;padding:48px 48px 40px;margin-bottom:54px}
+  .pbx-hero::before{display:none}
+  .pbx-eyebrow{font-size:13.5px;font-weight:600;color:var(--spark);margin-bottom:26px}
+  .pbx-hero-quote{font-family:var(--display);font-weight:400;font-size:clamp(34px,5vw,64px);line-height:1.02;
+    text-transform:uppercase;letter-spacing:.012em;color:var(--side-ink);max-width:17ch}
+  .pbx-hero-lead{font-size:16px;line-height:1.7;color:var(--side-dim);max-width:62ch;margin-top:26px}
+  .pbx-hero-note{border-top-color:var(--side-line);font-size:14.5px;font-weight:600;color:var(--side-ink);margin-top:28px;padding-top:22px}
+  .pbx-edit-toggle{top:22px;right:22px;font-size:13px;font-weight:650;background:var(--side-2);border-color:var(--side-line);
+    color:var(--side-ink);padding:8px 14px}
+  .pbx-edit-toggle:hover{color:var(--side-ink);border-color:var(--side-dim)}
+  .pbx-edit-toggle.on{background:var(--spark);border-color:var(--spark);color:var(--side)}
+  .pbx-edit-note{background:var(--side-2);border-color:var(--side-line);color:var(--side-dim);font-size:13.5px}
+  .pbx-edit-note b{color:var(--side-ink)}
+  .pbx-deck::before{background:var(--line)}
+  .pbx-chapter{margin:76px 0 30px}
+  .pbx-chapter::before{background:var(--spark);top:5px}
+  .pbx-chapter-num{font-size:13.5px;font-weight:650;color:var(--ink-dim)}
+  .pbx-chapter-num::after{background:var(--line)}
+  .pbx-chapter-title{font-family:var(--display);font-weight:400;font-size:clamp(34px,4vw,46px);line-height:1;
+    text-transform:uppercase;letter-spacing:.012em;margin-top:12px}
+  .pbx-chapter-lead{font-size:15.5px;line-height:1.65;margin-top:14px}
+  .pbx-card{border-radius:18px;box-shadow:none;padding:30px 34px 32px;margin-bottom:14px}
+  .pbx-card::before{top:36px}
+  .pbx-card.physical::before{border-color:var(--ink)}
+  .pbx-top{gap:8px 12px;margin-bottom:16px}
+  .pbx-when{font-family:var(--display);font-weight:400;font-size:17px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
+  .pbx-when::after{display:none}
+  .pbx-tag{font-size:12.5px;font-weight:650;padding:3px 11px}
+  .pbx-tag.physical{color:var(--ink);background:var(--navy);border-color:var(--line)}
+  .pbx-owner,.pbx-flag{font-size:12.5px;font-weight:600}
+  .pbx-flag{color:var(--spark-deep)}
+  .pbx-title{font-size:23px;font-weight:700;letter-spacing:-.02em;line-height:1.25}
+  .pbx-why{border-left:3px solid var(--spark);padding-left:20px;margin-top:20px}
+  .pbx-why-label{font-size:13px;font-weight:650;color:var(--ink-dim);margin-bottom:6px}
+  .pbx-why p{font-size:19px;line-height:1.45;font-weight:500}
+  .pbx-what{font-size:15.5px;line-height:1.7;max-width:68ch;margin-top:20px}
+  .pbx-sub,.pbx-substep{font-size:13.5px;font-weight:700;color:var(--ink)}
+  .pbx-steps li{font-size:15px;line-height:1.6;padding-left:40px}
+  .pbx-steps li::before{content:counter(pbx);width:26px;height:26px;line-height:26px;border:0;background:var(--navy-2);
+    font-size:12.5px;font-weight:700;color:var(--ink)}
+  .pbx-seed blockquote{font-size:16.5px}
+  .pbx-link{font-size:14px;font-weight:650;color:var(--ink);border-bottom-color:var(--ink-faint)}
+  .pbx-link:hover{color:var(--spark-deep);border-bottom-color:var(--spark-deep)}
+  .pb-editable{outline-color:var(--spark)}
+  .pb-editable:focus{outline-color:var(--spark)}
+  .pbx-deck.editing .pbx-card{border-color:rgba(var(--spark-rgb),.45)}
+  .pb-reset{font-size:12px;font-weight:650}
+
+  /* ---------- retention: numbers, tables, the calendar ---------- */
+  .ta-stats{gap:12px;margin:6px 0 22px}
+  .ta-stat{border-radius:16px;box-shadow:none;padding:18px 20px 16px}
+  .ta-stat .v{font-family:var(--display);font-weight:400;font-size:44px;letter-spacing:.01em;line-height:1}
+  .ta-stat .v small{font-family:var(--body);font-weight:600;font-size:14px;margin-left:4px}
+  .ta-stat .l{font-size:13.5px;font-weight:500;margin-top:8px}
+  table.ta{font-size:14px}
+  table.ta th{background:var(--card);font-size:12.5px;font-weight:650;padding:13px 14px}
+  table.ta td{padding:12px 14px}
+  .ta-name{font-size:14.5px;font-weight:650}
+  .ta-plan{font-size:12.5px;font-weight:500}
+  .ta-avg{font-family:var(--display);font-weight:400;font-size:22px;letter-spacing:.01em}
+  .ta-avg small{font-family:var(--body);font-weight:600}
+  .ta-weeks span,.att-n{border-radius:7px;font-weight:700;border:0}
+  .ta-weeks span.z,.att-n.zero{border:0}
+  .ta-chip{font-size:12.5px;font-weight:650;padding:3px 11px}
+  .ta-prog{height:4px;border-radius:999px}
+  .ta-prog i{background:var(--ink);border-radius:999px}
+  .ta-foot{font-size:13px}
+  .ta-ph h3{font-family:var(--display);font-weight:400;font-size:34px;text-transform:uppercase;letter-spacing:.012em;line-height:1}
+  .ta-ph .meta{font-size:13.5px;font-weight:500;margin-top:8px}
+  .ta-sec h4{font-size:14px;font-weight:700;color:var(--ink)}
+  .ta-sec h4 span{font-weight:500}
+  .ta-big b{font-family:var(--display);font-weight:400;font-size:46px;letter-spacing:.01em}
+  .ta-col .b{background:var(--ink)}
+  .ta-facts div{border-radius:12px;font-size:13px;font-weight:500;padding:11px 13px}
+  .ta-facts b{font-size:17px;font-weight:700}
+  .ta-manage,.ta-confirm,.ta-result{border-radius:14px}
+  .ta-seg{border-radius:10px}
+  .spark i{background:var(--ink)}
+  .cu-day{border-radius:16px;padding:18px 20px}
+  .cu-day.today{border-color:var(--ink);box-shadow:0 0 0 3px rgba(var(--spark-rgb),.25)}
+  .cu-dayhead h4{font-size:16px;font-weight:700}
+  .cu-today{background:var(--spark);color:var(--side);font-size:12px;font-weight:700}
+  .cu-heads{font-size:12.5px;font-weight:650}
+  .cu-cell{border-radius:10px;min-height:46px}
+  .cu-legend{font-size:13px}
+  .att-howto{border-radius:14px;font-size:13.5px}
+  .att-howto-head{font-size:13.5px;font-weight:700;color:var(--ink)}
+  .att-file .att-file-label{background:var(--ink);border-color:var(--ink);font-weight:650;border-radius:9px}
+
+  /* ---------- windows that open over the page ---------- */
+  .modal-bg{background:rgba(var(--backdrop-rgb),.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+  .modal{border-radius:20px;border:0;padding:28px;box-shadow:0 30px 80px -20px rgba(var(--backdrop-rgb),.5);
+    animation:rise .22s cubic-bezier(.2,.7,.2,1)}
+  @keyframes rise{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+  .modal h3{font-size:22px;font-weight:700;letter-spacing:-.02em;margin-bottom:6px}
+  .modal p.note{font-size:14px;line-height:1.55;margin-bottom:20px}
+  .modal.person-modal{padding:22px 28px 26px}
+  .modal-acts{margin-top:18px}
+  .notes-btn{border-radius:8px}
+  .notes-btn.has{color:var(--spark-deep);background:rgba(var(--spark-rgb),.12);border-color:rgba(var(--spark-rgb),.3)}
+  .notes-btn.has:hover{color:var(--spark-deep);background:rgba(var(--spark-rgb),.2)}
+  .notes-tools button{background:var(--card);border-radius:9px}
+  .notes-tools button:hover{border-color:var(--ink)}
+  .notes-ed{background:var(--card);border-radius:12px;font-size:15px;line-height:1.6}
+  .nm-link:hover{text-decoration-color:var(--spark);text-decoration-thickness:2px}
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation:none !important;transition:none !important}
+  }
   .hide{display:none !important}
   /* Between a laptop and a phone the layout does not change SHAPE — one week open at full
      width works at every size, which is the point of it — it only tightens. Declared here,
@@ -1446,17 +1978,20 @@
   }
 
   /* ---------- Password gate ---------- */
-  .gate{position:fixed;inset:0;z-index:200;background:var(--navy);display:flex;align-items:center;justify-content:center;padding:24px}
+  .gate{position:fixed;inset:0;z-index:200;background:var(--side);display:flex;align-items:center;justify-content:center;padding:24px}
   .gate.hide{display:none}
-  .gate-box{background:linear-gradient(135deg,var(--card),var(--card-2));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:32px 28px;width:100%;max-width:360px;text-align:center}
-  .gate-mark{width:56px;height:56px;border-radius:12px;border:1px solid var(--line);background:var(--mark-bg);margin:0 auto 16px;overflow:hidden;display:flex;align-items:center;justify-content:center}
+  .gate-box{width:100%;max-width:420px;text-align:left;animation:fade .5s ease both}
+  .gate-mark{width:54px;height:54px;border-radius:13px;border:1px solid var(--side-line);background:var(--mark-bg);margin:0 0 30px;overflow:hidden;display:flex;align-items:center;justify-content:center}
   .gate-mark img{width:100%;height:100%;object-fit:cover}
-  .gate-box h2{font-size:20px;font-weight:800;margin-bottom:4px}
-  .gate-sub{font-size:13px;color:var(--ink-dim);margin-bottom:20px}
-  .gate-box input{width:100%;font-family:inherit;font-size:15px;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--navy-2);color:var(--ink);margin-bottom:12px}
-  .gate-box input:focus{outline:none;border-color:var(--orange)}
-  .gate-box .btn{width:100%;padding:11px;font-size:15px}
-  .gate-err{font-size:13px;color:var(--red);font-weight:600;margin-top:12px;min-height:18px}
+  .gate-box h2{font-family:var(--display);font-weight:400;font-size:clamp(52px,9vw,80px);line-height:.96;letter-spacing:.012em;text-transform:uppercase;color:var(--side-ink);margin-bottom:18px}
+  .gate-sub{font-size:15px;color:var(--side-dim);margin-bottom:22px}
+  .gate-row{display:flex;gap:10px}
+  .gate-box input{flex:1 1 auto;min-width:0;font-family:inherit;font-size:16px;padding:13px 15px;border:1px solid var(--side-line);border-radius:11px;background:var(--side-2);color:var(--side-ink)}
+  .gate-box input::placeholder{color:var(--side-dim)}
+  .gate-box input:focus{outline:none;border-color:var(--spark);box-shadow:0 0 0 3px rgba(var(--spark-rgb),.3)}
+  .gate-box .btn{flex:0 0 auto;padding:13px 22px;font-size:15px;font-weight:700;border-radius:11px;background:var(--spark);border-color:var(--spark);color:var(--side)}
+  .gate-box .btn:hover{background:var(--side-ink);border-color:var(--side-ink)}
+  .gate-err{font-size:14px;color:var(--spark);font-weight:600;margin-top:14px;min-height:20px}
 
   /* ---------- Sync status banner ---------- */
   .sync-banner{position:fixed;top:0;left:0;right:0;z-index:150;text-align:center;font-size:12.5px;font-weight:600;padding:7px 14px}
@@ -1590,9 +2125,11 @@
   <div class="gate-box">
     <div class="gate-mark"><img src="" alt="" id="gateLogo"></div>
     <h2>The Power of Moments</h2>
-    <p class="gate-sub">Enter the gym password to continue.</p>
-    <input type="password" id="gatePw" placeholder="Password" autocomplete="current-password">
-    <button class="btn primary" id="gateBtn">Enter</button>
+    <p class="gate-sub">Type the gym password to come in.</p>
+    <div class="gate-row">
+      <input type="password" id="gatePw" placeholder="Password" autocomplete="current-password" aria-label="Gym password">
+      <button class="btn primary" id="gateBtn">Enter</button>
+    </div>
     <div class="gate-err" id="gateErr"></div>
   </div>
 </div>
@@ -1603,13 +2140,14 @@
   <div class="wrap mast-inner">
     <div class="brand" id="brandHome">
       <div class="mark"><img src="data:image/png;base64,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" alt="Bodysculpt"></div>
+      <div class="brand-fixed" aria-hidden="true">Bodysculpt<small>Warrington</small></div>
       <div class="btxt">
         <h1 id="brandTitle">Bodysculpt Warrington</h1>
         <span class="sub" id="brandSub">Choose a tracker</span>
       </div>
     </div>
     <div class="mast-right">
-      <button type="button" class="homebtn hide" id="homeBtn" onclick="goHome()" title="Back to the home screen — pick the other tracker">← Home</button>
+      <button type="button" class="homebtn hide" id="homeBtn" onclick="goHome()" title="Back to the home screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3.5 10.8 12 3.6l8.5 7.2"/><path d="M5.6 9.4V20h12.8V9.4"/><path d="M9.8 20v-5.6h4.4V20"/></svg><span class="hb-arrow" aria-hidden="true">←</span> Home</button>
       <!-- The one count of how many challengers are on the journey. It used to be quoted
            twice — here and in the date banner on Today's moves — under two different rules,
            so the corner said 19 while the banner said 14. There is one rule now
@@ -1621,6 +2159,7 @@
     </div>
   </div>
   <div class="wrap hide" id="nav-onboarding">
+    <div class="nav-label" aria-hidden="true"><b>Onboarding</b>the first 42 days</div>
     <nav class="tabs" id="tabs-onboarding" data-tracker="onboarding" role="tablist">
       <button role="tab" aria-selected="true" class="tab-lead" data-tracker="onboarding" data-view="today">Today's moves <span class="count" id="todayCount">0</span></button>
       <button role="tab" aria-selected="false" data-tracker="onboarding" data-view="members">Challengers</button>
@@ -1629,6 +2168,7 @@
     </nav>
   </div>
   <div class="wrap hide" id="nav-retention">
+    <div class="nav-label" aria-hidden="true"><b>Retention</b>every day after</div>
     <!-- More tabs land here as the retention tracker grows (attendance, check-ins, …) -->
     <nav class="tabs" id="tabs-retention" data-tracker="retention" role="tablist">
       <button role="tab" aria-selected="true" class="tab-lead" data-tracker="retention" data-view="ret-today">Today's moves <span class="count" id="retTodayCount">0</span></button>
@@ -1647,6 +2187,7 @@
        different questions, so the first thing we do is ask which one you came for rather
        than guess from last time. -->
   <section class="home" id="homeScreen">
+    <div class="home-date" id="homeDate"></div>
     <div class="home-lead">Which tracker?</div>
     <div class="home-grid">
       <!-- The whole card is the button. The icons are inline line-art in the same family as
@@ -1665,7 +2206,7 @@
           <span class="ht">Onboarding</span>
           <span class="hs">The First 42 Days</span>
         </span>
-        <span class="hgo">Enter <span class="harrow">→</span></span>
+        <span class="hgo"><span id="homeOnbStats"></span><span class="harrow" aria-hidden="true">→</span></span>
       </button>
       <button type="button" class="home-card hc-retention" onclick="enterTracker('retention')">
         <span class="hicon" aria-hidden="true">
@@ -1678,7 +2219,7 @@
           <span class="ht">Retention</span>
           <span class="hs">Every day after</span>
         </span>
-        <span class="hgo">Enter <span class="harrow">→</span></span>
+        <span class="hgo"><span id="homeRetStats"></span><span class="harrow" aria-hidden="true">→</span></span>
       </button>
     </div>
   </section>
@@ -4397,7 +4938,7 @@ function memberCardHtml(m){
     const sixNote = (m.sixStart && (free || !started) && m.outcome!=='left')
       ? `<div class="mstart-note six-note">${free?'On their free weeks. ':''}Six weeks start ${fmt(m.sixStart)}</div>` : '';
     const tag = s==='notstarted' ? `<span class="tag notstarted">Not started</span>`
-              : s==='live'?(free?`<span class="tag live">Free weeks</span>`:`<span class="tag live">Day ${cd} of ${tot}</span>`)
+              : s==='live'?(free?`<span class="tag live">Free weeks</span>`:`<span class="tag live tag-day">Day ${cd} of ${tot}</span>`)
               : s==='paused'?`<span class="tag paused">Paused</span>`
               : `<span class="tag done">Finished 6 weeks</span>`;
     const outcomeTag = m.outcome==='stayed' ? `<span class="tag member">Stayed ✓</span>`
@@ -4457,13 +4998,15 @@ function memberCardHtml(m){
         <div class="day-no"><div class="n">${s==='done'?'✓':cd}</div><div class="l">${s==='done'?'done':'of '+tot}</div></div>
       </div>
       <div class="rail">
-        <div class="track"><div class="fill ${s==='paused'?'paused-fill':''}" style="width:${pct}%"></div></div>
+        <div class="track"><div class="fill ${s==='paused'?'paused-fill':''}" style="width:${started?railAt(cd,tot).toFixed(1):0}%"></div>${railStops(m,tot)}</div>
         <div class="ticks"><span>Day 0</span><span>Day ${tot}</span></div>
       </div>
-      ${ext}
-      ${sixNote}
+      <div class="mcard-facts">
       ${startNote}
+      ${sixNote}
+      ${ext}
       <div class="sub" style="margin-top:8px">${doneCount} of ${applicable.length} touchpoints done</div>
+      </div>
       ${payBox}
       ${decisionBlock}
       <div class="controls">
@@ -4477,6 +5020,19 @@ function memberCardHtml(m){
         <button class="btn sm ghost danger" onclick="removeMember('${m.id}')">Remove</button>
       </div>
     </div>`;
+}
+
+/* The moments, marked on the person's line where they fall. The statuses are cellStatus's —
+   the same ones the Whole journey grid paints — so the line and the grid cannot disagree. */
+function railAt(day, tot){ return Math.max(0, Math.min(100, (day+1)/(tot+1)*100)); }
+function railStops(m, tot){
+  const WORD = {done:'done', missed:'missed', due:'due now', overdue:'overdue', future:'still to come'};
+  return JOURNEY.map(it=>{
+    const st = cellStatus(m,it);
+    if(st==='na') return '';
+    const at = railAt(effectiveDay(it,m), tot);
+    return `<i class="stop ${st}" style="left:${at.toFixed(1)}%" title="${esc(tpTitle(it))}: ${WORD[st]||st}"></i>`;
+  }).join('');
 }
 
 /* A challenger's card in a popup, opened by clicking their name on Today's moves, so a coach
@@ -6180,7 +6736,7 @@ function renderRetentionToday(){
 
   const live = retention.filter(memberStarted).length;
   banner.innerHTML = `It’s <strong>${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</strong>. `+
-    `<strong>${live}</strong> member${live===1?'':'s'} with us right now.`;
+    `<span class="bn-rest"><strong>${live}</strong> member${live===1?'':'s'} with us right now.</span>`;
 
   let rows = [];
   retention.forEach(m=>{
@@ -7364,6 +7920,23 @@ function renderAll(){
   const bdaySoon = birthdaysSoon(birthdayEveryone().filter(m=>!hasLeft(m)));
   setTabDot('bdayDot', bdaySoon);
   setTabDot('retBdayDot', bdaySoon);
+  renderHome();
+}
+
+/* The home screen's two doors say what is behind them today. Nothing here is counted twice:
+   the moves are read back off the two tab badges the Today screens have just set, and the
+   headcounts are the same rules the rest of the app uses (onJourneyCount, memberStarted). */
+function renderHome(){
+  const d = document.getElementById('homeDate');
+  if(d) d.textContent = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  const badge = id=>{ const el=document.getElementById(id); return el ? (parseInt(el.textContent,10)||0) : 0; };
+  const stat = (n,one,many,hot)=> `<span class="hn${hot&&n?' hot':''}"><b>${n}</b>${n===1?one:many}</span>`;
+  const onb = document.getElementById('homeOnbStats');
+  if(onb) onb.innerHTML = stat(badge('todayCount'),'move today','moves today',true)
+    + stat(onJourneyCount(),'on the journey','on the journey');
+  const ret = document.getElementById('homeRetStats');
+  if(ret) ret.innerHTML = stat(badge('retTodayCount'),'move today','moves today',true)
+    + stat(retention.filter(memberStarted).length,'member','members');
 }
 
 /* The Birthdays dot, on both trackers. Present in the markup either way; .on is what makes
@@ -7467,7 +8040,13 @@ function setTab(which, view){
 
 /* tabs */
 document.querySelectorAll('nav.tabs button').forEach(b=>{
-  b.addEventListener('click',()=> setTab(b.dataset.tracker||'onboarding', b.dataset.view));
+  b.addEventListener('click',()=>{
+    const tk = b.dataset.tracker||'onboarding';
+    // In the side menu both trackers' lists are on screen, so the tab you press may belong to
+    // the tracker you are not in. Remember it as that tracker's tab and walk in.
+    if(tk!==tracker){ activeTab[tk]=b.dataset.view; showTracker(tk); }
+    else setTab(tk, b.dataset.view);
+  });
 });
 /* the brand block is the second way home, alongside the ← Home chip */
 (function wireBrandHome(){
@@ -7480,6 +8059,7 @@ document.querySelectorAll('nav.tabs button').forEach(b=>{
 })();
 /* every load starts at the front door, with the DOM and the state in step */
 goHome();
+renderHome();
 
 /* close modals on backdrop */
 document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});

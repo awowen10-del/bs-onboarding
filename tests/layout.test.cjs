@@ -153,9 +153,11 @@ const rulesFor = (sel) => RULES.filter((r) => r.sel.split(",").map((s) => s.trim
   const roots = RULES.filter((r) => r.sel === ":root");
   assert.strictEqual(roots.length, 1, "one :root token block, not two");
   assert.ok(/color-scheme:light/.test(roots[0].body), "…and it is the light theme");
-  assert.ok(/--navy:#f2f4f8/.test(roots[0].body) && /--card:#ffffff/.test(roots[0].body),
+  // (the house style of v400 moved the palette to Bodysculpt's own black, white and orange;
+  // the claim here is unchanged — one light palette, and these are its values)
+  assert.ok(/--navy:#f3f2ee/.test(roots[0].body) && /--card:#ffffff/.test(roots[0].body),
     "the light palette's surfaces are unchanged by the removal");
-  assert.ok(/--orange:#4a5f8a/.test(roots[0].body) && /--ink:#1d2330/.test(roots[0].body),
+  assert.ok(/--orange:#15161a/.test(roots[0].body) && /--ink:#15161a/.test(roots[0].body),
     "…as are its accent and ink");
   // Every token the sheet references still resolves. Declarations are gathered from the WHOLE
   // sheet, not just :root — the home cards set --accent/--accent-soft/--accent-rgb locally so

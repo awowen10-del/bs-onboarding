@@ -7,13 +7,13 @@
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0c0c0c">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
 
 <style>
 :root{
   --ink:#0c0c0c; --ink2:#1a1a1a; --paper:#f3efe8; --card:#ffffff; --line:#e4ddd1; --line2:#cfc6b8;
   --muted:#625c53; --orange:#f3662e; --orange-deep:#d4501c;
-  --disp:"Archivo",system-ui,sans-serif; --body:"Poppins",system-ui,sans-serif;
+  --disp:"Anton","Impact","Arial Narrow",sans-serif; --body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --ease:cubic-bezier(.2,.7,.2,1);
 }
 *{box-sizing:border-box}
@@ -27,18 +27,13 @@ button:focus-visible,textarea:focus-visible,input:focus-visible,a:focus-visible{
 /* one column on a phone; photo panel beside the booking on a laptop */
 .page{min-height:100vh}
 .hero{position:relative;background:var(--ink);color:#fff;overflow:hidden;isolation:isolate}
-.hero-photo{position:absolute;inset:0;z-index:-2}
-.hero-photo picture,.hero-photo img{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 0%}
-@media (max-width:959px){.hero-photo{bottom:auto;height:min(118vw,620px)}.hero .hero-in{min-height:0}.hero .hero-copy{margin-top:calc(min(118vw,620px) - 170px)}}
-.hero::before{content:"";position:absolute;inset:0;z-index:-1;
-  background:linear-gradient(180deg,rgba(12,12,12,.45) 0%,rgba(12,12,12,.1) 22%,rgba(12,12,12,.1) 38%,rgba(12,12,12,.9) 62%,#0c0c0c 72%)}
-@media (min-width:960px){.hero::before{background:linear-gradient(180deg,rgba(12,12,12,.45) 0%,rgba(12,12,12,.1) 25%,rgba(12,12,12,.85) 62%,#0c0c0c 100%)}}
-.hero-in{padding:20px 20px 30px;min-height:min(150vw,640px);display:flex;flex-direction:column}
+.hero::after{content:"";position:absolute;right:-80px;top:-80px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(243,102,46,.35),transparent 70%);z-index:-1}
+.hero-in{padding:22px 20px 34px;display:flex;flex-direction:column}
 .logo{height:40px;width:auto;align-self:flex-start}
-.hero-copy{margin-top:auto}
+.hero-copy{margin-top:56px}
 .eyebrow{display:inline-flex;align-items:center;gap:10px;margin:0 0 12px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:600}
 .eyebrow::before{content:"";width:22px;height:3px;border-radius:2px;background:var(--orange)}
-h1{font-family:var(--disp);font-stretch:78%;font-weight:850;font-size:clamp(46px,14vw,84px);line-height:.9;letter-spacing:-.01em;margin:0 0 14px;text-transform:uppercase}
+h1{font-family:var(--disp);font-weight:400;font-size:clamp(50px,15vw,92px);line-height:.95;letter-spacing:.005em;margin:0 0 14px;text-transform:uppercase}
 h1 .name{color:var(--orange)}
 .lede{margin:0;color:#ece7df;font-size:16.5px;max-width:36ch}
 .topics li svg{width:17px;height:17px;color:var(--orange);flex:none}
@@ -54,6 +49,7 @@ h1 .name{color:var(--orange)}
   .page{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr)}
   .hero{position:sticky;top:0;height:100vh}
   .hero-in{min-height:100vh;padding:40px 52px 52px}
+  .hero-copy{margin-top:auto}
   .book{padding:64px 56px 90px}
 }
 
@@ -62,32 +58,26 @@ h1 .name{color:var(--orange)}
 .step[hidden]{display:none}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .step-h{display:flex;align-items:baseline;gap:12px;margin:0 0 16px}
-.step-n{font-family:var(--disp);font-weight:800;font-size:13px;letter-spacing:.08em;color:var(--orange);flex:none}
-.step h2{font-family:var(--disp);font-stretch:88%;font-weight:780;font-size:25px;line-height:1.1;margin:0}
+.step-n{font-family:var(--disp);font-weight:400;font-size:15px;letter-spacing:.06em;color:var(--orange);flex:none}
+.step h2{font-weight:750;font-size:22px;line-height:1.2;letter-spacing:-.015em;margin:0}
 .step .sub{margin:-8px 0 16px;color:var(--muted);font-size:14.5px}
 
 /* coaches */
-.coaches{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.coach{position:relative;display:flex;flex-direction:column;text-align:left;padding:0;border:2px solid transparent;border-radius:18px;background:var(--ink);overflow:hidden;cursor:pointer;color:#fff;transition:transform .2s var(--ease),border-color .2s,box-shadow .2s,opacity .2s}
-.coach:hover{transform:translateY(-2px)}
-.coach .ph{position:relative;display:block;aspect-ratio:4/5;overflow:hidden}
-.coach .ph img{width:100%;height:100%;object-fit:cover;transition:transform .5s var(--ease)}
-.coach:hover .ph img{transform:scale(1.03)}
-.coach .ph::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(12,12,12,.92) 100%)}
-.coach .tag{font-size:11px;position:absolute;bottom:62px;left:10px;z-index:1;display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:5px 10px 5px 8px;border-radius:99px;background:rgba(12,12,12,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.coach .tag svg{width:14px;height:14px}
-.coach .info{position:absolute;left:0;right:0;bottom:0;z-index:1;padding:12px}
-.coach .nm{display:block;font-family:var(--disp);font-stretch:80%;font-weight:850;font-size:32px;line-height:1;text-transform:uppercase}
-.coach .role{display:block;font-size:12px;color:#d9d3ca;margin-top:3px}
-.coach .when{display:block;font-size:12.5px;line-height:1.4;padding:10px 12px 12px;background:#161616;color:#e9e4dc}
-.coach .tick{position:absolute;top:10px;right:10px;z-index:2;width:28px;height:28px;border-radius:50%;background:var(--orange);display:grid;place-items:center;transform:scale(0);transition:transform .25s var(--ease)}
-.coach .tick svg{width:16px;height:16px}
-.coach[aria-pressed="true"]{border-color:var(--orange);box-shadow:0 0 0 4px rgba(243,102,46,.22)}
-.coach[aria-pressed="true"] .tick{transform:scale(1)}
-.coaches.chosen .coach[aria-pressed="false"]{opacity:.5}
-.coaches.chosen .coach[aria-pressed="false"]:hover{opacity:.85}
-.unstuck{margin:14px 2px 0;font-size:13.5px;color:var(--muted)}
-.unstuck b{color:var(--ink2);font-weight:600}
+.coaches{display:grid;gap:10px}
+.coach{position:relative;display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px 16px 14px 14px;border:1.5px solid var(--line);border-radius:18px;background:#fff;cursor:pointer;transition:border-color .2s,box-shadow .2s,background .2s}
+.coach:hover{border-color:var(--line2)}
+.coach .av{flex:none;width:64px;height:64px;border-radius:50%;overflow:hidden;background:var(--paper)}
+.coach .av img{width:100%;height:100%;object-fit:cover;object-position:50% 12%}
+.coach .txt{flex:1;min-width:0}
+.coach .nm{display:block;font-family:var(--disp);font-weight:400;font-size:26px;line-height:1.05;text-transform:uppercase;letter-spacing:.01em}
+.coach .tag{display:inline-flex;align-items:center;gap:6px;margin-top:3px;font-size:13.5px;font-weight:600;color:var(--orange-deep)}
+.coach .tag svg{width:16px;height:16px}
+.coach .when{display:block;font-size:13.5px;color:var(--muted);margin-top:1px}
+.coach .tick{flex:none;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--line2);display:grid;place-items:center;transition:background .2s,border-color .2s}
+.coach .tick svg{width:16px;height:16px;opacity:0}
+.coach[aria-pressed="true"]{border-color:var(--orange);background:#fff8f4;box-shadow:0 0 0 3px rgba(243,102,46,.15)}
+.coach[aria-pressed="true"] .tick{background:var(--orange);border-color:var(--orange)}
+.coach[aria-pressed="true"] .tick svg{opacity:1}
 
 /* days */
 .wk{margin:16px 0 8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -96,7 +86,7 @@ h1 .name{color:var(--orange)}
 .day{display:flex;flex-direction:column;align-items:center;gap:1px;min-height:80px;padding:10px 6px;border:1.5px solid var(--line);border-radius:14px;background:#fff;cursor:pointer;transition:border-color .15s,background .15s,transform .15s}
 .day:hover:not(:disabled){border-color:var(--line2);transform:translateY(-1px)}
 .day small{font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.day b{font-family:var(--disp);font-stretch:85%;font-weight:800;font-size:30px;line-height:1.05}
+.day b{font-family:var(--disp);font-weight:400;font-size:30px;line-height:1.1}
 .day span{font-size:12px;color:var(--muted)}
 .day[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
 .day[aria-pressed="true"] small,.day[aria-pressed="true"] span{color:#cfc9bf}
@@ -111,7 +101,8 @@ h1 .name{color:var(--orange)}
 
 /* summary + form */
 .summary{display:flex;align-items:center;gap:14px;padding:12px;border-radius:16px;background:var(--paper);margin-bottom:18px}
-.summary img{width:56px;height:56px;border-radius:50%;object-fit:cover;object-position:50% 15%;flex:none}
+.summary .ic{width:48px;height:48px;border-radius:14px;background:var(--ink);color:#fff;display:grid;place-items:center;flex:none}
+.summary .ic svg{width:22px;height:22px}
 .summary .st{flex:1;min-width:0}
 .summary b{display:block;font-size:16.5px;line-height:1.3}
 .summary span{display:block;color:var(--muted);font-size:14px}
@@ -137,14 +128,11 @@ textarea:focus,input:focus{border-color:var(--ink);outline:none}
 
 /* done */
 .done{text-align:center;padding:0;overflow:hidden}
-.done .ph{position:relative;height:230px;background:var(--ink)}
-.done .ph img{width:100%;height:100%;object-fit:cover;object-position:50% 0%}
-.done .ph::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,#fff 100%)}
-.done .tick{position:relative;z-index:1;width:68px;height:68px;margin:-46px auto 12px;border-radius:50%;background:var(--orange);color:#fff;display:grid;place-items:center;box-shadow:0 0 0 6px #fff;animation:pop .5s var(--ease) both .1s}
+.done .tick{position:relative;z-index:1;width:68px;height:68px;margin:30px auto 16px;border-radius:50%;background:var(--orange);color:#fff;display:grid;place-items:center;box-shadow:0 0 0 8px var(--orange-soft,#fdeae1);animation:pop .5s var(--ease) both .1s}
 .done .tick svg{width:34px;height:34px}
 @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
 .done .body{padding:0 22px 28px}
-.done h2{font-family:var(--disp);font-stretch:80%;font-weight:850;font-size:38px;line-height:1;text-transform:uppercase;margin:0 0 12px}
+.done h2{font-family:var(--disp);font-weight:400;font-size:40px;line-height:1.05;text-transform:uppercase;margin:0 0 12px}
 .done .when{font-size:18px;font-weight:600;color:var(--ink2);margin:0 0 4px}
 .done p{margin:0 0 6px;color:var(--muted)}
 .cal{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:0 20px;margin-top:14px;border:1.5px solid var(--ink);border-radius:14px;color:var(--ink);text-decoration:none;font-weight:600}
@@ -161,7 +149,6 @@ textarea:focus,input:focus{border-color:var(--ink);outline:none}
 <div class="page">
 
   <header class="hero">
-    <div class="hero-photo"><img src="img/cu-team-tall.jpg" alt="" fetchpriority="high"></div>
     <div class="hero-in">
       <img class="logo" src="https://assets.cdn.filesafe.space/I88mpb966qBRVCCDbEx5/media/cec4b912-8647-4eb1-a1b0-b0aeb02bfa24.png" alt="Bodysculpt">
       <div class="hero-copy">
@@ -182,22 +169,17 @@ textarea:focus,input:focus{border-color:var(--ink);outline:none}
       <section class="step" id="s1" hidden aria-labelledby="h1s">
         <div class="step-h"><span class="step-n">01</span><h2 id="h1s">Who would you like to see?</h2></div>
         <div class="coaches" id="coaches">
-          <button type="button" class="coach" data-who="dan" aria-pressed="false" aria-label="Dan, in the gym. Monday and Wednesday evenings, Friday mornings.">
-            <span class="ph"><img src="img/cu-dan.jpg" alt="">
-              <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>In the gym</span>
-              <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
-              <span class="info"><span class="nm">Dan</span><span class="role">Head coach</span></span></span>
-            <span class="when">Mon &amp; Wed evenings<br>Friday mornings</span>
+          <button type="button" class="coach" data-who="dan" aria-pressed="false">
+            <span class="av"><img src="img/cu-dan.jpg" alt=""></span>
+            <span class="txt"><span class="nm">Dan</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>In the gym</span><span class="when">Mon &amp; Wed evenings, Friday mornings</span></span>
+            <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
           </button>
-          <button type="button" class="coach" data-who="ash" aria-pressed="false" aria-label="Ash, on Zoom. Monday and Wednesday evenings.">
-            <span class="ph"><img src="img/cu-ash.jpg" alt="">
-              <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2"/><path d="M15.5 10.5l6-3.5v10l-6-3.5"/></svg>On Zoom</span>
-              <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
-              <span class="info"><span class="nm">Ash</span><span class="role">Owner</span></span></span>
-            <span class="when">Mon &amp; Wed evenings<br>from your sofa</span>
+          <button type="button" class="coach" data-who="ash" aria-pressed="false">
+            <span class="av"><img src="img/cu-ash.jpg" alt=""></span>
+            <span class="txt"><span class="nm">Ash</span><span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2"/><path d="M15.5 10.5l6-3.5v10l-6-3.5"/></svg>On Zoom</span><span class="when">Mon &amp; Wed evenings, from home</span></span>
+            <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
           </button>
         </div>
-        <p class="unstuck">Prefer an <b>Unstuck Chat</b>? You can still book those on TeamUp as normal.</p>
       </section>
 
       <section class="step" id="s2" hidden aria-labelledby="h2s">
@@ -237,7 +219,6 @@ textarea:focus,input:focus{border-color:var(--ink);outline:none}
       </section>
 
       <section class="step done" id="s5" hidden aria-live="polite">
-        <div class="ph"><img id="doneImg" alt=""></div>
         <div class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
         <div class="body">
           <h2 id="doneH">You're booked in</h2>
@@ -259,6 +240,7 @@ const q = new URLSearchParams(location.search);
 const contact = (q.get('c') || '').trim();
 const S = { who:null, date:null, time:null, slots:[], known:false, first:'' };
 const $ = id => document.getElementById(id);
+const ICON = { home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>', cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2"/><path d="M15.5 10.5l6-3.5v10l-6-3.5"/></svg>' };
 const COACH = {
   dan:{ name:'Dan', img:'img/cu-dan.jpg', where:'In the gym with Dan', lower:'in the gym with Dan', how:"Just come into the gym and Dan will meet you there." },
   ash:{ name:'Ash', img:'img/cu-ash.jpg', where:'On Zoom with Ash', lower:'on Zoom with Ash', how:"Ash will send you the Zoom link before you chat." }
@@ -292,13 +274,13 @@ function renderTimes(){
 }
 function renderSummary(){
   const c = COACH[S.who];
-  $('sum').innerHTML = `<img src="${c.img}" alt=""><div class="st"><b>${fmt(S.date,{weekday:'short',day:'numeric',month:'short'})}, ${hourLabel(S.time)}</b><span>${c.where}</span></div><button type="button" onclick="goTo('s1')">Change</button>`;
+  $('sum').innerHTML = `<span class="ic">${S.who==='dan'?ICON.home:ICON.cam}</span><div class="st"><b>${fmt(S.date,{weekday:'short',day:'numeric',month:'short'})}, ${hourLabel(S.time)}</b><span>${c.where}</span></div><button type="button" onclick="goTo('s1')">Change</button>`;
   $('coachName').textContent = c.name;
 }
 
 $('coaches').addEventListener('click', e=>{
   const b = e.target.closest('.coach'); if(!b) return;
-  S.who = b.dataset.who; press($('coaches'), '.coach', b); $('coaches').classList.add('chosen');
+  S.who = b.dataset.who; press($('coaches'), '.coach', b); 
   if(S.date && !S.slots.some(s=>s.date===S.date && s[S.who])) S.date = null;
   if(S.time && !S.slots.some(s=>s.date===S.date && s.time===S.time && s[S.who])) S.time = null;
   renderDays(); show('s2', true);
@@ -344,7 +326,6 @@ $('form').addEventListener('submit', async e=>{
     }
     const c = COACH[S.who];
     ['s1','s2','s3','s4','foot'].forEach(id=>show(id,false));
-    $('doneImg').src = c.img;
     $('doneH').textContent = S.first ? `See you then, ${S.first}` : "You're booked in";
     $('doneWhen').textContent = `${longDay(S.date)} at ${hourLabel(S.time)}`;
     $('doneHow').textContent = c.how;

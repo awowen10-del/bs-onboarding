@@ -664,6 +664,33 @@
   .mcard .paybox{margin-top:12px;padding:12px 14px;border-radius:12px;background:rgba(var(--amber-rgb),.12);border:1px solid rgba(var(--amber-rgb),.4);font-size:13px;line-height:1.55}
   .mcard .paybox .btn{margin-top:10px;display:block}
 
+  /* ---------- Catch-ups calendar ---------- */
+  .cu-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-dim);margin:8px 0 4px}
+  .cu-legend span{display:inline-flex;align-items:center;gap:6px}
+  .cu-legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
+  .cu-legend i.free,.cu-cell.free{background:var(--card);border:1.5px dashed var(--line)}
+  .cu-legend i.booked,.cu-cell.booked{background:var(--green);border:1.5px solid var(--green);color:var(--on-green)}
+  .cu-legend i.blocked,.cu-cell.blocked{background:var(--navy-2);border:1.5px solid var(--line);color:var(--ink-dim)}
+  .cu-day{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+  .cu-day.today{border-color:var(--orange);box-shadow:0 0 0 3px rgba(var(--orange-rgb),.15)}
+  .cu-dayhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .cu-dayhead h4{font-size:15px;font-weight:800}
+  .cu-today{font-size:11px;font-weight:700;background:var(--orange);color:var(--on-accent);padding:2px 8px;border-radius:99px;margin-left:6px;vertical-align:2px}
+  .cu-row{display:grid;grid-template-columns:52px minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:stretch;margin-bottom:6px}
+  .cu-heads{font-size:11px;font-weight:700;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+  .cu-time{font-size:13px;font-weight:700;display:flex;align-items:center}
+  .cu-cell{min-height:44px;border-radius:10px;font:inherit;font-size:13px;cursor:pointer;padding:6px 8px;text-align:left;display:flex;flex-direction:column;justify-content:center;min-width:0}
+  .cu-cell b,.cu-cell span,.cu-cell small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cu-cell.free span{color:var(--ink-faint)}
+  .cu-cell small{font-size:11px}
+  .cu-cell:hover{filter:brightness(.97)}
+  .cu-cell:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+  .cu-seg{display:flex;gap:6px;flex-wrap:wrap}
+  .cu-seg button{font:inherit;font-size:13px;padding:9px 12px;border-radius:9px;border:1px solid var(--line);background:var(--navy-2);color:var(--ink);cursor:pointer;min-height:40px}
+  .cu-seg button[aria-pressed="true"]{background:var(--orange);border-color:var(--orange);color:var(--on-accent)}
+  .cu-note{background:var(--navy-2);border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:12px}
+  .ch.cu{background:rgba(var(--green-rgb),.14);color:var(--green)}
+
   /* ---------- Modal ---------- */
   .modal-bg{position:fixed;inset:0;background:rgba(var(--backdrop-rgb),.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
   .modal-bg.show{display:flex;animation:fade .2s ease}
@@ -1570,6 +1597,7 @@
       <button role="tab" aria-selected="true" class="tab-lead" data-tracker="retention" data-view="ret-today">Today's moves <span class="count" id="retTodayCount">0</span></button>
       <button role="tab" aria-selected="false" data-tracker="retention" data-view="ret-members">Members <span class="count tally" id="retCount">0</span></button>
       <button role="tab" aria-selected="false" data-tracker="retention" data-view="ret-attendance">Attendance</button>
+      <button role="tab" aria-selected="false" data-tracker="retention" data-view="ret-catchups">Catch-ups <span class="count tally" id="cuCount">0</span></button>
       <button role="tab" aria-selected="false" data-tracker="retention" data-view="ret-birthdays">Birthdays<span class="tab-dot" id="retBdayDot" role="img" aria-label="A birthday is coming up"></span></button>
     </nav>
   </div>
@@ -1787,6 +1815,17 @@
     </details>
   </section>
 
+  <!-- ===== RETENTION · CATCH-UPS ===== monthly 1-to-1s members book from their email -->
+  <section class="view" id="view-ret-catchups" data-tracker="retention">
+    <div class="sec-head">
+      <h2>Catch-ups</h2>
+      <button class="btn sm" onclick="cuCopyLink(this)">Copy booking link</button>
+    </div>
+    <p class="sub" style="margin-top:-2px;margin-bottom:6px">Members book these from their monthly email. <b>Tap a free time to block it</b> if you've got an intro or a session that needs two coaches. Tap it again to free it up.</p>
+    <div class="cu-legend"><span><i class="free"></i>Free</span><span><i class="booked"></i>Booked</span><span><i class="blocked"></i>Blocked</span></div>
+    <div id="cuCal"></div>
+  </section>
+
   <!-- ===== RETENTION · BIRTHDAYS =====
        Stripped the same way as the onboarding one, so the two tabs stay identical. -->
   <section class="view" id="view-ret-birthdays" data-tracker="retention">
@@ -1800,6 +1839,11 @@
   <div class="modal ta-profile" role="dialog" aria-modal="true" aria-labelledby="taProfileName">
     <div id="taProfileBody"></div>
   </div>
+</div>
+
+<!-- ===== Catch-ups: block a time, free it up, or see a booking ===== -->
+<div class="modal-bg" id="cuModalBg" onclick="if(event.target===this)cuClose()">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Catch-up"><div id="cuModalBody"></div></div>
 </div>
 
 <!-- ===== One challenger's card, opened from a name on Today's moves ===== -->
@@ -2230,6 +2274,177 @@ async function wcMarkSent(contactId){
   }catch(e){ alert('Couldn\'t save: '+e.message); return; }
   renderAll();
 }
+/* ---- Monthly catch-ups (booking page /catch-up, function catchup.js) ----
+   Members book from their monthly email: in the gym with Dan or on Zoom with Ash, at one of the
+   fixed slots below. The function writes bookings to 'catchup-bookings'. Coaches block slots
+   here (an intro that day, a session that needs two coaches) and that goes in 'catchup-blocks',
+   which the booking page reads before it offers a time. */
+const CU_BOOK_KEY = 'catchup-bookings', CU_BLOCK_KEY = 'catchup-blocks';
+const CU_SLOTS = { 1:[16,17,18,19,20], 3:[16,17,18,19,20], 5:[6,7,8,9,10] };   // keep in step with catchup.js
+const CU_LANES = { dan:{ short:'Dan', label:'In the gym with Dan' }, ash:{ short:'Ash', label:'On Zoom with Ash' } };
+const CU_WEEKS = 4;
+const CU_LINK = 'https://bodysculpt-onboarding.netlify.app/catch-up';
+let cuBookings = [], cuBlocks = {}, cuModal = null;
+const cuHH = h => String(h).padStart(2,'0')+':00';
+const cuHour = t => { const h = Number(String(t).slice(0,2)); return (h%12||12)+(h<12?'am':'pm'); };
+function cuToday(){ return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()); }
+function cuAddDays(day, n){ const d = new Date(day+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
+const cuDow = day => new Date(day+'T12:00:00Z').getUTCDay();
+const cuDayLabel = (day, long) => new Date(day+'T12:00:00Z').toLocaleDateString('en-GB',{weekday:long?'long':'short',day:'numeric',month:long?'long':'short',timeZone:'UTC'});
+const cuLive = b => b && b.status!=='cancelled';
+function cuBookingAt(date, time, lane){ return cuBookings.find(b=>cuLive(b) && b.date===date && b.time===time && b.who===lane) || null; }
+function cuBlockAt(date, time, lane){ const x = cuBlocks[date+'T'+time]; return (x && x[lane]) || null; }
+/* The days on the calendar: from this week's Monday, CU_WEEKS weeks, slot days only, today onwards. */
+function cuDays(){
+  const today = cuToday(), wd = (cuDow(today)+6)%7, mon = cuAddDays(today, -wd), out = [];
+  for(let i=0;i<CU_WEEKS*7;i++){ const d = cuAddDays(mon, i); if(d>=today && CU_SLOTS[cuDow(d)]) out.push(d); }
+  return out;
+}
+function cuUpcoming(){ const t = cuToday(); return cuBookings.filter(b=>cuLive(b) && b.date>=t).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)); }
+
+/* Read-modify-write against the latest row, so two coaches blocking at once can't undo each other. */
+async function cuSave(key, mutate){
+  const { data, error } = await sb.from('bodysculpt').select('value').eq('key', key);
+  if(error) throw error;
+  const v = (data && data[0] && data[0].value) || (key===CU_BOOK_KEY ? { bookings:[] } : { blocks:{} });
+  mutate(v);
+  const { error: e2 } = await sb.from('bodysculpt').upsert({ key, value:v, updated_at:new Date().toISOString() }, { onConflict:'key' });
+  if(e2) throw e2;
+  if(key===CU_BOOK_KEY) cuBookings = v.bookings||[]; else cuBlocks = v.blocks||{};
+}
+
+function renderCatchups(){
+  const host = document.getElementById('cuCal'); if(!host) return;
+  const up = cuUpcoming();
+  const cnt = document.getElementById('cuCount'); if(cnt) cnt.textContent = up.length;
+  const days = cuDays();
+  let html = '', wk = null;
+  days.forEach(d=>{
+    const mon = cuAddDays(d, -((cuDow(d)+6)%7));
+    if(mon!==wk){ wk = mon; html += `<div class="group-label">Week of ${esc(cuDayLabel(mon).replace(/^\w+ /,''))}</div>`; }
+    const rows = CU_SLOTS[cuDow(d)].map(h=>{
+      const t = cuHH(h);
+      const cells = Object.keys(CU_LANES).map(lane=>{
+        const b = cuBookingAt(d,t,lane), bl = cuBlockAt(d,t,lane);
+        const lab = `${cuDayLabel(d)} ${cuHour(t)}, ${CU_LANES[lane].short}`;
+        if(b) return `<button type="button" class="cu-cell booked" onclick="cuOpen('booking','${b.id}')" aria-label="${esc(lab)}: booked by ${esc(b.name)}"><b>${esc(b.name)}</b></button>`;
+        if(bl) return `<button type="button" class="cu-cell blocked" onclick="cuOpen('unblock','${d}','${t}','${lane}')" aria-label="${esc(lab)}: blocked"><span>Blocked</span>${bl.why?`<small>${esc(bl.why)}</small>`:''}</button>`;
+        return `<button type="button" class="cu-cell free" onclick="cuOpen('block','${d}','${t}','${lane}')" aria-label="${esc(lab)}: free, tap to block"><span>Free</span></button>`;
+      }).join('');
+      return `<div class="cu-row"><div class="cu-time">${cuHour(t)}</div>${cells}</div>`;
+    }).join('');
+    const isToday = d===cuToday();
+    html += `<div class="cu-day${isToday?' today':''}">
+      <div class="cu-dayhead"><h4>${esc(cuDayLabel(d,true))}${isToday?' <span class="cu-today">Today</span>':''}</h4>
+        <button type="button" class="btn sm ghost" onclick="cuOpen('block','${d}','all','both')">Block the day</button></div>
+      <div class="cu-row cu-heads"><div></div><div>Dan · gym</div><div>Ash · Zoom</div></div>
+      ${rows}</div>`;
+  });
+  host.innerHTML = html || '<div class="empty">No catch-up days coming up.</div>';
+}
+
+function cuOpen(kind, a, b, c){
+  cuModal = { kind, a, b, c };
+  const box = document.getElementById('cuModalBody');
+  const whoSel = taWhoSelect('cuWho');
+  if(kind==='booking'){
+    const bk = cuBookings.find(x=>x.id===a); if(!bk) return;
+    const m = retention.find(x=>wcNorm(x.email)===wcNorm(bk.email));
+    box.innerHTML = `<h3>${esc(bk.name)}</h3>
+      <p class="note">${esc(cuDayLabel(bk.date,true))} at ${cuHour(bk.time)} · ${esc(CU_LANES[bk.who].label)}</p>
+      ${bk.note?`<div class="cu-note"><b>Wants to talk about:</b> ${esc(bk.note)}</div>`:'<p class="note">They didn\'t say what they want to talk about.</p>'}
+      ${m&&m.personal?`<p class="note">Remember: <b>${esc(m.personal)}</b></p>`:''}
+      <p class="note">Booked ${esc(new Date(bk.createdAt).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))}. ${bk.who==='ash'?'Ash has a GHL task to send the Zoom link.':''}</p>
+      <div class="cu-confirm hide" id="cuCancelBox"><p class="note"><b>This won't email them.</b> Let them know yourself, then cancel it here so the time is free again.</p>
+        <div class="modal-acts"><button class="btn sm ghost" onclick="document.getElementById('cuCancelBox').classList.add('hide')">Keep it</button><button class="btn sm warn" onclick="cuCancelBooking('${esc(bk.id)}')">Yes, cancel it</button></div></div>
+      <div class="modal-acts" id="cuActs"><button class="btn sm ghost" onclick="cuClose()">Close</button><button class="btn sm" onclick="document.getElementById('cuCancelBox').classList.remove('hide')">Cancel booking</button></div>`;
+  } else if(kind==='unblock'){
+    const bl = cuBlockAt(a,b,c) || {};
+    box.innerHTML = `<h3>Free up ${esc(cuDayLabel(a))}, ${cuHour(b)}?</h3>
+      <p class="note">${esc(CU_LANES[c].label)}. Blocked by ${esc(bl.by||'a coach')}${bl.why?' for <b>'+esc(bl.why)+'</b>':''}. Freeing it lets members book it again.</p>
+      <div class="modal-acts"><button class="btn sm ghost" onclick="cuClose()">Cancel</button><button class="btn sm primary" onclick="cuUnblock('${a}','${b}','${c}')">Free it up</button></div>`;
+  } else {
+    const day = b==='all';
+    box.innerHTML = `<h3>Block ${day?'all of '+esc(cuDayLabel(a,true)):esc(cuDayLabel(a))+', '+cuHour(b)}</h3>
+      <p class="note">Members won't be able to book ${day?'any time that day':'this time'}. Anyone already booked stays booked.</p>
+      <div class="field"><label>For who?</label><div class="cu-seg" id="cuLane">
+        ${[['dan','Dan'],['ash','Ash'],['both','Both']].map(([v,l])=>`<button type="button" aria-pressed="${v===c?'true':'false'}" data-v="${v}" onclick="cuPick(this)">${l}</button>`).join('')}</div></div>
+      <div class="field"><label>Why? <span class="lbl-opt">optional</span></label><div class="cu-seg" id="cuWhy">
+        ${['Intro','Two-coach session','Away','Other'].map(w=>`<button type="button" aria-pressed="false" data-v="${w}" onclick="cuPick(this)">${w}</button>`).join('')}</div></div>
+      <div class="field">${whoSel}</div>
+      <p class="err" id="cuErr" style="color:var(--red);font-size:13px"></p>
+      <div class="modal-acts"><button class="btn sm ghost" onclick="cuClose()">Cancel</button><button class="btn sm primary" onclick="cuBlock()">Block it</button></div>`;
+  }
+  document.getElementById('cuModalBg').classList.add('show');
+}
+function cuPick(btn){ const lane = btn.parentNode.id==='cuLane'; const on = lane || btn.getAttribute('aria-pressed')!=='true'; btn.parentNode.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed', x===btn && on ? 'true' : 'false')); }
+function cuPicked(id){ const b = document.querySelector('#'+id+' button[aria-pressed="true"]'); return b ? b.dataset.v : ''; }
+function cuClose(){ cuModal = null; document.getElementById('cuModalBg').classList.remove('show'); }
+async function cuBlock(){
+  const { a:date, b:time } = cuModal;
+  const lane = cuPicked('cuLane'), why = cuPicked('cuWhy');
+  const who = (document.getElementById('cuWho')||{}).value || taWho();
+  if(!lane){ document.getElementById('cuErr').textContent = 'Pick Dan, Ash or both.'; return; }
+  if(!who){ document.getElementById('cuErr').textContent = "Pick who's doing this."; return; }
+  taSetWho(who);
+  const times = time==='all' ? CU_SLOTS[cuDow(date)].map(cuHH) : [time];
+  const lanes = lane==='both' ? ['dan','ash'] : [lane];
+  try{
+    await cuSave(CU_BLOCK_KEY, v=>{ v.blocks = v.blocks||{};
+      times.forEach(t=>{ const k = date+'T'+t; v.blocks[k] = v.blocks[k]||{}; lanes.forEach(l=>{ v.blocks[k][l] = { by:who, why, at:new Date().toISOString() }; }); });
+      const today = cuToday(); Object.keys(v.blocks).forEach(k=>{ if(k.slice(0,10)<today) delete v.blocks[k]; });
+    });
+  }catch(e){ alert("Couldn't save: "+e.message); return; }
+  cuClose(); renderAll();
+}
+async function cuUnblock(date, time, lane){
+  try{ await cuSave(CU_BLOCK_KEY, v=>{ const k = date+'T'+time; if(v.blocks && v.blocks[k]){ delete v.blocks[k][lane]; if(!Object.keys(v.blocks[k]).length) delete v.blocks[k]; } }); }
+  catch(e){ alert("Couldn't save: "+e.message); return; }
+  cuClose(); renderAll();
+}
+async function cuCancelBooking(id){
+  const who = taWho() || 'a coach';
+  try{ await cuSave(CU_BOOK_KEY, v=>{ (v.bookings||[]).forEach(b=>{ if(b.id===id){ b.status='cancelled'; b.cancelled={ by:who, at:new Date().toISOString() }; } }); }); }
+  catch(e){ alert("Couldn't save: "+e.message); return; }
+  cuClose(); renderAll();
+}
+/* Today's moves: catch-ups happening today, and new bookings nobody has acknowledged yet. */
+function cuTodayRows(){
+  const t = cuToday();
+  return {
+    today: cuBookings.filter(b=>cuLive(b) && b.date===t && b.status!=='done').sort((a,b)=>a.time.localeCompare(b.time)),
+    fresh: cuBookings.filter(b=>cuLive(b) && !b.seen && b.date>t).sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt))),
+  };
+}
+async function cuMark(id, field){
+  const who = taWho() || (prompt("Who's this? (Ash, Dan, Grace or Gaz)") || '').trim();
+  if(!who) return;
+  taSetWho(who);
+  try{ await cuSave(CU_BOOK_KEY, v=>{ (v.bookings||[]).forEach(b=>{ if(b.id===id){ if(field==='done') b.status='done'; b[field==='done'?'doneBy':'seen'] = { by:who, at:new Date().toISOString() }; } }); }); }
+  catch(e){ alert("Couldn't save: "+e.message); return; }
+  renderAll();
+}
+function cuTodayHtml(){
+  const { today, fresh } = cuTodayRows();
+  if(!today.length && !fresh.length) return '';
+  const line = b => `${esc(CU_LANES[b.who].label)}${b.note?'. Wants to talk about: '+esc(b.note):''}`;
+  let h = `<div class="group-label">Catch-ups<span class="gcount">${today.length+fresh.length}</span></div>`;
+  today.forEach(b=>{ h += `<div class="action cu-act">
+      <span class="ch cu">Today ${cuHour(b.time)}</span>
+      <div class="body" onclick="cuOpen('booking','${esc(b.id)}')"><div class="who"><span class="nm">${esc(b.name)}</span>
+        <span class="ttl">Catch-up today at ${cuHour(b.time)}</span><span class="day">${line(b)}</span></div></div>
+      <div class="mark-btns"><button class="btn sm primary mark" onclick="event.stopPropagation();cuMark('${esc(b.id)}','done')">Done</button></div></div>`; });
+  fresh.forEach(b=>{ h += `<div class="action cu-act">
+      <span class="ch cu">New booking</span>
+      <div class="body" onclick="cuOpen('booking','${esc(b.id)}')"><div class="who"><span class="nm">${esc(b.name)}</span>
+        <span class="ttl">${esc(b.name.split(' ')[0])} has booked in: ${esc(cuDayLabel(b.date))}, ${cuHour(b.time)}</span><span class="day">${line(b)}</span></div></div>
+      <div class="mark-btns"><button class="btn sm primary mark" onclick="event.stopPropagation();cuMark('${esc(b.id)}','seen')">Got it</button></div></div>`; });
+  return h;
+}
+async function cuCopyLink(btn){
+  try{ await navigator.clipboard.writeText(CU_LINK); btn.textContent = 'Copied ✓'; setTimeout(()=>btn.textContent='Copy booking link',1600); }
+  catch(e){ prompt('Copy this link:', CU_LINK); }
+}
 let tuAtt = null;                           // { updated, members:[{id,name,email,tid,since,plan,paused}], weeks:{tid:{wk:attended}}, last:{tid:day} }
 
 /* ---- The Playbook's WORDS: an overrides layer over the journey ----------------
@@ -2659,7 +2874,7 @@ async function bootData(){
   try{
     // pull the roster, the member list and a one-time "seeded" marker in one go
     const { data, error } = await sb.from('bodysculpt').select('key,value,updated_at')
-      .in('key', [ROW_KEY, RET_ROW_KEY, PB_ROW_KEY, 'seeded', FLAGS_ROW_KEY, TU_ROW_KEY, WC_ROW_KEY]);
+      .in('key', [ROW_KEY, RET_ROW_KEY, PB_ROW_KEY, 'seeded', FLAGS_ROW_KEY, TU_ROW_KEY, WC_ROW_KEY, CU_BOOK_KEY, CU_BLOCK_KEY]);
     if(error) throw error;
     const rosterRow = (data||[]).find(r=>r.key===ROW_KEY);
     const retRow = (data||[]).find(r=>r.key===RET_ROW_KEY);
@@ -2670,6 +2885,9 @@ async function bootData(){
     tuAtt = (tuRow && tuRow.value && typeof tuRow.value==='object') ? tuRow.value : null;
     const wcRow = (data||[]).find(r=>r.key===WC_ROW_KEY);
     wcCards = (wcRow && wcRow.value && wcRow.value.cards && typeof wcRow.value.cards==='object') ? wcRow.value.cards : {};
+    const cuB = (data||[]).find(r=>r.key===CU_BOOK_KEY), cuK = (data||[]).find(r=>r.key===CU_BLOCK_KEY);
+    cuBookings = (cuB && cuB.value && Array.isArray(cuB.value.bookings)) ? cuB.value.bookings : [];
+    cuBlocks = (cuK && cuK.value && cuK.value.blocks) || {};
     // No overrides row yet is the normal case on every device until somebody edits a word of
     // the Playbook, and it reads as "no overrides" rather than as an error.
     const pbRow = (data||[]).find(r=>r.key===PB_ROW_KEY);
@@ -2710,6 +2928,11 @@ async function bootData(){
           const v = payload.new && payload.new.value;
           if(v && typeof v==='object'){ challengeFlags = v; renderAll(); }
         })
+      // catch-up bookings (from the booking page) and blocks (from any coach's tracker)
+      .on('postgres_changes', { event:'*', schema:'public', table:'bodysculpt', filter:'key=eq.'+CU_BOOK_KEY },
+        payload=>{ const v = payload.new && payload.new.value; if(v && Array.isArray(v.bookings)){ cuBookings = v.bookings; renderAll(); } })
+      .on('postgres_changes', { event:'*', schema:'public', table:'bodysculpt', filter:'key=eq.'+CU_BLOCK_KEY },
+        payload=>{ const v = payload.new && payload.new.value; if(v){ cuBlocks = v.blocks||{}; renderAll(); } })
       // the member list rides the same channel, with the same echo guard
       .on('postgres_changes', { event:'*', schema:'public', table:'bodysculpt', filter:'key=eq.'+RET_ROW_KEY },
         payload=>{
@@ -5830,15 +6053,16 @@ function renderRetentionToday(){
   // something to do — while the empty state below is "is there anything on this screen"
   const tally = document.getElementById('retTodayCount');
   const wcLoose = wcLooseCards();
-  if(tally) tally.textContent = rows.length + alerts.length + riskRows.length + bdayRows.length + wcLoose.length;
+  const cuNow = cuTodayRows(), cuN = cuNow.today.length + cuNow.fresh.length;
+  if(tally) tally.textContent = rows.length + alerts.length + riskRows.length + bdayRows.length + wcLoose.length + cuN;
 
-  if(!rows.length && !alerts.length && !riskRows.length && !bdayRows.length && !egRows.length && !wcLoose.length){
+  if(!rows.length && !alerts.length && !riskRows.length && !bdayRows.length && !egRows.length && !wcLoose.length && !cuN){
     list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
       Nothing due for a member right now. The quiet weeks are the ones that keep people — check the Members tab to see where everyone sits.</div>`;
     return;
   }
 
-  let alertHtml = '';
+  let alertHtml = cuTodayHtml();
   if(riskRows.length){
     alertHtml += `<div class="group-label">Check in: no sessions booked<span class="gcount">${riskRows.length}</span></div>`;
     riskRows.forEach(r=>{
@@ -6958,7 +7182,7 @@ function stripTags(s){ return (s==null?'':String(s)).replace(/<[^>]*>/g,''); }
 
 function renderAll(){
   renderConvBar(); renderToday(); renderMembers(); renderPerson(); renderBirthdays(); renderPlaybook();
-  renderRetentionToday(); renderRetentionMembers(); renderAttendance();
+  renderRetentionToday(); renderRetentionMembers(); renderAttendance(); renderCatchups();
   if(todayView==='table') renderMemberTable();
   if(retTodayView==='table') renderRetentionTable();
   document.getElementById('liveCount').textContent = onJourneyCount();
@@ -6994,7 +7218,7 @@ function setTabDot(id, on){
    `tracker` is null at home, and 'onboarding' | 'retention' once you are inside one. */
 const TRACKER_TABS = {
   onboarding:['today','members','birthdays','playbook'],
-  retention:['ret-today','ret-members','ret-attendance','ret-birthdays']
+  retention:['ret-today','ret-members','ret-attendance','ret-catchups','ret-birthdays']
 };
 const TRACKER_LABEL = {
   onboarding:{ title:'Onboarding', sub:'The First 42 Days · Warrington' },

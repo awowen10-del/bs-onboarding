@@ -2356,8 +2356,8 @@ function cuOpen(kind, a, b, c){
       ${m&&m.personal?`<p class="note">Remember: <b>${esc(m.personal)}</b></p>`:''}
       <p class="note">Booked ${esc(new Date(bk.createdAt).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}))}. ${bk.who==='ash'?'Ash has a GHL task to send the Zoom link.':''}</p>
       <div class="cu-confirm hide" id="cuCancelBox"><p class="note"><b>This won't email them.</b> Let them know yourself, then cancel it here so the time is free again.</p>
-        <div class="modal-acts"><button class="btn sm ghost" onclick="document.getElementById('cuCancelBox').classList.add('hide')">Keep it</button><button class="btn sm warn" onclick="cuCancelBooking('${esc(bk.id)}')">Yes, cancel it</button></div></div>
-      <div class="modal-acts" id="cuActs"><button class="btn sm ghost" onclick="cuClose()">Close</button><button class="btn sm" onclick="document.getElementById('cuCancelBox').classList.remove('hide')">Cancel booking</button></div>`;
+        <div class="modal-acts"><button class="btn sm ghost" onclick="document.getElementById('cuCancelBox').classList.add('hide');document.getElementById('cuActs').classList.remove('hide')">Keep it</button><button class="btn sm warn" onclick="cuCancelBooking('${esc(bk.id)}')">Yes, cancel it</button></div></div>
+      <div class="modal-acts" id="cuActs"><button class="btn sm ghost" onclick="cuClose()">Close</button><button class="btn sm" onclick="document.getElementById('cuCancelBox').classList.remove('hide');document.getElementById('cuActs').classList.add('hide')">Cancel booking</button></div>`;
   } else if(kind==='unblock'){
     const bl = cuBlockAt(a,b,c) || {};
     box.innerHTML = `<h3>Free up ${esc(cuDayLabel(a))}, ${cuHour(b)}?</h3>

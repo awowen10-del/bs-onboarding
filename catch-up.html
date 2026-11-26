@@ -133,7 +133,7 @@ textarea{resize:vertical;min-height:90px}
     <h2>You're booked in!</h2>
     <p class="when" id="doneWhen"></p>
     <p id="doneHow"></p>
-    <p>We've sent you an email with the details too.</p>
+    <p id="doneEmail" hidden>We've sent you an email with the details too.</p>
     <a class="cal" id="calLink" target="_blank" rel="noopener">Add to my calendar</a>
   </section>
 
@@ -230,6 +230,7 @@ $('form').addEventListener('submit', async e=>{
     const end = S.date.replace(/-/g,'') + 'T' + endH + '3000';
     $('calLink').href = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent('Bodysculpt catch-up with '+(S.who==='dan'?'Dan':'Ash'))
       + '&dates=' + start + '/' + end + '&ctz=Europe/London&details=' + encodeURIComponent(S.who==='dan'?'At the gym.':'On Zoom. Ash will send the link.');
+    $('doneEmail').hidden = !(out.ghl && out.ghl.email);
     show('s5', true); scrollTo('s5');
   }catch(x){
     err.textContent = 'No connection. Check your signal and try again.';

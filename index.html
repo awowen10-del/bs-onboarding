@@ -1376,6 +1376,35 @@
   .homebtn svg{width:15px;height:15px;display:none}
   .mast-meta{color:var(--side-dim);font-weight:500;font-size:12.5px}
   .mast-meta strong{color:var(--side-ink);font-weight:400;font-size:30px;line-height:1;letter-spacing:.01em}
+  .findbtn{flex:0 0 auto;display:flex;align-items:center;gap:9px;background:var(--side-2);
+    border:1px solid var(--side-line);color:var(--side-dim);border-radius:9px;padding:9px 12px;font-family:inherit;
+    font-size:13px;font-weight:500;cursor:pointer;transition:color .15s ease,border-color .15s ease}
+  .findbtn:hover{color:var(--side-ink);border-color:var(--side-dim)}
+  .findbtn svg{width:15px;height:15px;flex:0 0 auto}
+  .findbtn kbd{display:none;margin-left:auto;font-family:inherit;font-size:11.5px;font-weight:600;color:var(--side-dim);
+    border:1px solid var(--side-line);border-radius:5px;padding:0 6px;line-height:18px}
+  .modal-bg .modal.find-modal{max-width:580px;padding:0;overflow:hidden;align-self:flex-start;margin-top:13vh}
+  .find-input{display:block;width:100%;border:0;border-bottom:1px solid var(--line);font-family:inherit;font-size:19px;
+    font-weight:500;padding:21px 24px;background:var(--card);color:var(--ink);outline:none;border-radius:0}
+  .find-input::placeholder{color:var(--ink-faint)}
+  .find-input::-webkit-search-cancel-button{display:none}
+  .find-list{max-height:52vh;overflow-y:auto;padding:8px}
+  .find-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;background:none;
+    border-radius:11px;padding:11px 16px;font-family:inherit;cursor:pointer;color:var(--ink)}
+  .find-row.on,.find-row:hover{background:var(--navy)}
+  .find-who{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .find-who b{font-size:15px;font-weight:650}
+  .find-who span{font-size:13px;color:var(--ink-dim)}
+  .find-tag{margin-left:auto;flex:0 0 auto;font-size:12px;font-weight:650;border-radius:999px;padding:2px 10px;
+    background:var(--navy-2);color:var(--ink-dim)}
+  .find-tag.member{background:rgba(var(--green-rgb),.11);color:var(--green)}
+  .find-hint{padding:16px 16px 18px;font-size:14px;color:var(--ink-faint)}
+  .wins{display:flex;flex-wrap:wrap;gap:8px}
+  .win{display:inline-flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);
+    border-radius:999px;padding:6px 16px 6px 7px;font-size:13.5px;font-weight:650}
+  .win .ttl{font-weight:500;color:var(--ink-dim)}
+  .win-tick{width:22px;height:22px;border-radius:50%;background:var(--green);color:var(--on-green);display:inline-flex;
+    align-items:center;justify-content:center;font-size:12px;font-weight:800}
   .nav-label,.brand .brand-fixed{display:none}
   /* main carries .wrap, whose padding shorthand outranks a bare `main` rule — so the gap above
      the first thing on a screen has to be asked for at .wrap's weight or it is never applied */
@@ -1418,16 +1447,18 @@
       border-right:1px solid var(--side-line)}
     header.mast .wrap{max-width:none;margin:0;padding-left:14px;padding-right:14px}
     header.mast .mast-inner,header.mast .mast-right{display:contents}
-    .brand{order:0;flex:0 0 auto;padding:26px 18px 22px;align-items:center}
+    .brand{order:0;flex:0 0 auto;padding:26px 18px 20px;align-items:center}
     .brand h1{font-size:23px}
-    header.mast .homebtn,header.mast .homebtn.hide{order:1;display:flex !important;margin:0 14px;border:0;
+    header.mast .findbtn{order:1;margin:0 14px 16px;font-size:14px;padding:10px 12px}
+    .findbtn kbd{display:inline-block}
+    header.mast .homebtn,header.mast .homebtn.hide{order:2;display:flex !important;margin:0 14px;border:0;
       border-radius:9px;padding:9px 12px;font-size:14px;font-weight:500;gap:11px;position:relative}
     header.mast .homebtn svg{display:block}
     header.mast .homebtn .hb-arrow{display:none}
     header.mast .homebtn:hover{background:var(--side-2)}
     header.mast .homebtn.hide{background:var(--side-2);color:var(--side-ink);font-weight:650;cursor:default}
-    header.mast #nav-onboarding,header.mast #nav-onboarding.hide{order:2;display:block !important;margin-top:26px}
-    header.mast #nav-retention,header.mast #nav-retention.hide{order:3;display:block !important;margin-top:26px}
+    header.mast #nav-onboarding,header.mast #nav-onboarding.hide{order:3;display:block !important;margin-top:26px}
+    header.mast #nav-retention,header.mast #nav-retention.hide{order:4;display:block !important;margin-top:26px}
     .nav-label{display:flex;align-items:baseline;gap:8px;padding:0 12px 9px;font-size:12px;
       font-weight:600;color:var(--side-dim)}
     .nav-label b{font-family:var(--display);font-weight:400;font-size:15px;letter-spacing:.05em;
@@ -1610,8 +1641,8 @@
   /* ---------- the home screen ---------- */
   .home{padding:6px 0 40px}
   .home-date{font-family:var(--display);font-size:clamp(44px,6vw,76px);line-height:.98;text-transform:uppercase;
-    letter-spacing:.012em;color:var(--ink);max-width:14ch}
-  .home-lead{font-size:16px;font-weight:500;color:var(--ink-dim);margin:14px 0 30px}
+    letter-spacing:.012em;color:var(--ink)}
+  .home-lead{font-size:16px;font-weight:500;color:var(--ink-dim);margin:14px 0 30px;text-transform:none;letter-spacing:0}
   .home-grid{gap:20px}
   .home-card{min-height:268px;padding:26px 28px 24px;border-radius:20px;background:var(--card);box-shadow:none;
     transition:transform .18s cubic-bezier(.2,.7,.2,1),border-color .16s ease,box-shadow .18s ease}
@@ -1703,6 +1734,10 @@
   .conv-split .cs{border-radius:16px;padding:16px 20px}
   .cs .csn{font-family:var(--display);font-weight:400;font-size:34px;letter-spacing:.01em}
   .cs .csl{font-size:13px;font-weight:500;color:var(--ink-dim);letter-spacing:0;margin-top:6px}
+  @media (max-width:639px){
+    .conv-main{flex:1 1 100%}
+    .conv-split .cs{min-width:0;padding:14px 14px}
+  }
   .filterbar{margin-top:0}
   .admin-strip{margin-top:34px}
   .admin-hint{font-size:12.5px;font-weight:500}
@@ -1731,7 +1766,8 @@
   .tbl-legend i.done{background:rgba(var(--green-rgb),.22)} .tbl-legend i.due{background:var(--spark);border:0}
 
   /* ---------- birthdays ---------- */
-  .bday-row{border-radius:12px;border-left-width:1px;padding:12px 16px 12px 14px;gap:14px;position:relative}
+  .bday-row{border-radius:12px;border-left:1px solid var(--line);padding:12px 16px 12px 14px;gap:14px;position:relative}
+  .bday-row.milestone{background:rgba(var(--amber-rgb),.05);border-color:rgba(var(--amber-rgb),.3)}
   .bday-row:hover{border-color:var(--ink-faint)}
   .bday-day{min-width:58px;font-family:var(--display);font-weight:400;font-size:20px;letter-spacing:.02em;border:0;
     border-radius:10px;padding:8px 8px 7px;line-height:1}
@@ -2147,6 +2183,7 @@
       </div>
     </div>
     <div class="mast-right">
+      <button type="button" class="findbtn" id="findBtn" onclick="openFind()" title="Find a challenger or a member"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Find anyone<kbd>⌘K</kbd></button>
       <button type="button" class="homebtn hide" id="homeBtn" onclick="goHome()" title="Back to the home screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3.5 10.8 12 3.6l8.5 7.2"/><path d="M5.6 9.4V20h12.8V9.4"/><path d="M9.8 20v-5.6h4.4V20"/></svg><span class="hb-arrow" aria-hidden="true">←</span> Home</button>
       <!-- The one count of how many challengers are on the journey. It used to be quoted
            twice — here and in the date banner on Today's moves — under two different rules,
@@ -2425,6 +2462,13 @@
 </div>
 
 <!-- ===== One challenger's card, opened from a name on Today's moves ===== -->
+<div class="modal-bg" id="findBg" onclick="if(event.target===this)closeFind()">
+  <div class="modal find-modal" role="dialog" aria-modal="true" aria-label="Find anyone">
+    <input type="search" class="find-input" id="findInput" placeholder="Find anyone…" autocomplete="off"
+      aria-label="Type a name" oninput="findIdx=0;renderFind()" onkeydown="findKey(event)">
+    <div class="find-list" id="findList"></div>
+  </div>
+</div>
 <div class="modal-bg" id="personBg" onclick="if(event.target===this)closePerson()">
   <div class="modal person-modal" role="dialog" aria-label="Challenger">
     <div class="person-bar"><button type="button" class="btn sm ghost" onclick="closePerson()">Close</button></div>
@@ -4235,7 +4279,7 @@ function renderToday(){
   if(rows.length===0 && fuRows.length===0 && startRows.length===0 && payRows.length===0 && bdayRows.length===0
      && birthdayExampleTasks('onboarding').length===0){
     list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
-      No touchpoints due right now. Consistency is the magic — check the Challengers tab to see where everyone sits.</div>`;
+      No touchpoints due right now. Consistency is the magic — check the Challengers tab to see where everyone sits.</div>` + doneTodayHtml();
     return;
   }
 
@@ -4421,7 +4465,7 @@ function renderToday(){
     + `</div></div>`;
 
   html += `</div>`;
-  list.innerHTML = html;
+  list.innerHTML = html + doneTodayHtml();
 }
 
 /* One card on Today's moves. Lifted out of the board's own loop when the weeks became a
@@ -4479,6 +4523,99 @@ function todayCardHtml(r){
         </div>
       </div>`;
 }
+
+/* What has been ticked off today, kept on the screen after the rows that asked for it have
+   gone, so the day's wins can be seen and not just the work still to do. doneMeta stamps each
+   tick with its date ("26 Nov"); it carries no year, so anyone whose challenge started more
+   than 200 days ago is skipped rather than risk last year's tick showing up as today's. */
+function doneTodayRows(){
+  const stamp = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const out = [];
+  members.forEach(m=>{
+    if(m.day0 && (Date.now()-m.day0) > 200*MS_DAY) return;
+    const meta = m.doneMeta||{};
+    (m.completed||[]).forEach(key=>{
+      if(meta[key]!==stamp) return;
+      const it = JOURNEY.find(j=>j.id===key);
+      out.push({m, title: it ? tpTitle(it) : (/^fw\d+$/.test(key) ? 'Free weeks check-in' : 'Touchpoint')});
+    });
+  });
+  return out;
+}
+function doneTodayHtml(){
+  const rows = doneTodayRows();
+  if(!rows.length) return '';
+  return `<div class="group-label">Done today<span class="gcount">${rows.length}</span></div><div class="wins">`
+    + rows.map(r=>`<div class="win"><span class="win-tick" aria-hidden="true">✓</span>${nameLink(r.m)}<span class="ttl">${esc(r.title)}</span></div>`).join('')
+    + `</div>`;
+}
+
+/* ---------------- Find anyone ----------------
+   One box that knows everybody on both trackers. ⌘K (or Ctrl K, or /) opens it from any
+   screen; typing narrows the list; Enter or a click opens that person's card. It reads the two
+   rosters already in memory and changes nothing. */
+let findIdx = 0;
+function findPeople(q){
+  const needle = normName(q||'');
+  if(!needle) return [];
+  const hit = name => normName(name||'').indexOf(needle)!==-1;
+  const out = [];
+  members.filter(m=>hit(m.name)).forEach(m=>{
+    const st = status(m);
+    const where = st==='notstarted' ? 'Not started yet'
+      : st==='paused' ? 'Paused'
+      : st==='live' ? (inFreeWeeks(m) ? 'Free weeks' : 'Day '+currentDay(m)+' of '+totalDays(m))
+      : m.outcome==='stayed' ? 'Stayed on' : m.outcome==='left' ? 'Left' : 'Finished the 6 weeks';
+    // people on the clock first, then members, then those who have finished or left
+    out.push({kind:'challenger', id:m.id, name:m.name, sub:where+(m.coach?' · Coach '+m.coach:''), tag:'6-week challenge',
+      rank: st==='done' || m.outcome ? 2 : 0});
+  });
+  retention.filter(m=>hit(m.name)).forEach(m=>{
+    out.push({kind:'member', id:m.id, name:m.name, sub:'Full member'+(m.coach?' · Coach '+m.coach:''), tag:'Member', rank:1});
+  });
+  return out.sort((a,b)=> a.rank-b.rank || a.name.localeCompare(b.name)).slice(0,9);
+}
+function renderFind(){
+  const box = document.getElementById('findList'), inp = document.getElementById('findInput');
+  if(!box || !inp) return;
+  const rows = findPeople(inp.value);
+  if(findIdx >= rows.length) findIdx = Math.max(0, rows.length-1);
+  box.innerHTML = !inp.value.trim() ? `<div class="find-hint">Type a name. Challengers and members are both in here.</div>`
+    : !rows.length ? `<div class="find-hint">Nobody called that on either tracker.</div>`
+    : rows.map((r,i)=>`<button type="button" class="find-row${i===findIdx?' on':''}" onclick="findGo('${r.kind}','${r.id}')">
+        <span class="find-who"><b>${esc(r.name)}</b><span>${esc(r.sub)}</span></span>
+        <span class="find-tag ${r.kind}">${r.tag}</span></button>`).join('');
+}
+function openFind(){
+  const bg = document.getElementById('findBg'), inp = document.getElementById('findInput');
+  if(!bg || !inp) return;
+  inp.value = ''; findIdx = 0; renderFind();
+  bg.classList.add('show'); inp.focus();
+}
+function closeFind(){ const bg = document.getElementById('findBg'); if(bg) bg.classList.remove('show'); }
+function findGo(kind, id){
+  closeFind();
+  if(kind==='challenger') return openPerson(id);
+  const m = retention.find(x=>x.id===id);
+  if(m && tuFor(m)) return openTaFor(id);
+  // no TeamUp record to open: take them to the member's card on the Members screen instead
+  activeTab.retention = 'ret-members'; showTracker('retention');
+  const box = document.getElementById('retSearch');
+  if(box && m){ box.value = m.name; renderRetentionMembers(); }
+}
+function findKey(e){
+  const rows = findPeople(document.getElementById('findInput').value);
+  if(e.key==='ArrowDown'){ e.preventDefault(); findIdx = Math.min(rows.length-1, findIdx+1); renderFind(); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); findIdx = Math.max(0, findIdx-1); renderFind(); }
+  else if(e.key==='Enter' && rows[findIdx]){ e.preventDefault(); findGo(rows[findIdx].kind, rows[findIdx].id); }
+  else if(e.key==='Escape'){ closeFind(); }
+}
+if(typeof document.addEventListener==='function') document.addEventListener('keydown', e=>{
+  const gate = document.getElementById('gate');
+  if(gate && gate.classList && !gate.classList.contains('hide')) return;      // not before the password
+  const typing = e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName||'') || (e.target && e.target.isContentEditable);
+  if((e.key==='k' && (e.metaKey||e.ctrlKey)) || (e.key==='/' && !typing)){ e.preventDefault(); openFind(); }
+});
 
 /* expandable detail (fix #3) */
 function toggleExpand(mid,iid){

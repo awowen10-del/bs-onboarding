@@ -326,8 +326,13 @@ const DEFAULT_WHY_WK2 = "Name the win before they start doubting it.";
   app.ctx.toggleDone("a", "wk2", true);
   assert.ok((app.find("a").completed || []).includes("wk2"),
     "Done still marks the touchpoint done, by its id — the name it is wearing is irrelevant");
-  assert.ok(!app.html("todayList").includes("Renamed mid-morning"),
-    "…and it leaves Today's moves the way it always did");
+  // The card that asked for it goes. Since v400 the tick itself stays on the screen in the
+  // "Done today" strip underneath, so the day's wins can be seen — under the new name too.
+  assert.ok(!app.html("todayList").includes('id="act-a-wk2"'),
+    "…and its card leaves Today's moves the way it always did");
+  const wins = app.html("todayList").split('class="wins"')[1] || "";
+  assert.ok(wins.includes("Renamed mid-morning"),
+    "…while the tick shows in Done today, wearing the name the Playbook now gives it");
 
   // Missed too
   app.ctx.markMissed("a", "d1_text");

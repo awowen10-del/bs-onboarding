@@ -210,6 +210,7 @@ function boot(opts = {}) {
   get members(){ return members; }, set members(v){ members = v; },
   get retention(){ return retention; }, set retention(v){ retention = v; },
   get tuAtt(){ return tuAtt; }, set tuAtt(v){ tuAtt = v; },
+  get wcCards(){ return wcCards; }, set wcCards(v){ wcCards = v; },
   get taActions(){ return taActions; }, set taActions(v){ taActions = v; },
   get taNotes(){ return taNotes; }, set taNotes(v){ taNotes = v; },
   get taExtrasLoaded(){ return taExtrasLoaded; }, set taExtrasLoaded(v){ taExtrasLoaded = v; },

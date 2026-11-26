@@ -2176,6 +2176,60 @@ const FLAGS_ROW_KEY = 'challenge-flags';     // written by the morning job only:
 const RET_ROW_KEY = 'retention';           // its row in the same `bodysculpt` table
 const RET_CACHE = 'bsj_retention_cache';   // its own offline cache
 const TU_ROW_KEY = 'attendance-teamup';    // written every morning by attendance-sync-background (TeamUp)
+/* Welcome cards (v312, built on Ash's dashboard site because it holds the Slack and Claude keys).
+   Every 5 minutes it finds anyone newly tagged `member start` in GHL, makes a GHL task for Ash and
+   writes the card here: name, address, a personal line from the coaches' shift notes. The card
+   shows inside the member's day-0 "Welcome card" job. Done here completes the GHL task; completed
+   in GHL ticks the job here. Someone not on the member list gets the card as its own job with a
+   Card sent button. */
+const WC_ROW_KEY = 'welcome-cards';
+let wcCards = {};                           // { contactId: { name, email, address[], personal, mentions[], taskId, ghlDone, sent, closed, createdAt } }
+const wcNorm = s => String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+function wcCardFor(m){
+  const e = wcNorm(m && m.email), n = wcNorm(m && m.name);
+  return Object.values(wcCards).find(c=>c && ((e && c.email===e) || (n && wcNorm(c.name)===n))) || null;
+}
+function wcMemberFor(c){
+  return retention.find(m=>m && ((c.email && wcNorm(m.email)===c.email) || wcNorm(m.name)===wcNorm(c.name))) || null;
+}
+/* Cards with nobody on the member list to hang them on — still a job, with their own button. */
+function wcLooseCards(){
+  return Object.values(wcCards).filter(c=>c && !c.closed && !c.sent && !c.ghlDone && !wcMemberFor(c))
+    .sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)));
+}
+function wcDetailHtml(c){
+  if(!c) return '';
+  const addr = (c.address||[]).length ? esc(c.address.join(', ')) : '<b>Not on GHL.</b> Ask them for it.';
+  const quotes = (c.mentions||[]).length ? `<div style="margin-top:8px;color:var(--muted)">From the coaches' shift notes:<br>${c.mentions.map(q=>`“${esc(q.text)}” <span style="opacity:.75">(${esc(q.coach||'coach')}, ${esc(q.day)})</span>`).join('<br>')}</div>` : '';
+  return `<div class="wc-card" style="margin-top:8px">
+    <div><b>Address:</b> ${addr}</div>
+    <div style="margin-top:4px"><b>Something personal:</b> ${c.personal?esc(c.personal):'Nothing in the coaches\' shift notes yet. Ask the team.'}</div>
+    ${quotes}
+    <div style="margin-top:6px;font-size:12px;color:var(--muted)">Ticking this off also ticks Ash's GHL task.</div></div>`;
+}
+/* A card completed in GHL ticks the member's job here. Done once, on load, the tracker's own way. */
+function wcApplyGhlTicks(){
+  let changed = false;
+  Object.values(wcCards).forEach(c=>{
+    if(!c || !c.ghlDone) return;
+    const m = wcMemberFor(c);
+    if(m && !isDone(m,'welcome_card')){ markTouchpointDone(m,'welcome_card',true); changed = true; }
+  });
+  if(changed) saveRetention();
+}
+async function wcMarkSent(contactId){
+  const who = taWho() || (prompt("Who sent it? (Ash, Dan, Grace or Gaz)") || '').trim();
+  if(!who) return;
+  taSetWho(who);
+  try{
+    const { data } = await sb.from('bodysculpt').select('value').eq('key', WC_ROW_KEY);
+    const v = (data && data[0] && data[0].value && data[0].value.cards) ? data[0].value : { cards:{} };
+    if(v.cards[contactId]) v.cards[contactId].sent = { by: who, at: new Date().toISOString() };
+    await sb.from('bodysculpt').upsert({ key: WC_ROW_KEY, value: v, updated_at: new Date().toISOString() }, { onConflict:'key' });
+    wcCards = v.cards;
+  }catch(e){ alert('Couldn\'t save: '+e.message); return; }
+  renderAll();
+}
 let tuAtt = null;                           // { updated, members:[{id,name,email,tid,since,plan,paused}], weeks:{tid:{wk:attended}}, last:{tid:day} }
 
 /* ---- The Playbook's WORDS: an overrides layer over the journey ----------------
@@ -2605,7 +2659,7 @@ async function bootData(){
   try{
     // pull the roster, the member list and a one-time "seeded" marker in one go
     const { data, error } = await sb.from('bodysculpt').select('key,value,updated_at')
-      .in('key', [ROW_KEY, RET_ROW_KEY, PB_ROW_KEY, 'seeded', FLAGS_ROW_KEY, TU_ROW_KEY]);
+      .in('key', [ROW_KEY, RET_ROW_KEY, PB_ROW_KEY, 'seeded', FLAGS_ROW_KEY, TU_ROW_KEY, WC_ROW_KEY]);
     if(error) throw error;
     const rosterRow = (data||[]).find(r=>r.key===ROW_KEY);
     const retRow = (data||[]).find(r=>r.key===RET_ROW_KEY);
@@ -2614,6 +2668,8 @@ async function bootData(){
     challengeFlags = (flagsRow && flagsRow.value && typeof flagsRow.value==='object') ? flagsRow.value : {};
     const tuRow = (data||[]).find(r=>r.key===TU_ROW_KEY);
     tuAtt = (tuRow && tuRow.value && typeof tuRow.value==='object') ? tuRow.value : null;
+    const wcRow = (data||[]).find(r=>r.key===WC_ROW_KEY);
+    wcCards = (wcRow && wcRow.value && wcRow.value.cards && typeof wcRow.value.cards==='object') ? wcRow.value.cards : {};
     // No overrides row yet is the normal case on every device until somebody edits a word of
     // the Playbook, and it reads as "no overrides" rather than as an error.
     const pbRow = (data||[]).find(r=>r.key===PB_ROW_KEY);
@@ -2624,6 +2680,7 @@ async function bootData(){
     // everyone in the row at boot is "seen": a later absence from our list is a real removal
     markSeen(seenRosterIds, members);
     markSeen(seenRetentionIds, retention);
+    wcApplyGhlTicks();
     // Seed the examples ONLY on the very first run ever (no seeded marker yet).
     // After that, an empty list stays empty — removing everyone is respected.
     if(!seededRow){
@@ -5772,9 +5829,10 @@ function renderRetentionToday(){
   // the badge is real work and nothing else — a prop must never make a coach think they have
   // something to do — while the empty state below is "is there anything on this screen"
   const tally = document.getElementById('retTodayCount');
-  if(tally) tally.textContent = rows.length + alerts.length + riskRows.length + bdayRows.length;
+  const wcLoose = wcLooseCards();
+  if(tally) tally.textContent = rows.length + alerts.length + riskRows.length + bdayRows.length + wcLoose.length;
 
-  if(!rows.length && !alerts.length && !riskRows.length && !bdayRows.length && !egRows.length){
+  if(!rows.length && !alerts.length && !riskRows.length && !bdayRows.length && !egRows.length && !wcLoose.length){
     list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
       Nothing due for a member right now. The quiet weeks are the ones that keep people — check the Members tab to see where everyone sits.</div>`;
     return;
@@ -5855,8 +5913,25 @@ function renderRetentionToday(){
   let html = alertHtml + bdayHtml;
   groups.forEach(([gid,label,test])=>{
     const g = rows.filter(test);
-    if(!g.length) return;
-    html += `<div class="group-label">${label}<span class="gcount">${g.length}</span></div>`;
+    const loose = gid==='physical' ? wcLoose : [];
+    if(!g.length && !loose.length) return;
+    html += `<div class="group-label">${label}<span class="gcount">${g.length + loose.length}</span></div>`;
+    loose.forEach(c=>{
+      const key = 'wc-'+c.contactId;
+      html += `<div class="action physical" id="act-${esc(key)}">
+        <span class="ch physical">${CH_LABEL.physical}</span>
+        <div class="body" onclick="toggleExpand('wc','${esc(c.contactId)}')">
+          <div class="who"><span class="nm">${esc(c.name)}</span>
+            <span class="ttl">Welcome card</span>
+            <span class="day">Joined ${esc(new Date(c.createdAt).toLocaleDateString('en-GB',{day:'numeric',month:'short'}))}</span></div>
+          <div class="detail">They have just joined. Send a welcome card to their house to mark them properly joining the Bodysculpt family.${wcDetailHtml(c)}</div>
+        </div>
+        <span class="chev" onclick="toggleExpand('wc','${esc(c.contactId)}')">▶</span>
+        <div class="mark-btns">
+          <button class="btn sm primary mark" onclick="event.stopPropagation();wcMarkSent('${esc(c.contactId)}')">Card sent</button>
+        </div>
+      </div>`;
+    });
     g.forEach(({m,item,overdue})=>{
       const chClass = item.ch==='inperson'?'inperson':item.ch;
       html += `<div class="action ${chClass}" id="act-${m.id}-${item.id}">
@@ -5868,7 +5943,7 @@ function renderRetentionToday(){
             <span class="day">Day ${memberDay(m)}</span>
             ${overdue?'<span class="overdue">Overdue</span>':''}
           </div>
-          <div class="detail">${esc(stripTags(item.what))}</div>
+          <div class="detail">${esc(stripTags(item.what))}${item.id==='welcome_card'?wcDetailHtml(wcCardFor(m)):''}</div>
         </div>
         <span class="chev" onclick="toggleExpand('${m.id}','${item.id}')">▶</span>
         <div class="mark-btns">

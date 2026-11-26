@@ -35,12 +35,24 @@ assert.equal(f.avgCal, 2000); assert.equal(f.onCalDays, 1); assert.equal(f.overC
 assert.equal(foodWeek([], null).daysLogged, 0);
 
 // Slack: checklist lines, the person's mentions, another Emma left out
-const posts = [{ ts: String(Date.parse("2026-11-24T21:00:00Z") / 1000), text: "Post-Shift Checklist\n*Gaz*  •  Tue\n> Emma - 30kg squat, good form\n> Emma G was off sick\n> Anyone at risk? Emma" },
+const posts = [{ ts: String(Date.parse("2026-11-24T21:00:00Z") / 1000), text: "Post-Shift Checklist\n*Gaz*  •  Tue\n> :white_check_mark:  *Any new trialists on their first week?*  Yes\n> &gt; Emma - 30kg squat, good form\n> &gt; Emma G was off sick\n> :x:  *Anyone at risk?*  Yes\n> &gt; Emma - might leave" },
   { ts: "1", text: "just chat about Emma" }];
 const lines = checklistLines(posts);
 assert.equal(lines[0].coach, "Gaz");
 const em = mentionsOf(lines, "Emma", "Dalby");
 assert.deepEqual(em.map((x) => x.text), ["Emma - 30kg squat, good form"]);
+// only the 6 Week Challenge part is read: the members section (where another Emma lives) is not
+const real = checklistLines([{ ts: String(Date.parse("2026-11-24T11:36:00Z") / 1000), text: [
+  ":white_check_mark: Post-Shift Checklist", "*Gaz*  •  Tue 24 Nov, 11:36, Monday - Late",
+  ":white_check_mark:  *Everyone ticked off their session*", ":x:  *Anyone at risk?*  No",
+  ":white_check_mark:  _Anything the late team needs updating on?_  Yes", "&gt; Emma asked about pausing",
+  ":white_check_mark:  *Any new trialists on their first week?*  Yes", "&gt; Paul - sit to stand, body weight",
+  ":white_check_mark:  *Any 6 Week Challenge updates?*  Yes", "&gt; Charlotte - 40kg squat, week 3",
+  ":white_check_mark:  *Any post-session updates on members?*  Yes", "&gt; Emma - 30kg squat", "&gt; Charlotte - back in after holiday",
+  ":white_check_mark:  *Hoovered, gym reset*"].join("\n") }]);
+assert.deepEqual(real.map((x) => x.text), ["Paul - sit to stand, body weight", "Charlotte - 40kg squat, week 3"]);
+assert.equal(mentionsOf(real, "Emma", "Dalby").length, 0);
+assert.equal(real[0].coach, "Gaz");
 // a line about someone else that only mentions them is not theirs; a note TO a coach about them is
 const L2 = (t) => ({ day: "2026-11-19", coach: "Gaz", text: t });
 assert.deepEqual(mentionsOf([L2("Niambh - done well and chatted with Charlotte."), L2("Ash - Charlotte asked about membership"), L2("Sarah, Clare & Charlotte - week 3"), L2("Charlotte - 40kg squat")], "Charlotte", "Halliday").map((x) => x.text),

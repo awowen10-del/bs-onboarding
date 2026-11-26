@@ -12,7 +12,7 @@
  *               they have booked in the next 7 days (attended only, same rule as the Attendance tab)
  *   Trainerize  food logged each day against their calorie and protein targets, workouts and
  *               cardio ticked off in the app, body stats, when they last opened the app
- *   Slack       lines in the coaches' Post-Shift Checklist posts (#general) that name them, last 14 days
+ *   Slack       lines in the 6 Week Challenge part (new trialists + 6WC updates) of the coaches’ Post-Shift Checklist posts (#general) that name them, last 14 days
  * then Claude writes the few things worth raising, a message to send and a voice note to record,
  * in the Bodysculpt check-in voice. Nothing is sent anywhere: the coach reads it, tweaks it, sends it.
  *
@@ -197,6 +197,19 @@ async function appFor(m, now) {
 }
 
 /* ---------- Slack: the coaches' Post-Shift Checklist posts (same reading as the welcome card) ---------- */
+/* Only the 6 Week Challenge part of the checklist is read. The other sections ("Any post-session
+   updates on members?", "Anyone at risk?"...) are about every member, so a first name there is
+   easily someone else. The challenge part is the "Any 6 Week Challenge updates?" question (Ash is
+   adding it to the form, 26 Nov 2026) plus "Any new trialists on their first week?", which is
+   week 1 of the challenge. A line is a section heading when it opens with one of the form's
+   questions. Pure. */
+const CHALLENGE_HEADS = /^(any (new )?(6|six)[- ]?(week|wk)s?[- ]?(challenge|challengers)\b|any 6wc\b|any new trialists)/i;
+const OTHER_HEADS = /^(everyone ticked|anyone at risk|any wow|is trainerize|anything the late team|onboarding checklist|any post[- ]?session|hoovered|post[- ]?shift checklist)/i;
+function sectionOf(l) {
+  if (CHALLENGE_HEADS.test(l)) return 'challenge';
+  if (OTHER_HEADS.test(l)) return 'other';
+  return '';
+}
 const unescapeSlack = (t) => String(t || '').replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&');
 function checklistLines(messages) {
   const out = [];
@@ -210,9 +223,13 @@ function checklistLines(messages) {
     if (!/post[- ]?shift checklist/i.test(all)) continue;
     const coach = (all.match(/\*([^*\n]+)\*\s+•/) || [])[1] || '';
     const day = new Date(Number(m.ts) * 1000).toISOString().slice(0, 10);
+    let section = '';
     for (const line of all.split('\n')) {
       const l = unescapeSlack(line).replace(/^>\s?/, '').replace(/^>\s?/, '').replace(/:[a-z_]+:/g, '').replace(/[*_]/g, '').replace(/<@[A-Z0-9]+\|([^>]+)>/g, '@$1').trim();
-      if (l) out.push({ day, coach: coach.trim(), text: l });
+      if (!l) continue;
+      const head = sectionOf(l);
+      if (head) { section = head; continue; }
+      if (section === 'challenge') out.push({ day, coach: coach.trim(), text: l });
     }
   }
   return out;

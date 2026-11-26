@@ -1704,7 +1704,7 @@
   .decision .dlabel{font-size:13.5px;font-weight:700;color:var(--ink)}
   .mcard .paybox{border-radius:12px}
   .tag.live{background:rgba(var(--green-rgb),.11)}
-  @media (min-width:1024px){
+  @media (min-width:1180px){
     #memberList .mcard:not(.notstarted){display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr) auto;
       column-gap:34px;align-items:start}
     #memberList .mcard:not(.notstarted) > *{grid-column:1 / -1}
@@ -4610,6 +4610,12 @@ function findKey(e){
   else if(e.key==='Enter' && rows[findIdx]){ e.preventDefault(); findGo(rows[findIdx].kind, rows[findIdx].id); }
   else if(e.key==='Escape'){ closeFind(); }
 }
+/* the hint on the button names the key this machine actually has */
+(function(){
+  const kbd = document.querySelector && document.querySelector('#findBtn kbd');
+  const mac = typeof navigator!=='undefined' && /Mac|iPhone|iPad/.test(navigator.platform||navigator.userAgent||'');
+  if(kbd && !mac) kbd.textContent = 'Ctrl K';
+})();
 if(typeof document.addEventListener==='function') document.addEventListener('keydown', e=>{
   const gate = document.getElementById('gate');
   if(gate && gate.classList && !gate.classList.contains('hide')) return;      // not before the password

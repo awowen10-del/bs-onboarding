@@ -169,6 +169,7 @@ exports.handler = async (event) => {
     const time = /^\d{2}:00$/.test(f.time || '') ? f.time : null;
     const note = clean(f.note, 600);
     if (!who || !date || !time) return reply(400, { error: 'Pick who, a day and a time.' });
+    if (note.length < 3) return reply(400, { error: "Tell us what you'd like to talk about, so your coach can be ready for you." });
     if (!allSlots(now).some((s) => s.date === date && s.time === time)) return reply(400, { error: "That time isn't one we offer." });
 
     let person = f.c ? await contactById(f.c) : null;

@@ -64,6 +64,7 @@ async function run(body, opts = {}) {
   assert.equal(store["catchup-bookings"].bookings.length, 2);
   r = await run(post({ time: "13:00" }));                                assert.equal(r.res.statusCode, 400);
   r = await run(post({ date: "2026-12-29" }));                           assert.equal(r.res.statusCode, 400);   // beyond 3 weeks
+  r = await run(post({ time: "16:00", note: " " }));                    assert.equal(r.res.statusCode, 400);   // they must say what it's about
   r = await run(post({ c: "", firstName: "", email: "" }));              assert.equal(r.res.statusCode, 400);
   console.log("catchup: ok");
 })().catch((e) => { console.error(e); process.exit(1); });

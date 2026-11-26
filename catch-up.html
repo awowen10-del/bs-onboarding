@@ -121,8 +121,9 @@ textarea{resize:vertical;min-height:90px}
         </div>
         <div class="field"><label for="em">Email</label><input id="em" type="email" autocomplete="email" inputmode="email"></div>
       </div>
-      <div class="field"><label for="note">Anything you'd like to talk about? <em>(optional)</em></label>
-        <textarea id="note" maxlength="600" placeholder="e.g. I've got a holiday in March and want to feel ready"></textarea></div>
+      <div class="field"><label for="note">What would you like to talk about?</label>
+        <p class="hint" style="margin:-2px 0 8px">A line or two is plenty. It helps your coach come ready for you.</p>
+        <textarea id="note" maxlength="600" required aria-required="true" placeholder="e.g. I've got a holiday in March and want to feel ready"></textarea></div>
       <p class="err" id="err" role="alert"></p>
       <button class="go" id="go" type="submit">Book my catch-up</button>
     </form>
@@ -213,6 +214,7 @@ $('form').addEventListener('submit', async e=>{
     if(!body.firstName){ err.textContent = 'Add your first name.'; $('fn').focus(); return; }
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)){ err.textContent = 'Add the email you use with us.'; $('em').focus(); return; }
   }
+  if(body.note.trim().length < 3){ err.textContent = 'Tell us what you\'d like to talk about, so your coach can be ready for you.'; $('note').focus(); return; }
   const go = $('go'); go.disabled = true; go.textContent = 'Booking…';
   try{
     const res = await fetch(API, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });

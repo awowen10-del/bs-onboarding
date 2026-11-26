@@ -128,7 +128,7 @@ async function tellGhl(contactId, first, b, now) {
   const w = WHO[b.who];
   const when = niceWhen(b.date, b.time);
   const done = { note: false, task: false, email: false };
-  await ghl(`/contacts/${contactId}/notes`, 'POST', { body: `Booked a monthly catch-up: ${when}, ${w.label}.${b.note ? ' Wants to talk about: ' + b.note : ''}` })
+  await ghl(`/contacts/${contactId}/notes`, 'POST', { body: `Booked a monthly catch-up: ${when}, ${w.where} with ${w.coach}.${b.note ? ' Wants to talk about: ' + b.note : ''}` })
     .then(() => { done.note = true; }).catch((e) => console.error('note', e.message));
   if (b.who === 'ash') {
     await ghl(`/contacts/${contactId}/tasks`, 'POST', {
@@ -140,7 +140,7 @@ async function tellGhl(contactId, first, b, now) {
   }
   await ghl('/conversations/messages', 'POST', {
     type: 'Email', contactId, subject: `You're booked in: ${when}`, html: emailHtml(first, b),
-  }).then(() => { done.email = true; }).catch((e) => console.error('email', e.message));
+  }).then(() => { done.email = true; }).catch((e) => { console.error('email', e.message); done.emailError = String(e.message).replace(/^\S+ /, '').slice(0, 160); });
   return done;
 }
 

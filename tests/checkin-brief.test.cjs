@@ -41,6 +41,10 @@ const lines = checklistLines(posts);
 assert.equal(lines[0].coach, "Gaz");
 const em = mentionsOf(lines, "Emma", "Dalby");
 assert.deepEqual(em.map((x) => x.text), ["Emma - 30kg squat, good form"]);
+// a line about someone else that only mentions them is not theirs; a note TO a coach about them is
+const L2 = (t) => ({ day: "2026-11-19", coach: "Gaz", text: t });
+assert.deepEqual(mentionsOf([L2("Niambh - done well and chatted with Charlotte."), L2("Ash - Charlotte asked about membership"), L2("Sarah, Clare & Charlotte - week 3"), L2("Charlotte - 40kg squat")], "Charlotte", "Halliday").map((x) => x.text),
+  ["Ash - Charlotte asked about membership", "Sarah, Clare & Charlotte - week 3", "Charlotte - 40kg squat"]);
 // a first-name note is kept only if they trained that day or the day before
 assert.equal(plausible(em, ["2026-11-24"]).length, 1);
 assert.equal(plausible(em, ["2026-11-23"]).length, 1);

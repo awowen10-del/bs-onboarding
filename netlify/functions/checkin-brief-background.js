@@ -244,8 +244,15 @@ function mentionsOf(lines, first, last) {
     }
     return other && !ours;
   };
+  /* Coaches write "Niambh - done well ... chatted with Charlotte". That line is about Niambh, so
+     it is not Charlotte's. When a line opens with who it's about ("Name - ", "Name: ",
+     "Sarah, Clare & Emma - "), this person must be in that opening part. */
+  const aboutSomeoneElse = (t) => {
+    const mm = String(t).match(/^([^:\n]{1,45}?)\s*(?:\s-\s|-\s|\s-|:|–|—)/);
+    return !!mm && !firstRe.test(mm[1]) && !/^@?(ash|dan|gaz|grace|everyone|all|team)\b/i.test(mm[1].trim());   // "Ash - Tash asked..." is a note TO a coach
+  };
   const seen = new Set();
-  return (lines || []).filter((x) => firstRe.test(x.text) && !/^(Post-Shift Checklist|Anyone at risk|Any )/i.test(x.text) && !someoneElse(x.text))
+  return (lines || []).filter((x) => firstRe.test(x.text) && !/^(Post-Shift Checklist|Anyone at risk|Any )/i.test(x.text) && !someoneElse(x.text) && !aboutSomeoneElse(x.text))
     .map((x) => ({ ...x, full: !!(fullRe && fullRe.test(x.text)) }))
     .filter((x) => { const k = x.text.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
     .sort((a, b) => b.day.localeCompare(a.day))

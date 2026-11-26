@@ -338,23 +338,37 @@
   .cb-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--ink-dim);background:var(--card-2);border:1px solid var(--line);border-radius:999px;padding:3px 9px 3px 7px}
   .cb svg,.cb-chip svg{width:14px;height:14px;flex:0 0 auto;fill:none;stroke:var(--orange);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .action.open .cb-chips{display:none}
-  .cb{margin-top:14px;border:1px solid var(--line);border-radius:12px;background:var(--card-2);padding:13px 14px;cursor:default;color:var(--ink)}
-  .cb-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
-  .cb-title{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:800;color:var(--orange-soft);margin-right:auto}
-  .cb-at{font-size:12px;color:var(--ink-faint);font-weight:600}
+  .cb{margin-top:14px;border:1px solid var(--line);border-radius:14px;background:var(--card-2);padding:14px 15px 15px;cursor:default;color:var(--ink)}
+  .cb-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:4px}
+  .cb-head-txt{margin-right:auto;min-width:0}
+  .cb-title{display:block;font-size:15px;font-weight:800;color:var(--ink)}
+  .cb-at{display:block;font-size:12px;color:var(--ink-faint);font-weight:600;margin-top:1px}
   .cb-warn{color:var(--red)}
-  .cb-empty{margin:6px 0 0;font-size:12.5px;color:var(--ink-faint)}
-  .cb-points{margin:0 0 10px;padding-left:18px;font-size:13.5px;line-height:1.5;color:var(--ink)}
-  .cb-points li{margin:2px 0}
-  .cb-facts{display:grid;gap:9px;margin:4px 0 12px}
-  .cb-fact{display:flex;gap:9px;align-items:flex-start;font-size:13px;line-height:1.5;color:var(--ink-dim)}
-  .cb-fact svg{margin-top:2px;width:16px;height:16px}
-  .cb-fact-label{display:block;font-size:12px;font-weight:800;color:var(--ink)}
-  .cb-notes{margin:2px 0 0;padding:0;list-style:none;display:grid;gap:6px}
-  .cb-notes li{border-left:2px solid var(--line);padding-left:9px}
-  .cb-note-meta{display:block;font-size:11.5px;font-weight:700;color:var(--ink-faint)}
-  .cb-send{margin-top:10px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
-  .cb-send-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;font-weight:800;color:var(--ink);margin-bottom:6px}
+  .cb-empty{margin:4px 0 0;font-size:13px;color:var(--ink-faint)}
+  .cb-step{display:flex;align-items:center;gap:8px;margin:16px 0 8px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;font-weight:800;color:var(--ink-dim)}
+  .cb-num{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--orange);color:#fff;font-size:11px;letter-spacing:0}
+  .cb-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  @media (max-width:640px){ .cb-tiles{grid-template-columns:minmax(0,1fr)} }
+  .cb-tile{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--line);border-radius:10px;padding:10px 12px}
+  .cb-tile.cb-good{border-top-color:var(--green)} .cb-tile.cb-watch{border-top-color:#c98a12} .cb-tile.cb-flag{border-top-color:var(--red)}
+  .cb-tile-label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--ink-dim)}
+  .cb-tile-big{font-size:26px;font-weight:800;line-height:1.15;margin:4px 0 3px;color:var(--ink)}
+  .cb-tile-big small{font-size:13px;font-weight:700;color:var(--ink-dim);margin-left:3px}
+  .cb-tile-sub{font-size:12.5px;line-height:1.45;color:var(--ink-dim)}
+  .cb-tile-sub b{color:var(--red)}
+  .cb-legend{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px;font-size:11.5px;color:var(--ink-faint);font-weight:600}
+  .cb-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-left:6px}
+  .cb-dot:first-child{margin-left:0}
+  .cb-dot.cb-good{background:var(--green)} .cb-dot.cb-watch{background:#c98a12} .cb-dot.cb-flag{background:var(--red)}
+  .cb-notes{margin:0;padding:0;list-style:none;display:grid;gap:7px}
+  .cb-notes li{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:13.5px;line-height:1.5;color:var(--ink)}
+  .cb-note-meta{font-size:12px;color:var(--ink-faint);margin-bottom:2px}
+  .cb-note-meta b{color:var(--ink-dim)}
+  .cb-points{margin:0;padding-left:20px;font-size:14px;line-height:1.5;color:var(--ink)}
+  .cb-points li{margin:3px 0;padding-left:2px}
+  .cb-send{margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .cb-send-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;font-size:13px;color:var(--ink);margin-bottom:7px}
+  .cb-send-hint{display:block;font-size:12px;color:var(--ink-faint);font-weight:600}
   .cb-send-text{white-space:pre-wrap;font-size:13.5px;line-height:1.55;color:var(--ink)}
   .seed-line{margin-top:11px;background:rgba(var(--orange-rgb),.1);border:1px solid rgba(var(--orange-rgb),.32);border-radius:10px;padding:11px 13px}
   .seed-line .seed-label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--orange-soft);margin-bottom:6px}
@@ -2502,56 +2516,76 @@ function cbChips(b){
   if((b.slack||[]).length) out.push(`<span class="cb-chip">${CB_ICON.notes}${b.slack.length} coach note${b.slack.length===1?'':'s'}</span>`);
   return `<div class="cb-chips">${out.join('')}</div>`;
 }
-function cbSessionsLine(s){
-  if(!s || !s.found) return 'Not found on TeamUp by email or name, so no session count.';
-  const bits = [`<b>${s.lastWeek}</b> in the last 7 days`, `${s.total} since they started`];
-  bits.push(s.booked ? `<b>${s.booked}</b> booked for the next 7 days` : `<b class="cb-warn">nothing booked</b> for the next 7 days`);
-  if(!s.lastWeek && s.last) bits.push('last in '+cbDay(s.last));
-  return bits.join(' · ');
+/* The three tiles: one number a coach can read from across the room, what it's out of, and a
+   colour that says whether it's good (green), worth a word (amber) or the thing to raise (red). */
+function cbTile(icon, label, big, sub, tone){
+  return `<div class="cb-tile cb-${tone}">
+      <div class="cb-tile-label">${icon}${label}</div>
+      <div class="cb-tile-big">${big}</div>
+      <div class="cb-tile-sub">${sub}</div>
+    </div>`;
 }
-function cbFoodLine(a){
-  if(!a || !a.found) return 'Not found on Trainerize.';
+function cbSessionsTile(s){
+  if(!s || !s.found) return cbTile(CB_ICON.gym,'Sessions','?','Not found on TeamUp','grey');
+  const tone = s.lastWeek>=2 ? 'good' : s.lastWeek===1 ? 'watch' : 'flag';
+  const next = s.booked ? `${s.booked} booked next 7 days` : `<b>Nothing booked</b> next 7 days`;
+  return cbTile(CB_ICON.gym,'Sessions last 7 days', String(s.lastWeek), `${next}<br>${s.total} since they started`, s.booked ? tone : (tone==='good'?'watch':'flag'));
+}
+function cbFoodTile(a){
+  if(!a || !a.found) return cbTile(CB_ICON.food,'Food logged','?','Not found on Trainerize','grey');
   const f = a.food||{};
-  if(!f.daysLogged) return f.calGoal ? `Nothing logged in the last 7 days (target ${cbN(f.calGoal)} kcal, ${cbN(f.proGoal)}g protein).` : 'Nothing logged in the last 7 days, and no food targets set.';
-  const bits = [`Logged <b>${f.daysLogged} of 7</b> days`];
-  if(f.partDays) bits.push(`${f.partDays} only half logged`);
-  if(f.calGoal && f.avgCal!=null) bits.push(`about <b>${cbN(f.avgCal)}</b> of ${cbN(f.calGoal)} kcal a day`);
-  if(f.proGoal && f.avgPro!=null) bits.push(`<b>${cbN(f.avgPro)}g</b> of ${cbN(f.proGoal)}g protein`);
-  if(f.calGoal && f.fullDays) bits.push(`on target ${f.onCalDays} day${f.onCalDays===1?'':'s'}`);
-  return bits.join(' · ');
+  const tone = f.daysLogged>=5 ? 'good' : f.daysLogged>=2 ? 'watch' : 'flag';
+  let sub;
+  if(!f.daysLogged) sub = f.calGoal ? `Nothing logged<br>Target ${cbN(f.calGoal)} kcal · ${cbN(f.proGoal)}g protein` : 'Nothing logged, no targets set';
+  else {
+    const cal = f.calGoal && f.avgCal!=null ? `Calories: avg ${cbN(f.avgCal)} of ${cbN(f.calGoal)}` : '';
+    const pro = f.proGoal && f.avgPro!=null ? `Protein: avg ${cbN(f.avgPro)}g of ${cbN(f.proGoal)}g` : '';
+    sub = [cal, pro, f.partDays ? `${f.partDays} day${f.partDays===1?'':'s'} only half logged` : ''].filter(Boolean).join('<br>');
+  }
+  return cbTile(CB_ICON.food,'Food logged', `${f.daysLogged}<small>/7 days</small>`, sub, tone);
 }
-function cbAppLine(a){
-  if(!a || !a.found) return '';
-  const bits = [];
-  bits.push(`${a.workoutsDone} app workout${a.workoutsDone===1?'':'s'} ticked off`+(a.workoutsMissed?`, ${a.workoutsMissed} not ticked`:''));
-  if(a.cardioDone) bits.push(`${a.cardioDone} cardio`);
-  if(a.bodyStats) bits.push('body stats logged'); else if(a.bodyStatsMissed) bits.push('body stats due, not logged');
-  if(a.lastIn) bits.push('last opened the app '+cbWhen(a.lastIn));
-  return bits.join(' · ');
+function cbAppTile(a){
+  if(!a || !a.found) return cbTile(CB_ICON.app,'Trainerize app','?','Not found on Trainerize','grey');
+  const d = a.lastIn ? Math.floor((today0() - new Date(String(a.lastIn).replace(' ','T')).setHours(0,0,0,0))/MS_DAY) : 99;
+  const tone = d<=2 ? 'good' : d<=6 ? 'watch' : 'flag';
+  const big = d<=0 ? 'Today' : d===1 ? 'Yesterday' : d>=99 ? 'Never' : d+' days ago';
+  const done = a.workoutsDone + a.workoutsMissed;
+  const sub = [done ? `Workouts ticked: ${a.workoutsDone} of ${done}` : 'No app workouts set',
+    a.bodyStats ? 'Body stats: logged' : a.bodyStatsMissed ? 'Body stats: <b>due, not logged</b>' : ''].filter(Boolean).join('<br>');
+  return cbTile(CB_ICON.app,'Last opened the app', big, sub, tone);
 }
 function cbDetailHtml(m, item){
   const b = cbBriefs[m.id];
+  const first = esc(String(m.name).split(' ')[0]);
   const asked = cbAsked[m.id] && Date.now()-cbAsked[m.id] < 4*60000;
   const refresh = `<button class="btn sm ghost" onclick="event.stopPropagation();cbRefresh('${m.id}',this)" ${asked?'disabled':''}>${asked?'Updating, about a minute…':'Refresh'}</button>`;
-  if(!b) return `<div class="cb"><div class="cb-head"><span class="cb-title">Worth talking about</span>${refresh}</div>
-      <p class="cb-empty">Nothing pulled for ${esc(m.name.split(' ')[0])} yet. It runs every morning, or press Refresh.</p></div>`;
+  if(!b) return `<div class="cb"><div class="cb-head"><span class="cb-title">${first}'s week at a glance</span>${refresh}</div>
+      <p class="cb-empty">Nothing pulled for ${first} yet. It runs every morning, or press Refresh.</p></div>`;
   const when = new Date(b.at), stale = Date.now()-when.getTime() > 30*3600000;
-  const notes = (b.slack||[]).map(x=>`<li><span class="cb-note-meta">${esc(cbDay(x.day))} · ${esc(x.coach||'Coach')}${x.check?' · <span class="cb-warn">check it’s them</span>':''}</span>${esc(x.text)}</li>`).join('');
-  const block = (kind,label,text) => text ? `<div class="cb-send">
-        <div class="cb-send-head"><span>${label}</span><button class="btn sm" onclick="event.stopPropagation();cbCopy('${m.id}','${kind}',this)">Copy</button></div>
+  const per = b.period ? `${cbDay(b.period.from)} to ${cbDay(b.period.to)}` : 'the last 7 days';
+  const notes = (b.slack||[]).map(x=>`<li><div class="cb-note-meta"><b>${esc(x.coach ? x.coach.charAt(0).toUpperCase()+x.coach.slice(1) : 'Coach')}</b> · ${esc(cbDay(x.day))}${x.check?' · <span class="cb-warn">check it’s them</span>':''}</div>${esc(x.text)}</li>`).join('');
+  const send = (kind,label,hint,text) => text ? `<div class="cb-send">
+        <div class="cb-send-head"><span><b>${label}</b><span class="cb-send-hint">${hint}</span></span><button class="btn sm" onclick="event.stopPropagation();cbCopy('${m.id}','${kind}',this)">Copy</button></div>
         <div class="cb-send-text">${esc(text)}</div></div>` : '';
   return `<div class="cb" onclick="event.stopPropagation()">
-      <div class="cb-head"><span class="cb-title">Worth talking about</span>
-        <span class="cb-at${stale?' cb-warn':''}">${stale?'From ':'Updated '}${esc(when.toLocaleString('en-GB',{weekday:'short',hour:'numeric',minute:'2-digit'}))}</span>${refresh}</div>
-      ${(b.points||[]).length?`<ul class="cb-points">${b.points.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>`:''}
-      <div class="cb-facts">
-        <div class="cb-fact">${CB_ICON.gym}<div><span class="cb-fact-label">Sessions</span>${cbSessionsLine(b.sessions)}</div></div>
-        <div class="cb-fact">${CB_ICON.food}<div><span class="cb-fact-label">Food in Trainerize</span>${cbFoodLine(b.app)}</div></div>
-        ${cbAppLine(b.app)?`<div class="cb-fact">${CB_ICON.app}<div><span class="cb-fact-label">The app</span>${cbAppLine(b.app)}</div></div>`:''}
-        <div class="cb-fact">${CB_ICON.notes}<div><span class="cb-fact-label">From the coaches’ shift notes</span>${notes?`<ul class="cb-notes">${notes}</ul>`:'Nothing about them in the last two weeks.'}</div></div>
-      </div>
-      ${block('message','Message to send',b.message)}
-      ${block('voice', item && item.seed ? 'Voice note (say it your way, then finish with the line above)' : 'Voice note (say it your way)', b.voice)}
+      <div class="cb-head">
+        <div class="cb-head-txt"><span class="cb-title">${first}'s week at a glance</span>
+          <span class="cb-at${stale?' cb-warn':''}">${esc(per)} · ${stale?'from':'updated'} ${esc(when.toLocaleString('en-GB',{weekday:'short',hour:'numeric',minute:'2-digit'}))}</span></div>
+        ${refresh}</div>
+
+      <div class="cb-step"><span class="cb-num">1</span>The numbers</div>
+      <div class="cb-tiles">${cbSessionsTile(b.sessions)}${cbFoodTile(b.app)}${cbAppTile(b.app)}</div>
+      <div class="cb-legend"><span class="cb-dot cb-good"></span>On track <span class="cb-dot cb-watch"></span>Worth a word <span class="cb-dot cb-flag"></span>Raise it</div>
+
+      <div class="cb-step"><span class="cb-num">2</span>What the coaches said in their shift notes</div>
+      ${notes ? `<ul class="cb-notes">${notes}</ul>` : `<p class="cb-empty">Nothing about ${first} in the last two weeks.</p>`}
+
+      ${(b.points||[]).length ? `<div class="cb-step"><span class="cb-num">3</span>What to bring up</div>
+      <ol class="cb-points">${b.points.map(p=>`<li>${esc(p.replace(/^named win:\s*/i,'Win: '))}</li>`).join('')}</ol>` : ''}
+
+      <div class="cb-step"><span class="cb-num">${(b.points||[]).length?4:3}</span>Send one of these on Trainerize</div>
+      ${send('voice','Voice note', item && item.seed ? 'Say it your way, then finish with the line above' : 'Say it your way, don’t read it word for word', b.voice)}
+      ${send('message','Or a written message','Tweak it, then copy and send', b.message)}
       ${(b.errors||[]).length?`<p class="cb-empty">Couldn’t read everything: ${esc(b.errors.join('; '))}</p>`:''}
     </div>`;
 }

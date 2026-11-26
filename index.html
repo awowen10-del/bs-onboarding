@@ -682,6 +682,7 @@
   .cu-cell{min-height:44px;border-radius:10px;font:inherit;font-size:13px;cursor:pointer;padding:6px 8px;text-align:left;display:flex;flex-direction:column;justify-content:center;min-width:0}
   .cu-cell b,.cu-cell span,.cu-cell small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .cu-cell.free span{color:var(--ink-faint)}
+  .cu-cell.off{cursor:default;color:var(--ink-faint);background:transparent;border:0;align-items:center}
   .cu-cell small{font-size:11px}
   .cu-cell:hover{filter:brightness(.97)}
   .cu-cell:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
@@ -2281,6 +2282,7 @@ async function wcMarkSent(contactId){
    which the booking page reads before it offers a time. */
 const CU_BOOK_KEY = 'catchup-bookings', CU_BLOCK_KEY = 'catchup-blocks';
 const CU_SLOTS = { 1:[16,17,18,19,20], 3:[16,17,18,19,20], 5:[6,7,8,9,10] };   // keep in step with catchup.js
+const CU_OFFER = { dan:[1,3,5], ash:[1,3] };   // Zoom with Ash: evenings only. Keep in step with OFFER in catchup.js
 const CU_LANES = { dan:{ short:'Dan', label:'In the gym with Dan' }, ash:{ short:'Ash', label:'On Zoom with Ash' } };
 const CU_WEEKS = 4;
 const CU_LINK = 'https://bodysculpt-onboarding.netlify.app/catch-up';
@@ -2325,6 +2327,7 @@ function renderCatchups(){
     const rows = CU_SLOTS[cuDow(d)].map(h=>{
       const t = cuHH(h);
       const cells = Object.keys(CU_LANES).map(lane=>{
+        if(CU_OFFER[lane].indexOf(cuDow(d))===-1) return `<div class="cu-cell off" aria-label="No ${esc(CU_LANES[lane].short)} on ${esc(cuDayLabel(d))}"><span>–</span></div>`;
         const b = cuBookingAt(d,t,lane), bl = cuBlockAt(d,t,lane);
         const lab = `${cuDayLabel(d)} ${cuHour(t)}, ${CU_LANES[lane].short}`;
         if(b) return `<button type="button" class="cu-cell booked" onclick="cuOpen('booking','${b.id}')" aria-label="${esc(lab)}: booked by ${esc(b.name)}"><b>${esc(b.name)}</b></button>`;
@@ -2388,7 +2391,7 @@ async function cuBlock(){
   if(!who){ document.getElementById('cuErr').textContent = "Pick who's doing this."; return; }
   taSetWho(who);
   const times = time==='all' ? CU_SLOTS[cuDow(date)].map(cuHH) : [time];
-  const lanes = lane==='both' ? ['dan','ash'] : [lane];
+  const lanes = (lane==='both' ? ['dan','ash'] : [lane]).filter(l=>CU_OFFER[l].indexOf(cuDow(date))!==-1);
   try{
     await cuSave(CU_BLOCK_KEY, v=>{ v.blocks = v.blocks||{};
       times.forEach(t=>{ const k = date+'T'+t; v.blocks[k] = v.blocks[k]||{}; lanes.forEach(l=>{ v.blocks[k][l] = { by:who, why, at:new Date().toISOString() }; }); });

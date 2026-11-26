@@ -62,6 +62,10 @@ async function run(body, opts = {}) {
   r = await run(post({ who: "dan", time: "19:00" }), { failEmail: true }); // Dan, no Zoom task; email failing doesn't lose the booking
   assert.equal(r.res.statusCode, 200); assert.equal(r.out.ghl.email, false); assert.equal(r.out.ghl.task, false);
   assert.equal(store["catchup-bookings"].bookings.length, 2);
+  r = await run(post({ date: "2026-12-04", time: "06:00" }));           assert.equal(r.res.statusCode, 400);   // no Zoom on Friday mornings
+  ({ out } = await run({ httpMethod: "GET", queryStringParameters: {} }));
+  assert.ok(out.slots.filter((x) => x.date === "2026-12-04").every((x) => x.ash === null && x.dan === true));
+  assert.ok(HTML.includes("const CU_OFFER = { dan:[1,3,5], ash:[1,3] }"));
   r = await run(post({ time: "13:00" }));                                assert.equal(r.res.statusCode, 400);
   r = await run(post({ date: "2026-12-29" }));                           assert.equal(r.res.statusCode, 400);   // beyond 3 weeks
   r = await run(post({ time: "16:00", note: " " }));                    assert.equal(r.res.statusCode, 400);   // they must say what it's about

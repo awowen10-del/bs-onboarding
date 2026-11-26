@@ -26,6 +26,9 @@ const DAYS_AHEAD = 21;
 /* The fixed slots. 1 = Monday ... 5 = Friday. Hours are 24h, Warrington time.
    Keep in step with CU_SLOTS in index.html (a test checks they match). */
 const SLOTS = { 1: [16, 17, 18, 19, 20], 3: [16, 17, 18, 19, 20], 5: [6, 7, 8, 9, 10] };
+/* Who offers which days. Zoom with Ash is evenings only: no Friday mornings. */
+const OFFER = { dan: [1, 3, 5], ash: [1, 3] };
+const offered = (lane, day) => OFFER[lane].includes(weekday(day));
 const WHO = {
   dan: { coach: 'Dan', where: 'in the gym', label: 'In the gym with Dan' },
   ash: { coach: 'Ash', where: 'on Zoom', label: 'On Zoom with Ash' },
@@ -70,8 +73,10 @@ function taken(bookings, blocks, date, time, who) {
   if (bl[who]) return true;
   return (bookings || []).some((b) => live(b) && b.date === date && b.time === time && b.who === who);
 }
+/* true = free, false = taken or blocked, null = that coach doesn't offer this day */
 function freeSlots(now, bookings, blocks) {
-  return allSlots(now).map((s) => ({ ...s, dan: !taken(bookings, blocks, s.date, s.time, 'dan'), ash: !taken(bookings, blocks, s.date, s.time, 'ash') }));
+  const lane = (s, l) => (offered(l, s.date) ? !taken(bookings, blocks, s.date, s.time, l) : null);
+  return allSlots(now).map((s) => ({ ...s, dan: lane(s, 'dan'), ash: lane(s, 'ash') }));
 }
 
 /* ---- Supabase (service key, server side only) ---- */
@@ -170,7 +175,7 @@ exports.handler = async (event) => {
     const note = clean(f.note, 600);
     if (!who || !date || !time) return reply(400, { error: 'Pick who, a day and a time.' });
     if (note.length < 3) return reply(400, { error: "Tell us what you'd like to talk about, so your coach can be ready for you." });
-    if (!allSlots(now).some((s) => s.date === date && s.time === time)) return reply(400, { error: "That time isn't one we offer." });
+    if (!allSlots(now).some((s) => s.date === date && s.time === time) || !offered(who, date)) return reply(400, { error: "That time isn't one we offer." });
 
     let person = f.c ? await contactById(f.c) : null;
     if (!person) {
@@ -203,4 +208,4 @@ exports.handler = async (event) => {
   }
 };
 
-exports._test = { SLOTS, allSlots, freeSlots, taken, niceWhen, londonDay };
+exports._test = { SLOTS, OFFER, allSlots, freeSlots, taken, niceWhen, londonDay };

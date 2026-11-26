@@ -93,7 +93,7 @@ textarea{resize:vertical;min-height:90px}
       </button>
       <button type="button" class="who" data-who="ash" aria-pressed="false">
         <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="2"/><path d="M15.5 10.5l6-3.5v10l-6-3.5"/></svg></span>
-        <span><b>On Zoom with Ash</b><span>From home, same days and times</span></span>
+        <span><b>On Zoom with Ash</b><span>From home, Monday and Wednesday evenings</span></span>
       </button>
     </div>
   </section>
@@ -161,7 +161,7 @@ function press(container, sel, btn){ container.querySelectorAll(sel).forEach(b=>
 function renderDays(){
   const host = $('days');
   const free = S.slots.filter(s=>s[S.who]);
-  const days = [...new Set(S.slots.map(s=>s.date))];
+  const days = [...new Set(S.slots.filter(s=>s[S.who]!==null).map(s=>s.date))];
   if(!free.length){ host.innerHTML = '<p class="hint">Nothing free in the next three weeks. Reply to the email and we\'ll find you a time.</p>'; return; }
   let html = '', wk = null;
   days.forEach(d=>{
@@ -175,7 +175,7 @@ function renderDays(){
 }
 function renderTimes(){
   const host = $('times');
-  const slots = S.slots.filter(s=>s.date===S.date);
+  const slots = S.slots.filter(s=>s.date===S.date && s[S.who]!==null);
   $('dayHint').textContent = longDay(S.date) + ', ' + coach(S.who) + '.';
   host.innerHTML = slots.map(s=>`<button type="button" class="pill" data-time="${s.time}" aria-pressed="${S.time===s.time}" ${s[S.who]?'':'disabled aria-label="'+hourLabel(s.time)+', taken"'}><b>${hourLabel(s.time)}</b></button>`).join('');
 }

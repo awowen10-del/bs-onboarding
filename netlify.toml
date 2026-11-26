@@ -10,3 +10,7 @@
 # TeamUp attendance into the tracker: every morning at 06:30 UTC, before the coaches start
 [functions."attendance-sync-daily"]
   schedule = "30 6 * * *"
+
+# Check-in briefs (sessions, Trainerize, coaches' shift notes, a message to send): every morning at 06:50 UTC
+[functions."checkin-brief-daily"]
+  schedule = "50 6 * * *"

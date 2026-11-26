@@ -334,6 +334,28 @@
   .action.open{flex-wrap:wrap}
   .action.open .detail{display:block}
   .action .detail b{color:var(--ink)}
+  .cb-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;flex-basis:100%}
+  .cb-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--ink-dim);background:var(--card-2);border:1px solid var(--line);border-radius:999px;padding:3px 9px 3px 7px}
+  .cb svg,.cb-chip svg{width:14px;height:14px;flex:0 0 auto;fill:none;stroke:var(--orange);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .action.open .cb-chips{display:none}
+  .cb{margin-top:14px;border:1px solid var(--line);border-radius:12px;background:var(--card-2);padding:13px 14px;cursor:default;color:var(--ink)}
+  .cb-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .cb-title{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:800;color:var(--orange-soft);margin-right:auto}
+  .cb-at{font-size:12px;color:var(--ink-faint);font-weight:600}
+  .cb-warn{color:var(--red)}
+  .cb-empty{margin:6px 0 0;font-size:12.5px;color:var(--ink-faint)}
+  .cb-points{margin:0 0 10px;padding-left:18px;font-size:13.5px;line-height:1.5;color:var(--ink)}
+  .cb-points li{margin:2px 0}
+  .cb-facts{display:grid;gap:9px;margin:4px 0 12px}
+  .cb-fact{display:flex;gap:9px;align-items:flex-start;font-size:13px;line-height:1.5;color:var(--ink-dim)}
+  .cb-fact svg{margin-top:2px;width:16px;height:16px}
+  .cb-fact-label{display:block;font-size:12px;font-weight:800;color:var(--ink)}
+  .cb-notes{margin:2px 0 0;padding:0;list-style:none;display:grid;gap:6px}
+  .cb-notes li{border-left:2px solid var(--line);padding-left:9px}
+  .cb-note-meta{display:block;font-size:11.5px;font-weight:700;color:var(--ink-faint)}
+  .cb-send{margin-top:10px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .cb-send-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;font-weight:800;color:var(--ink);margin-bottom:6px}
+  .cb-send-text{white-space:pre-wrap;font-size:13.5px;line-height:1.55;color:var(--ink)}
   .seed-line{margin-top:11px;background:rgba(var(--orange-rgb),.1);border:1px solid rgba(var(--orange-rgb),.32);border-radius:10px;padding:11px 13px}
   .seed-line .seed-label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:var(--orange-soft);margin-bottom:6px}
   .seed-line .seed-text{font-size:13.5px;color:var(--ink);font-style:italic;line-height:1.5}
@@ -2448,6 +2470,102 @@ async function cuCopyLink(btn){
   try{ await navigator.clipboard.writeText(CU_LINK); btn.textContent = 'Copied ✓'; setTimeout(()=>btn.textContent='Copy booking link',1600); }
   catch(e){ prompt('Copy this link:', CU_LINK); }
 }
+/* ---- Check-in briefs (function checkin-brief-background.js, every morning) ----
+   Ash, 26 Nov 2026: inside each challenger's check-in card, at a glance, how many sessions they
+   came to last week, how they got on in Trainerize (food against their targets, workouts), what
+   the coaches said about them in the Post-Shift Checklist posts, then a message and a voice note
+   to send. Read-only here: the function writes the row, Refresh asks it for one person. */
+const CB_ROW_KEY = 'checkin-briefs';
+let cbBriefs = {}, cbOpen = new Set(), cbAsked = {};
+const CB_FN = '/.netlify/functions/checkin-brief-background';
+const CB_ICON = {
+  gym:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg>',
+  food:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v8a2 2 0 0 0 2 2v8M11 3v8a2 2 0 0 1-2 2M17 3c-1.7 0-3 2.2-3 5s1.3 4 3 4v9"/></svg>',
+  app:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>',
+  notes:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>',
+};
+function isCheckinItem(item){ return !!item && (/^wk\d$/.test(item.id) || item.free===true); }
+const cbN = n => Number(n||0).toLocaleString('en-GB');
+const cbDay = d => new Date(String(d).slice(0,10)+'T12:00:00Z').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'});
+function cbWhen(iso){
+  if(!iso) return '';
+  const d = new Date(String(iso).replace(' ','T')); if(isNaN(d)) return '';
+  const days = Math.floor((today0() - new Date(d).setHours(0,0,0,0))/MS_DAY);
+  return days<=0 ? 'today' : days===1 ? 'yesterday' : days+' days ago';
+}
+/* The three numbers on the closed card. */
+function cbChips(b){
+  const out = [];
+  const s = b.sessions||{}, f = (b.app&&b.app.food)||{};
+  out.push(`<span class="cb-chip">${CB_ICON.gym}${s.found ? `${s.lastWeek} session${s.lastWeek===1?'':'s'} last week` : 'Not on TeamUp'}</span>`);
+  out.push(`<span class="cb-chip">${CB_ICON.food}${!b.app||!b.app.found ? 'Not on Trainerize' : f.daysLogged ? `Food ${f.daysLogged}/7 days` : 'No food logged'}</span>`);
+  if((b.slack||[]).length) out.push(`<span class="cb-chip">${CB_ICON.notes}${b.slack.length} coach note${b.slack.length===1?'':'s'}</span>`);
+  return `<div class="cb-chips">${out.join('')}</div>`;
+}
+function cbSessionsLine(s){
+  if(!s || !s.found) return 'Not found on TeamUp by email or name, so no session count.';
+  const bits = [`<b>${s.lastWeek}</b> in the last 7 days`, `${s.total} since they started`];
+  bits.push(s.booked ? `<b>${s.booked}</b> booked for the next 7 days` : `<b class="cb-warn">nothing booked</b> for the next 7 days`);
+  if(!s.lastWeek && s.last) bits.push('last in '+cbDay(s.last));
+  return bits.join(' · ');
+}
+function cbFoodLine(a){
+  if(!a || !a.found) return 'Not found on Trainerize.';
+  const f = a.food||{};
+  if(!f.daysLogged) return f.calGoal ? `Nothing logged in the last 7 days (target ${cbN(f.calGoal)} kcal, ${cbN(f.proGoal)}g protein).` : 'Nothing logged in the last 7 days, and no food targets set.';
+  const bits = [`Logged <b>${f.daysLogged} of 7</b> days`];
+  if(f.partDays) bits.push(`${f.partDays} only half logged`);
+  if(f.calGoal && f.avgCal!=null) bits.push(`about <b>${cbN(f.avgCal)}</b> of ${cbN(f.calGoal)} kcal a day`);
+  if(f.proGoal && f.avgPro!=null) bits.push(`<b>${cbN(f.avgPro)}g</b> of ${cbN(f.proGoal)}g protein`);
+  if(f.calGoal && f.fullDays) bits.push(`on target ${f.onCalDays} day${f.onCalDays===1?'':'s'}`);
+  return bits.join(' · ');
+}
+function cbAppLine(a){
+  if(!a || !a.found) return '';
+  const bits = [];
+  bits.push(`${a.workoutsDone} app workout${a.workoutsDone===1?'':'s'} ticked off`+(a.workoutsMissed?`, ${a.workoutsMissed} not ticked`:''));
+  if(a.cardioDone) bits.push(`${a.cardioDone} cardio`);
+  if(a.bodyStats) bits.push('body stats logged'); else if(a.bodyStatsMissed) bits.push('body stats due, not logged');
+  if(a.lastIn) bits.push('last opened the app '+cbWhen(a.lastIn));
+  return bits.join(' · ');
+}
+function cbDetailHtml(m, item){
+  const b = cbBriefs[m.id];
+  const asked = cbAsked[m.id] && Date.now()-cbAsked[m.id] < 4*60000;
+  const refresh = `<button class="btn sm ghost" onclick="event.stopPropagation();cbRefresh('${m.id}',this)" ${asked?'disabled':''}>${asked?'Updating, about a minute…':'Refresh'}</button>`;
+  if(!b) return `<div class="cb"><div class="cb-head"><span class="cb-title">Worth talking about</span>${refresh}</div>
+      <p class="cb-empty">Nothing pulled for ${esc(m.name.split(' ')[0])} yet. It runs every morning, or press Refresh.</p></div>`;
+  const when = new Date(b.at), stale = Date.now()-when.getTime() > 30*3600000;
+  const notes = (b.slack||[]).map(x=>`<li><span class="cb-note-meta">${esc(cbDay(x.day))} · ${esc(x.coach||'Coach')}${x.check?' · <span class="cb-warn">check it’s them</span>':''}</span>${esc(x.text)}</li>`).join('');
+  const block = (kind,label,text) => text ? `<div class="cb-send">
+        <div class="cb-send-head"><span>${label}</span><button class="btn sm" onclick="event.stopPropagation();cbCopy('${m.id}','${kind}',this)">Copy</button></div>
+        <div class="cb-send-text">${esc(text)}</div></div>` : '';
+  return `<div class="cb" onclick="event.stopPropagation()">
+      <div class="cb-head"><span class="cb-title">Worth talking about</span>
+        <span class="cb-at${stale?' cb-warn':''}">${stale?'From ':'Updated '}${esc(when.toLocaleString('en-GB',{weekday:'short',hour:'numeric',minute:'2-digit'}))}</span>${refresh}</div>
+      ${(b.points||[]).length?`<ul class="cb-points">${b.points.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>`:''}
+      <div class="cb-facts">
+        <div class="cb-fact">${CB_ICON.gym}<div><span class="cb-fact-label">Sessions</span>${cbSessionsLine(b.sessions)}</div></div>
+        <div class="cb-fact">${CB_ICON.food}<div><span class="cb-fact-label">Food in Trainerize</span>${cbFoodLine(b.app)}</div></div>
+        ${cbAppLine(b.app)?`<div class="cb-fact">${CB_ICON.app}<div><span class="cb-fact-label">The app</span>${cbAppLine(b.app)}</div></div>`:''}
+        <div class="cb-fact">${CB_ICON.notes}<div><span class="cb-fact-label">From the coaches’ shift notes</span>${notes?`<ul class="cb-notes">${notes}</ul>`:'Nothing about them in the last two weeks.'}</div></div>
+      </div>
+      ${block('message','Message to send',b.message)}
+      ${block('voice', item && item.seed ? 'Voice note (say it your way, then finish with the line above)' : 'Voice note (say it your way)', b.voice)}
+      ${(b.errors||[]).length?`<p class="cb-empty">Couldn’t read everything: ${esc(b.errors.join('; '))}</p>`:''}
+    </div>`;
+}
+async function cbCopy(mid, kind, btn){
+  const b = cbBriefs[mid]; const txt = b && b[kind]; if(!txt) return;
+  try{ await navigator.clipboard.writeText(txt); btn.textContent='Copied ✓'; setTimeout(()=>{btn.textContent='Copy';},1600); }
+  catch(e){ prompt('Copy this:', txt); }
+}
+async function cbRefresh(mid, btn){
+  cbAsked[mid] = Date.now();
+  if(btn){ btn.disabled = true; btn.textContent = 'Updating, about a minute…'; }
+  try{ await fetch(CB_FN, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: mid }) }); }
+  catch(e){ delete cbAsked[mid]; alert('Couldn’t ask for a refresh: '+e.message); renderAll(); }
+}
 let tuAtt = null;                           // { updated, members:[{id,name,email,tid,since,plan,paused}], weeks:{tid:{wk:attended}}, last:{tid:day} }
 
 /* ---- The Playbook's WORDS: an overrides layer over the journey ----------------
@@ -2877,7 +2995,7 @@ async function bootData(){
   try{
     // pull the roster, the member list and a one-time "seeded" marker in one go
     const { data, error } = await sb.from('bodysculpt').select('key,value,updated_at')
-      .in('key', [ROW_KEY, RET_ROW_KEY, PB_ROW_KEY, 'seeded', FLAGS_ROW_KEY, TU_ROW_KEY, WC_ROW_KEY, CU_BOOK_KEY, CU_BLOCK_KEY]);
+      .in('key', [ROW_KEY, RET_ROW_KEY, PB_ROW_KEY, 'seeded', FLAGS_ROW_KEY, TU_ROW_KEY, WC_ROW_KEY, CU_BOOK_KEY, CU_BLOCK_KEY, CB_ROW_KEY]);
     if(error) throw error;
     const rosterRow = (data||[]).find(r=>r.key===ROW_KEY);
     const retRow = (data||[]).find(r=>r.key===RET_ROW_KEY);
@@ -2891,6 +3009,8 @@ async function bootData(){
     const cuB = (data||[]).find(r=>r.key===CU_BOOK_KEY), cuK = (data||[]).find(r=>r.key===CU_BLOCK_KEY);
     cuBookings = (cuB && cuB.value && Array.isArray(cuB.value.bookings)) ? cuB.value.bookings : [];
     cuBlocks = (cuK && cuK.value && cuK.value.blocks) || {};
+    const cbRow = (data||[]).find(r=>r.key===CB_ROW_KEY);
+    cbBriefs = (cbRow && cbRow.value && cbRow.value.briefs) || {};
     // No overrides row yet is the normal case on every device until somebody edits a word of
     // the Playbook, and it reads as "no overrides" rather than as an error.
     const pbRow = (data||[]).find(r=>r.key===PB_ROW_KEY);
@@ -2936,6 +3056,11 @@ async function bootData(){
         payload=>{ const v = payload.new && payload.new.value; if(v && Array.isArray(v.bookings)){ cuBookings = v.bookings; renderAll(); } })
       .on('postgres_changes', { event:'*', schema:'public', table:'bodysculpt', filter:'key=eq.'+CU_BLOCK_KEY },
         payload=>{ const v = payload.new && payload.new.value; if(v){ cuBlocks = v.blocks||{}; renderAll(); } })
+      // the morning's check-in briefs, and a Refresh for one person
+      .on('postgres_changes', { event:'*', schema:'public', table:'bodysculpt', filter:'key=eq.'+CB_ROW_KEY },
+        payload=>{ const v = payload.new && payload.new.value; if(v && v.briefs){
+          Object.keys(cbAsked).forEach(id=>{ if(v.briefs[id] && Date.parse(v.briefs[id].at) > cbAsked[id]-60000) delete cbAsked[id]; });
+          cbBriefs = v.briefs; renderAll(); } })
       // the member list rides the same channel, with the same echo guard
       .on('postgres_changes', { event:'*', schema:'public', table:'bodysculpt', filter:'key=eq.'+RET_ROW_KEY },
         payload=>{
@@ -3744,17 +3869,20 @@ function todayCardHtml(r){
         <div class="seed-label">End the voice note with this:</div>
         <div class="seed-text">“${esc(tpSeed(item))}”</div>
       </div>` : '';
+  const ci = isCheckinItem(item);
   const detail = `<div class="detail">
         ${esc(tpWhatText(item))}
         ${cl}
         ${seedBlock}
+        ${ci ? cbDetailHtml(m, item) : ''}
       </div>`;
+  const chips = ci && cbBriefs[m.id] ? cbChips(cbBriefs[m.id]) : '';
   // WHERE the touchpoint stands, all on one line in the card's corner: the day it is due, and
   // — only when it has been missed — a divider and the word Overdue in red. The two used to be
   // separate, the day in a pill beside the title and Overdue up here, which meant reading two
   // places to answer one question. Together they are a status line, and the red is the only red
   // on the card. The corner holds the chevron too.
-  return `<div class="action ${chClass}" id="act-${m.id}-${item.id}">
+  return `<div class="action ${chClass}${cbOpen.has(m.id+'-'+item.id)?' open':''}" id="act-${m.id}-${item.id}">
         <div class="card-top">
           <span class="card-status">
             <span class="status-day">${dayLabel}</span>
@@ -3766,6 +3894,7 @@ function todayCardHtml(r){
           <div class="who">
             ${nameLink(m)}${notesBtn(m)}
             <span class="ttl">${esc(tpTitle(item))}</span>
+            ${chips}
           </div>
           ${detail}
         </div>
@@ -3779,7 +3908,7 @@ function todayCardHtml(r){
 /* expandable detail (fix #3) */
 function toggleExpand(mid,iid){
   const el=document.getElementById('act-'+mid+'-'+iid);
-  if(el) el.classList.toggle('open');
+  if(el){ el.classList.toggle('open'); const k = mid+'-'+iid; if(el.classList.contains('open')) cbOpen.add(k); else cbOpen.delete(k); }
 }
 
 /* Jump to whichever of a challenger's two pre-start tasks is actually on Today's moves — the

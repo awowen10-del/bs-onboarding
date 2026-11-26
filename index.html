@@ -1399,6 +1399,76 @@
     background:var(--navy-2);color:var(--ink-dim)}
   .find-tag.member{background:rgba(var(--green-rgb),.11);color:var(--green)}
   .find-hint{padding:16px 16px 18px;font-size:14px;color:var(--ink-faint)}
+  /* the bar that confirms a tick and offers the way back */
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:120;display:flex;align-items:center;
+    gap:12px;max-width:calc(100vw - 32px);background:var(--side);color:var(--side-ink);border-radius:14px;
+    padding:10px 12px 10px 12px;font-size:14px;font-weight:500;box-shadow:0 18px 44px -12px rgba(var(--backdrop-rgb),.55);
+    animation:toast .25s cubic-bezier(.2,.7,.2,1)}
+  @keyframes toast{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+  .toast-tick{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:var(--green);color:var(--on-green);
+    display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+  .toast-tick.quiet{background:var(--side-line);color:var(--side-dim)}
+  .toast-txt{padding-right:6px}
+  .toast button{flex:0 0 auto;appearance:none;border:0;background:var(--side-2);color:var(--spark);font-family:inherit;
+    font-size:14px;font-weight:700;border-radius:9px;padding:7px 14px;cursor:pointer}
+  .toast button:hover{background:var(--spark);color:var(--side)}
+  /* the home screen's overdue list */
+  .urgent{display:flex;flex-direction:column;gap:8px}
+  .urgent-row{display:flex;align-items:center;gap:14px;width:100%;text-align:left;appearance:none;font-family:inherit;
+    background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 16px;color:var(--ink);
+    cursor:pointer;transition:border-color .15s ease}
+  .urgent-row:hover{border-color:var(--ink)}
+  .urgent-who{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;min-width:0;margin-right:auto;font-size:14.5px}
+  .urgent-who b{font-weight:700}
+  .urgent-who .ttl{font-weight:500;color:var(--ink-dim)}
+  .urgent-where{flex:0 0 96px;text-align:right;font-size:13px;font-weight:500;color:var(--ink-faint)}
+  .urgent-more{margin-top:10px;font-size:13.5px;color:var(--ink-faint)}
+  /* a person's whole journey, in the popup */
+  .pj{margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
+  .pj-head{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:15px;font-weight:700;
+    color:var(--ink);margin-bottom:12px}
+  .pj-list{list-style:none;position:relative}
+  .pj-list::before{content:"";position:absolute;left:6px;top:14px;bottom:14px;width:2px;background:var(--line)}
+  .pj-row{position:relative;display:flex;align-items:baseline;gap:12px;padding:7px 0 7px 28px;font-size:14px}
+  .pj-dot{position:absolute;left:0;top:10px;width:14px;height:14px;border-radius:50%;background:var(--card);
+    border:2px solid var(--line)}
+  .pj-row.done .pj-dot{background:var(--green);border-color:var(--green)}
+  .pj-row.missed .pj-dot{background:var(--red);border-color:var(--red)}
+  .pj-row.due .pj-dot{background:var(--spark);border-color:var(--spark);box-shadow:0 0 0 3px rgba(var(--spark-rgb),.25)}
+  .pj-row.overdue .pj-dot{border-color:var(--red)}
+  .pj-when{flex:0 0 96px;font-size:13px;font-weight:500;color:var(--ink-faint)}
+  .pj-title{flex:1 1 auto;min-width:0;font-weight:600;color:var(--ink)}
+  .pj-row.future .pj-title{font-weight:500;color:var(--ink-dim)}
+  .pj-state{flex:0 0 auto;font-size:13px;font-weight:600;color:var(--ink-dim)}
+  .pj-row.done .pj-state{color:var(--green)}
+  .pj-row.missed .pj-state,.pj-row.overdue .pj-state{color:var(--red)}
+  .pj-row.due .pj-state{color:var(--spark-deep)}
+  .pj-notes{background:var(--card-2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:14px;
+    line-height:1.6;color:var(--ink);max-height:220px;overflow-y:auto;overflow-wrap:anywhere}
+  .pj-notes h3{font-size:14.5px;font-weight:700;margin:8px 0 2px}
+  .pj-notes ul,.pj-notes ol{margin:4px 0 4px 20px}
+  /* the Playbook's jump list */
+  .pbx-toc{display:none}
+  .pbx-card,.pbx-chapter{scroll-margin-top:28px}
+  @media (min-width:1280px){
+    #view-playbook.active{display:grid;grid-template-columns:minmax(0,1fr) 224px;column-gap:44px;align-items:start}
+    #view-playbook .pbx-hero{grid-column:1 / -1}
+    #view-playbook .pbx-deck{grid-column:1;grid-row:2}
+    .pbx-toc{display:flex;flex-direction:column;gap:1px;grid-column:2;grid-row:2;position:sticky;top:32px}
+    .pbx-toc-head{font-size:13px;font-weight:600;color:var(--ink-faint);padding:0 12px 10px}
+    .pbx-toc button{appearance:none;border:0;background:none;font-family:inherit;text-align:left;cursor:pointer;
+      border-radius:8px;padding:7px 12px;color:var(--ink-dim);font-size:13.5px;font-weight:500;line-height:1.35;
+      position:relative}
+    .pbx-toc button:hover{background:var(--navy-2);color:var(--ink)}
+    .pbx-toc .pbx-toc-ch{font-family:var(--display);font-size:15px;letter-spacing:.04em;text-transform:uppercase;
+      color:var(--ink);margin-top:14px}
+    .pbx-toc .pbx-toc-ch:first-of-type{margin-top:0}
+    .pbx-toc-it span{display:block;font-size:12px;color:var(--ink-faint)}
+    .pbx-toc-it.on{color:var(--ink);font-weight:700;background:var(--card)}
+    .pbx-toc-it.on::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;
+      background:var(--spark)}
+  }
+  @media (min-width:1024px){ .toast{left:calc(50% + var(--side-w) / 2)} }
   .wins{display:flex;flex-wrap:wrap;gap:8px}
   .win{display:inline-flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);
     border-radius:999px;padding:6px 16px 6px 7px;font-size:13.5px;font-weight:650}
@@ -1679,6 +1749,16 @@
   .mcard .sub{font-size:13.5px;margin-top:2px}
   .mcard .day-no .n{font-family:var(--display);font-weight:400;font-size:40px;letter-spacing:.01em;color:var(--ink)}
   .mcard .day-no .l{font-size:12.5px;font-weight:500;letter-spacing:0;margin-top:2px}
+  /* finished: a green tick in a disc, not a tick set in the poster face */
+  .mcard .day-no.fin .n{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
+    border-radius:50%;background:rgba(var(--green-rgb),.13);color:var(--green);font-family:var(--body);font-size:16px;
+    font-weight:800}
+  .mcard .day-no.fin{align-items:center}
+  /* not started: there is no day to show, so the corner is left empty and the one job — run the
+     intro — is a single line with its button at the end */
+  .mcard.notstarted .day-no{display:none}
+  .start-box{display:flex;align-items:center;gap:10px 18px;flex-wrap:wrap;padding:12px 14px 12px 16px}
+  .start-box .start-txt{flex:1 1 320px;margin:0;font-size:13.5px}
   .rail{margin:16px 0 2px}
   .rail .track{height:6px;border-radius:999px;overflow:visible;position:relative;background:var(--navy-2)}
   .rail .fill{border-radius:999px;background:var(--ink)}
@@ -1705,7 +1785,7 @@
   .mcard .paybox{border-radius:12px}
   .tag.live{background:rgba(var(--green-rgb),.11)}
   @media (min-width:1180px){
-    #memberList .mcard:not(.notstarted){display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr) auto;
+    #memberList .mcard:not(.notstarted){display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr) auto;
       column-gap:34px;align-items:start}
     #memberList .mcard:not(.notstarted) > *{grid-column:1 / -1}
     #memberList .mcard:not(.notstarted) > .top{display:contents}
@@ -1830,7 +1910,7 @@
   .pb-editable{outline-color:var(--spark)}
   .pb-editable:focus{outline-color:var(--spark)}
   .pbx-deck.editing .pbx-card{border-color:rgba(var(--spark-rgb),.45)}
-  .pb-reset{font-size:12px;font-weight:650}
+  .pb-reset{font-size:12px;font-weight:650;margin-top:12px}
 
   /* ---------- retention: numbers, tables, the calendar ---------- */
   .ta-stats{gap:12px;margin:6px 0 22px}
@@ -2259,6 +2339,7 @@
         <span class="hgo"><span id="homeRetStats"></span><span class="harrow" aria-hidden="true">→</span></span>
       </button>
     </div>
+    <div id="homeUrgent"></div>
   </section>
 
   <!-- ===== TODAY ===== -->
@@ -2341,6 +2422,7 @@
         thing. <b>Reset</b> puts the original words back. When a touchpoint happens, whether it
         happens and who does it are fixed in the app and are not editable here.</p>
     </div>
+    <nav class="pbx-toc" id="pbToc" aria-label="Jump to a moment in the Playbook"></nav>
     <div class="pbx-deck" id="playbookList"></div>
   </section>
 
@@ -2462,6 +2544,7 @@
 </div>
 
 <!-- ===== One challenger's card, opened from a name on Today's moves ===== -->
+<div class="toast hide" id="toast" role="status" aria-live="polite"></div>
 <div class="modal-bg" id="findBg" onclick="if(event.target===this)closeFind()">
   <div class="modal find-modal" role="dialog" aria-modal="true" aria-label="Find anyone">
     <input type="search" class="find-input" id="findInput" placeholder="Find anyone…" autocomplete="off"
@@ -4915,14 +4998,56 @@ function cycleTouchpoint(m,key){
 
 function toggleDone(id,key,val){
   const m = members.find(x=>x.id===id); if(!m) return;
+  const before = tpSnapshot(m);
   markTouchpointDone(m,key,val);
   save(); renderAll();
+  if(val) tpToast(m,key,'Done',before);
 }
 function markMissed(id,key){
   const m = members.find(x=>x.id===id); if(!m) return;
+  const before = tpSnapshot(m);
   markTouchpointMissed(m,key);
   save(); renderAll();
+  tpToast(m,key,'Missed',before);
 }
+
+/* ---------------- "Done." — and a way back ----------------
+   A row leaves the screen the moment it is ticked, which is right, but it also means a slip of
+   the hand used to vanish with it. A small bar now says what was just marked and offers Undo
+   for a few seconds. Undo puts the three things a tick touches (completed, missed, doneMeta)
+   back exactly as they were. The intro is the one exception: its Done starts that person's
+   emails, which cannot be called back, so it is confirmed but not offered an Undo. */
+let toastTimer = null, toastUndo = null;
+function tpSnapshot(m){
+  return { completed:(m.completed||[]).slice(), missed:(m.missed||[]).slice(), doneMeta:Object.assign({}, m.doneMeta||{}) };
+}
+function tpToast(m,key,word,before){
+  const it = JOURNEY.find(j=>j.id===key);
+  const undo = key==='intro' ? null : ()=>{
+    const x = members.find(y=>y.id===m.id); if(!x) return;
+    x.completed = before.completed; x.missed = before.missed; x.doneMeta = before.doneMeta;
+    save(); renderAll();
+  };
+  showToast(word+': '+firstNameOf(m)+', '+(it ? tpTitle(it) : 'check-in'), undo, word==='Missed');
+}
+function showToast(text, undo, quiet){
+  const el = document.getElementById('toast');
+  if(!el || !el.classList) return;
+  toastUndo = undo||null;
+  el.innerHTML = `<span class="toast-tick${quiet?' quiet':''}" aria-hidden="true">${quiet?'–':'✓'}</span><span class="toast-txt">${esc(text)}</span>`
+    + (undo ? `<button type="button" onclick="toastUndoGo()">Undo</button>` : '');
+  el.classList.remove('hide');
+  if(typeof setTimeout==='function'){
+    if(toastTimer && typeof clearTimeout==='function') clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, 7000);
+  }
+}
+function hideToast(){
+  const el = document.getElementById('toast');
+  if(el && el.classList) el.classList.add('hide');
+  toastUndo = null;
+}
+function toastUndoGo(){ const fn = toastUndo; hideToast(); if(fn) fn(); }
 
 /* ---------------- Today view toggle (moves vs whole-journey table) ---------------- */
 let todayView = 'moves';
@@ -5138,7 +5263,7 @@ function memberCardHtml(m){
           <div class="name">${esc(m.name)}${notesBtn(m)}${tag}${outcomeTag}${movedTag}${fuTag}</div>
           <div class="sub">Coach ${esc(m.coach)} · started ${fmt(m.day0)}${m.personal?' · '+esc(m.personal):''}</div>
         </div>
-        <div class="day-no"><div class="n">${s==='done'?'✓':cd}</div><div class="l">${s==='done'?'done':'of '+tot}</div></div>
+        <div class="day-no${s==='done'?' fin':''}"><div class="n">${s==='done'?'✓':cd}</div><div class="l">${s==='done'?'done':'of '+tot}</div></div>
       </div>
       <div class="rail">
         <div class="track"><div class="fill ${s==='paused'?'paused-fill':''}" style="width:${started?railAt(cd,tot).toFixed(1):0}%"></div>${railStops(m,tot)}</div>
@@ -5178,6 +5303,32 @@ function railStops(m, tot){
   }).join('');
 }
 
+/* Under the card in the popup: every moment of their 42 days as a list — what it is, when it
+   falls, and where it stands — then their notes, readable without opening the editor. The
+   statuses are cellStatus's again, so this agrees with the line above it and with the grid. */
+function personJourneyHtml(m){
+  const started = hasStarted(m), cd = currentDay(m), live = status(m)==='live';
+  const rows = JOURNEY.map(it=>{
+    const st = cellStatus(m,it);
+    if(st==='na') return '';
+    const ed = effectiveDay(it,m);
+    const when = it.phase==='intro' ? 'Before day 0' : 'Day '+ed;
+    const stamp = (m.doneMeta||{})[it.id];
+    // the stamp is a date ("29 Oct") or a word about where it happened ("Off tracker")
+    const state = st==='done' ? (!stamp ? 'Done' : /^\d/.test(stamp) ? 'Done '+stamp : 'Done, '+stamp.toLowerCase())
+      : st==='missed' ? 'Missed'
+      : st==='due' ? 'Due now'
+      : st==='overdue' ? 'Overdue'
+      : (started && live && it.phase!=='intro' && !inFreeWeeks(m)) ? fmt(addDays(today0(), ed-cd)) : 'Still to come';
+    return `<li class="pj-row ${st}"><i class="pj-dot" aria-hidden="true"></i><span class="pj-when">${when}</span>`
+      + `<span class="pj-title">${esc(tpTitle(it))}</span><span class="pj-state">${esc(state)}</span></li>`;
+  }).join('');
+  const notes = hasNotes(m) ? `<div class="pj"><div class="pj-head">Notes
+      <button type="button" class="btn sm ghost" onclick="openNotes('${m.id}')">Edit notes</button></div>
+      <div class="pj-notes">${sanitizeNotes(m.notes)}</div></div>` : '';
+  return `<div class="pj"><div class="pj-head">Their 42 days</div><ol class="pj-list">${rows}</ol></div>` + notes;
+}
+
 /* A challenger's card in a popup, opened by clicking their name on Today's moves, so a coach
    doesn't have to go to Challengers and find them. It is re-drawn by renderAll, so Pause, Add
    time and the rest update it in place; if the person is removed it closes. */
@@ -5197,7 +5348,7 @@ function renderPerson(){
   if(!personTarget) return;
   const m=members.find(x=>x.id===personTarget);
   if(!m){ closePerson(); return; }
-  document.getElementById('personBody').innerHTML = memberCardHtml(m);
+  document.getElementById('personBody').innerHTML = memberCardHtml(m) + personJourneyHtml(m);
 }
 document.addEventListener('keydown',ev=>{
   if(ev.key!=='Escape' || !personTarget) return;
@@ -6460,13 +6611,26 @@ function memberCellStatus(m,it){
    mutation is shared, only the list and the save path are the member list's own. */
 function retToggleDone(id,key,val){
   const m = retention.find(x=>x.id===id); if(!m) return;
+  const before = tpSnapshot(m);
   markTouchpointDone(m,key,val);
   saveRetention(); renderAll();
+  if(val) retToast(m,key,'Done',before);
 }
 function retMarkMissed(id,key){
   const m = retention.find(x=>x.id===id); if(!m) return;
+  const before = tpSnapshot(m);
   markTouchpointMissed(m,key);
   saveRetention(); renderAll();
+  retToast(m,key,'Missed',before);
+}
+/* the same confirm-and-undo bar as the 42 days, for a member's touchpoints */
+function retToast(m,key,word,before){
+  const it = MEMBER_JOURNEY.find(j=>j.id===key);
+  showToast(word+': '+firstNameOf(m)+', '+(it ? it.title : 'check-in'), ()=>{
+    const x = retention.find(y=>y.id===m.id); if(!x) return;
+    x.completed = before.completed; x.missed = before.missed; x.doneMeta = before.doneMeta;
+    saveRetention(); renderAll();
+  }, word==='Missed');
 }
 function retTableCellTap(mid,iid){
   const m=retention.find(x=>x.id===mid); if(!m) return;
@@ -8030,6 +8194,17 @@ function renderPlaybook(){
   if(note && note.classList) note.classList.toggle('hide', !pbEditMode);
   const el=document.getElementById('playbookList');
   if(el.classList) el.classList.toggle('editing', pbEditMode);
+  // the jump list beside the deck: every chapter and every moment, in the order they are below
+  const toc = document.getElementById('pbToc');
+  if(toc){
+    let ch = 0, card = 0;
+    toc.innerHTML = `<div class="pbx-toc-head">In the Playbook</div>` + PB_CHAPTERS.map(c=>{
+      const items = JOURNEY.filter(it=>it.phase===c.phase);
+      if(!items.length) return '';
+      return `<button type="button" class="pbx-toc-ch" onclick="pbJump('.pbx-chapter',${ch++})">${esc(c.title)}</button>`
+        + items.map(it=>`<button type="button" class="pbx-toc-it" onclick="pbJump('.pbx-card',${card++})"><span>${esc(dayBadge(it))}</span>${esc(tpTitle(it))}</button>`).join('');
+    }).join('');
+  }
   el.innerHTML = PB_CHAPTERS.map(c=>{
     const items = JOURNEY.filter(it=>it.phase===c.phase);
     if(!items.length) return '';
@@ -8040,6 +8215,20 @@ function renderPlaybook(){
       </div>` + items.map(playbookCardHtml).join('');
   }).join('');
 }
+
+function pbJump(sel, i){
+  const el = document.querySelectorAll('#playbookList '+sel)[i];
+  if(el && el.scrollIntoView) el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+/* light the jump-list row for the card you are reading */
+if(typeof window!=='undefined' && typeof window.addEventListener==='function') window.addEventListener('scroll', ()=>{
+  const view = document.getElementById('view-playbook');
+  if(!view || !view.classList || !view.classList.contains('active')) return;
+  const cards = document.querySelectorAll('#playbookList .pbx-card'), rows = document.querySelectorAll('#pbToc .pbx-toc-it');
+  let at = -1;
+  cards.forEach((c,i)=>{ if(c.getBoundingClientRect().top < 180) at = i; });
+  rows.forEach((r,i)=> r.classList.toggle('on', i===at));
+}, {passive:true});
 
 /* ---------------- shared ---------------- */
 function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -8066,6 +8255,42 @@ function renderAll(){
   renderHome();
 }
 
+/* Under the doors: whatever is already late, on either tracker, worst first. The rule for
+   "late" is the Today screens' own (a dated touchpoint whose day has passed), so this list can
+   only ever name rows that are flagged Overdue when you walk through the door. */
+function homeUrgent(){
+  const out = [];
+  members.forEach(m=>{
+    dueToday(m).forEach(item=>{
+      const real = usesRealDays(m,item);
+      const cd = real ? realDay(m) : currentDay(m), ed = real ? item.day : effectiveDay(item,m);
+      if(item.phase==='journey' && item.day>=0 && cd > ed) out.push({tk:'onboarding', m, what:tpTitle(item), late:cd-ed});
+    });
+  });
+  retention.forEach(m=>{
+    memberDueToday(m).forEach(item=>{
+      const late = memberDay(m) - item.day;
+      if(late > 0) out.push({tk:'retention', m, what:item.title, late});
+    });
+  });
+  return out.sort((a,b)=> b.late-a.late);
+}
+function homeUrgentHtml(){
+  const rows = homeUrgent();
+  if(!rows.length) return '';
+  const show = rows.slice(0,6);
+  return `<div class="group-label">Overdue<span class="gcount">${rows.length}</span></div><div class="urgent">`
+    + show.map(r=>`<button type="button" class="urgent-row" onclick="homeGo('${r.tk}')">
+        <span class="urgent-who"><b>${esc(r.m.name)}</b><span class="ttl">${esc(r.what)}</span></span>
+        <span class="overdue-flag">${r.late} day${r.late===1?'':'s'} late</span>
+        <span class="urgent-where">${r.tk==='retention'?'Retention':'Onboarding'}</span></button>`).join('')
+    + `</div>` + (rows.length>show.length ? `<div class="urgent-more">and ${rows.length-show.length} more inside.</div>` : '');
+}
+function homeGo(tk){
+  activeTab[tk] = tk==='retention' ? 'ret-today' : 'today';
+  showTracker(tk);
+}
+
 /* The home screen's two doors say what is behind them today. Nothing here is counted twice:
    the moves are read back off the two tab badges the Today screens have just set, and the
    headcounts are the same rules the rest of the app uses (onJourneyCount, memberStarted). */
@@ -8077,6 +8302,8 @@ function renderHome(){
   const onb = document.getElementById('homeOnbStats');
   if(onb) onb.innerHTML = stat(badge('todayCount'),'move today','moves today',true)
     + stat(onJourneyCount(),'on the journey','on the journey');
+  const urgent = document.getElementById('homeUrgent');
+  if(urgent) urgent.innerHTML = homeUrgentHtml();
   const ret = document.getElementById('homeRetStats');
   if(ret) ret.innerHTML = stat(badge('retTodayCount'),'move today','moves today',true)
     + stat(retention.filter(memberStarted).length,'member','members');

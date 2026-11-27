@@ -14,3 +14,7 @@
 # Check-in briefs (sessions, Trainerize, coaches' shift notes, a message to send): every morning at 06:50 UTC
 [functions."checkin-brief-daily"]
   schedule = "50 6 * * *"
+
+# Home addresses from TeamUp onto GHL contacts that have none: every morning at 06:40 UTC
+[functions."address-sync-daily"]
+  schedule = "40 6 * * *"

@@ -140,8 +140,12 @@ assert.ok(app.html("retMemberList").includes("Stays") && !app.html("retMemberLis
   // Today's moves carries the ten, once
   c.__t.retention = [];
   c.renderRetentionToday();
-  const tm = app.html("retTodayList");
+  // Since v400 a check-in made today shows again under "Done today", below the work. So the
+  // work is everything above that strip, and Big Drop — checked in a moment ago — is not in it…
+  const [tm, wins = ""] = app.html("retTodayList").split('class="wins"');
   assert.ok(tm.includes("Check in: no sessions booked") && tm.includes("Small Drop") && !tm.includes("Big Drop"));
+  // …but is in the day's wins, with who did it
+  assert.ok(wins.includes("Big Drop") && wins.includes("Checked in by Dan"));
   // plain words a coach reads at a glance, not "x → y visits"
   assert.ok(!tm.includes("→") && /\d+ sessions? in the last 4 weeks \(\d+ \w{3,4} – \d+ \w{3,4}\), down from \d+ in the 4 weeks before \(\d+ \w{3,4} – \d+ \w{3,4}\)/.test(tm), tm.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 400));
   assert.ok(/Last session (today|yesterday|\d+ days ago)|no sessions yet/.test(tm));

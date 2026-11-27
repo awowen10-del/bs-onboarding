@@ -83,7 +83,10 @@ const dueIds = (app, m) => [...app.ctx.memberDueToday(m)].map((it) => it.id);
   ] });
   app.ctx.retToggleDone("quiet", "welcome_card", true);
 
-  const h = app.html("retTodayList");
+  // the work is everything above the "Done today" strip (v400), which is where a touchpoint
+  // ticked a moment ago now shows
+  const [h, wins = ""] = app.html("retTodayList").split('class="wins"');
+  assert.ok(wins.includes("Quinn Quiet"), "the card just sent to Quinn is one of the day's wins");
   assert.ok(h.includes("Nina New") && h.includes("Welcome card"), "the new member needs a card");
   assert.ok(h.includes("Mo Month") && h.includes("Day 30 check-in"), "…Mo needs Gaz");
   assert.ok(h.includes("Yasmin Year") && h.includes("anniversary"), "…Yasmin needs a gift");
@@ -123,7 +126,8 @@ const dueIds = (app, m) => [...app.ctx.memberDueToday(m)].map((it) => it.id);
   assert.ok(m.doneMeta.day30, "…and stamped with when");
   assert.deepStrictEqual(dueIds(app, m), ["welcome_card"], "…so it drops off Today");
   assert.strictEqual(app.retentionCached()[0].completed[0], "day30", "…through the member sync path");
-  assert.ok(!app.html("retTodayList").includes("Day 30 check-in"), "…and off the screen");
+  // off the work, that is — the part of the screen above the "Done today" strip (v400)
+  assert.ok(!app.html("retTodayList").split('class="wins"')[0].includes("Day 30 check-in"), "…and off the screen");
 
   // un-done puts it back
   app.ctx.retToggleDone("m", "day30", false);

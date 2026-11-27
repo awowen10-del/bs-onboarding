@@ -576,55 +576,47 @@ const countBadge = (html) => {
   assert.strictEqual(openWeek(again), 1, "a fresh load starts from the default, whatever the last did");
 }
 
-/* ---------- 14: nothing drags on Today's moves ----------
-   Its cards are arranged by the journey, so a coach dragging one somewhere would either be
-   lying to themselves or silently rewriting what is due. That has not changed.
-
-   Since v410 there IS one screen where a card drags: the Check-ins board. It does not break the
-   rule above, because of what a column means there. A card sits in the column of the check-in
-   that person is WAITING for, so moving it one column along is precisely "I have checked in"
-   and moving it one back is "no I haven't" — the same Done tick every other screen writes, and
-   nothing else. What is pinned here is that the dragging stays inside that board: Today's cards
-   carry none of it, and every drag handler on the page is one of the board's own. */
+/* ---------- 14: nothing drags ----------
+   Cards are arranged by the journey and the calendar, so a coach dragging one somewhere would
+   either be lying to themselves or silently rewriting what is due. That holds on the Check-ins
+   board too since 27 Nov 2026: its column is the check-in due THIS WEEK, so a tick marks the
+   card done where it stands and the calendar moves everyone along on Monday. */
 {
-  const app = boot({ members: [live("a", "Sam Live", 8)] });
-  assert.ok(!/draggable|ondrag|ondrop/i.test(app.html("todayList")), "nothing on Today's moves drags");
-  const draggables = HTML.match(/draggable="true"/g) || [];
-  assert.strictEqual(draggables.length, 1, "one thing is draggable: the Check-ins card");
-  assert.ok(/class="ci-card [^>]*draggable="true"/.test(HTML), "…and it is the Check-ins card");
-  for (const m of HTML.matchAll(/on(?:dragstart|dragover|dragend|drop|dragenter|dragleave)="([^"]*)"/g)) {
-    assert.ok(/^ci[A-Z]/.test(m[1]), "every drag handler belongs to the Check-ins board: " + m[1]);
-  }
+  assert.ok(!/\bdraggable\b/i.test(HTML), "no element is made draggable");
+  assert.ok(!/on(dragstart|dragover|dragend|drop|dragenter|dragleave)/i.test(HTML),
+    "no drag or drop handler anywhere on the page");
   assert.ok(!/addEventListener\((['"])(dragstart|dragover|drop|dragend)\1/.test(HTML),
-    "…and none is wired up loose in script");
+    "…and none wired up in script either");
 
-  // a drop can only ever do one of two things, both of them an ordinary tick
-  const drop = /function ciDrop\([\s\S]*?\n\}/.exec(HTML)[0];
-  assert.ok(/return ciDone\(id\)/.test(drop) && /return ciBack\(id\)/.test(drop), "one column on is Done, one back is un-done");
-  assert.ok(!/day0|extraDays|sixStart|booked/.test(drop), "…and it never touches when anything is due");
-
-  // and the board reads the same ticks: do the week 2 check-in and the card is waiting for week 3
-  assert.strictEqual(app.ctx.ciNext(app.find("a")).col, "w1", "nothing ticked: still waiting on the very first one, however far in they are");
+  // the board: the column is the check-in that falls due this week, and a tick does not move it
+  const app = boot({ members: [live("a", "Sam Live", 16)] });       // day 16: week 3
+  const sam = () => app.find("a");
+  const col = () => app.ctx.ciNext(sam());
+  // d1 (day 1) and wk2 (day 7) fell in earlier weeks and are not ticked, so Sam is held at the
+  // first of them, late
+  assert.strictEqual(col().col, "w1", "an unticked check-in from an earlier week holds them there");
+  assert.ok(col().late > 0, "…and it says late");
+  // tick both, and Sam goes to the column of the check-in due this week — wk3 (day 14) or wk4
+  // (day 21), whichever falls by this Sunday
   app.ctx.toggleDone("a", "d1_text", true); app.ctx.toggleDone("a", "wk2", true);
-  assert.strictEqual(app.ctx.ciNext(app.find("a")).col, "w3", "checked in, so they move one column along");
+  const here = col();
+  assert.ok(["w3", "w4"].includes(here.col), "caught up: under the check-in due this week (" + here.col + ")");
+  assert.ok(!here.done && here.late === 0, "…still to do, not late");
+  app.ctx.ciDone("a");
+  assert.strictEqual(col().col, here.col, "ticking does NOT move the card");
+  assert.ok(col().done, "…it is marked done where it stands");
+  assert.ok(/^Done/.test(app.ctx.ciCardWord(Object.assign({ m: sam(), paused: false, stale: false }, col()))), "…and says Done");
   app.ctx.ciBack("a");
-  assert.strictEqual(app.ctx.ciNext(app.find("a")).col, "w2", "and one step back opens that check-in up again");
-
-  // The card says the day they are ON as well as the day the check-in falls, because the
-  // column alone was misread: under "Week 3" on day 8 means in week 2, waiting for week 3's.
-  app.ctx.toggleDone("a", "wk2", true);
-  const card = app.ctx.ciPeople().find((p) => p.m.id === "a");
-  assert.ok(/^Day 8 · /.test(app.ctx.ciCardWord(card)), "not yet due: the day they are on, then when it falls");
+  assert.ok(!col().done && col().col === here.col, "Untick opens this week's check-in up again, same column");
 
   // Ticks dated before the start date are left over from an earlier challenge. They are
   // flagged, never silently believed and never silently removed.
-  const sam = app.find("a");
-  assert.strictEqual(app.ctx.ciStaleTicks(sam).length, 0, "ticks made today are not stale");
-  const longAgo = new Date(sam.day0 - 40 * 86400000).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-  sam.doneMeta.d1_text = longAgo; sam.doneMeta.wk2 = "Off tracker";
-  assert.strictEqual(app.ctx.ciStaleTicks(sam).map((x) => x.id).join(), "d1_text", "a tick 40 days before they started is flagged; one with no date is left alone");
-  assert.ok(app.ctx.ciPeople().find((p) => p.m.id === "a").stale, "…and the card carries the flag");
-  assert.ok((sam.completed || []).includes("d1_text"), "…but nothing was un-ticked for them");
+  const s = sam();
+  assert.strictEqual(app.ctx.ciStaleTicks(s).length, 0, "ticks made today are not stale");
+  s.doneMeta.d1_text = new Date(s.day0 - 40 * 86400000).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  s.doneMeta.wk2 = "Off tracker";
+  assert.strictEqual(app.ctx.ciStaleTicks(s).map((x) => x.id).join(), "d1_text", "a tick from before they started is flagged; one with no date is left alone");
+  assert.ok((s.completed || []).includes("d1_text"), "…but nothing was unticked for them");
 }
 
 /* ---------- 15: the retention tracker was left alone ---------- */

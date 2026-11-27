@@ -1518,52 +1518,60 @@
     .pbx-link{padding-top:8px;padding-bottom:6px}
     .mcard .name .ta-open{min-height:32px}
   }
-  /* ---------- Check-ins: the board ---------- */
-  body:has(#view-checkins.active) main.wrap{max-width:1640px;padding-left:28px;padding-right:28px}
-  .ci-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 20px;margin-bottom:22px}
-  .ci-head h2{font-family:var(--display);font-weight:400;font-size:46px;line-height:1;text-transform:uppercase;
-    letter-spacing:.012em}
-  .ci-sum{font-size:16px;font-weight:500;color:var(--ink-dim)}
-  .ci-sum b{color:var(--ink);font-weight:700}
-  .ci-sum b.ci-latecount{color:var(--red)}
-  .ci-how{flex:1 1 100%;font-size:13.5px;color:var(--ink-faint);max-width:80ch}
-  .ci-board{display:grid;gap:12px;align-items:stretch;overflow-x:auto;padding-bottom:10px}
-  .ci-col{min-width:0;background:var(--navy-2);border-radius:16px;padding:10px 8px 10px;min-height:260px;
-    border:2px solid transparent;transition:border-color .12s ease,background .12s ease}
-  .ci-col.over{border-color:var(--spark);background:rgba(var(--spark-rgb),.1)}
-  .ci-col.ci-done{background:rgba(var(--green-rgb),.1)}
-  /* every column head is the same two lines — title and count, then one line under — so the
-     first card in every column starts at the same height */
-  .ci-colhead{display:grid;grid-template-columns:minmax(0,max-content) max-content minmax(0,1fr);align-items:center;
-    gap:3px 8px;padding:4px 8px 12px}
-  .ci-coltitle{font-family:var(--display);font-size:21px;line-height:1.1;letter-spacing:.03em;text-transform:uppercase;
-    color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ci-colhead .gcount{font-size:12.5px;font-weight:650;color:var(--ink-dim);background:var(--card);border-radius:999px;
-    padding:1px 8px;min-width:22px;text-align:center}
-  .ci-colsub{grid-column:1 / -1;font-size:12.5px;font-weight:500;color:var(--ink-faint);white-space:nowrap;
-    overflow:hidden;text-overflow:ellipsis}
-  .ci-card{display:flex;flex-direction:column;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:11px;
-    padding:12px 9px 10px 16px;margin-bottom:8px;cursor:grab;position:relative;user-select:none;-webkit-user-select:none;
-    transition:border-color .12s ease,box-shadow .12s ease,transform .12s ease}
-  .ci-card::before{content:"";position:absolute;left:6px;top:11px;bottom:11px;width:3px;border-radius:3px;background:var(--line)}
-  .ci-card.late::before{background:var(--red)}
-  .ci-card.today::before{background:var(--spark)}
-  .ci-card.clear::before{background:var(--green)}
-  .ci-card:hover{border-color:var(--ink);box-shadow:var(--shadow);transform:translateY(-1px)}
+  /* ---------- Check-ins: the board ----------
+     Built like the boards people already know (Trello, Notion): small type, tight cards, quiet
+     columns, and nothing on a card that is not either the person or how late they are. The
+     poster face is kept for the one title; a column is named in ordinary small type, because
+     eight shouted headings in a row was most of what made the first version feel heavy. The
+     tick only shows when the pointer is on a card, so a resting board is just names. */
+  body:has(#view-checkins.active) main.wrap{max-width:1640px;padding-left:28px;padding-right:28px;padding-top:28px}
+  .ci-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:18px}
+  .ci-head h2{font-family:var(--display);font-weight:400;font-size:30px;line-height:1;text-transform:uppercase;
+    letter-spacing:.02em;margin-right:4px}
+  .ci-sum{display:flex;flex-wrap:wrap;gap:6px;font-size:13px;font-weight:500;color:var(--ink-dim)}
+  .ci-pill{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:650;border-radius:999px;
+    padding:3px 10px 3px 8px}
+  .ci-pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .ci-pill.late{color:var(--red);background:rgba(var(--red-rgb),.09)}
+  .ci-pill.today{color:var(--spark-deep);background:rgba(var(--spark-rgb),.12)}
+  .ci-how{margin-left:auto;font-size:12.5px;color:var(--ink-faint);text-align:right}
+  .ci-board{display:grid;gap:8px;align-items:stretch;overflow-x:auto;padding-bottom:10px}
+  .ci-col{min-width:0;background:rgba(var(--lift-rgb),.04);border-radius:10px;padding:6px 6px 10px;min-height:220px;
+    outline:2px solid transparent;outline-offset:-2px;transition:outline-color .12s ease,background .12s ease}
+  .ci-col.over{outline-color:var(--spark);background:rgba(var(--spark-rgb),.08)}
+  .ci-colhead{display:flex;align-items:center;gap:7px;padding:5px 6px 9px;min-width:0}
+  .ci-coltitle{font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ci-col.ci-done .ci-coltitle{color:var(--green)}
+  .ci-n{flex:0 0 auto;font-size:12.5px;font-weight:500;color:var(--ink-faint)}
+  .ci-card{position:relative;display:flex;flex-direction:column;gap:2px;background:var(--card);border-radius:7px;
+    padding:8px 10px 8px;margin-bottom:5px;cursor:grab;user-select:none;-webkit-user-select:none;
+    box-shadow:0 0 0 1px rgba(var(--lift-rgb),.09),0 1px 2px rgba(var(--lift-rgb),.06);
+    transition:box-shadow .12s ease,transform .12s ease}
+  .ci-card:hover{box-shadow:0 0 0 1px rgba(var(--lift-rgb),.3),0 4px 12px -4px rgba(var(--lift-rgb),.22)}
   .ci-card:active{cursor:grabbing}
-  .ci-card.dragging{opacity:.35}
-  .ci-card.paused{background:repeating-linear-gradient(135deg,var(--card),var(--card) 10px,var(--card-2) 10px,var(--card-2) 20px)}
-  .ci-foot{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:28px}
-  .ci-name{font-size:14.5px;font-weight:650;line-height:1.25;color:var(--ink);overflow-wrap:break-word}
-  .ci-due{font-size:12.5px;font-weight:500;color:var(--ink-faint);white-space:nowrap}
-  .ci-card.late .ci-due{color:var(--red);font-weight:700}
-  .ci-card.today .ci-due{color:var(--spark-deep);font-weight:700}
-  .ci-tick{flex:0 0 auto;appearance:none;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--line);
-    background:var(--card);color:var(--ink-faint);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;
-    transition:background .12s ease,color .12s ease,border-color .12s ease}
+  .ci-card.dragging{opacity:.3}
+  .ci-name{font-size:13.5px;font-weight:600;line-height:1.3;color:var(--ink);overflow-wrap:break-word}
+  .ci-due{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--ink-faint);
+    white-space:nowrap}
+  .ci-card.late .ci-due,.ci-card.today .ci-due{font-weight:650}
+  .ci-card.late .ci-due{color:var(--red)}
+  .ci-card.today .ci-due{color:var(--spark-deep)}
+  .ci-card.late .ci-due::before,.ci-card.today .ci-due::before{content:"";width:6px;height:6px;border-radius:50%;
+    background:currentColor}
+  .ci-card.clear .ci-due{color:var(--green)}
+  .ci-card.paused{box-shadow:0 0 0 1px rgba(var(--lift-rgb),.07);background:var(--card-2)}
+  .ci-card.paused .ci-name{color:var(--ink-dim);font-weight:500}
+  .ci-tick{position:absolute;right:7px;top:50%;margin-top:-13px;appearance:none;width:26px;height:26px;border-radius:50%;
+    border:1px solid rgba(var(--lift-rgb),.25);background:var(--card);color:var(--ink-dim);font-size:12px;font-weight:800;
+    font-family:inherit;cursor:pointer;opacity:0;box-shadow:0 0 0 5px var(--card);
+    transition:opacity .1s ease,background .12s ease,color .12s ease,border-color .12s ease}
+  .ci-card:hover .ci-tick,.ci-tick:focus-visible{opacity:1}
   .ci-tick:hover{background:var(--green);border-color:var(--green);color:var(--on-green)}
-  .ci-empty{font-size:12.5px;color:var(--ink-faint);text-align:center;padding:22px 6px;border:1.5px dashed var(--line);
-    border-radius:11px}
+  .ci-empty{font-size:12px;color:var(--ink-faint);padding:6px 6px}
+  @media (hover:none){
+    .ci-card{padding-right:46px}
+    .ci-tick{opacity:1;width:34px;height:34px;margin-top:-17px;box-shadow:none}
+  }
   /* the panel a card opens */
   .ci-bg{position:fixed;inset:0;z-index:45;display:none;justify-content:flex-end;background:rgba(var(--backdrop-rgb),.45)}
   .ci-bg.show{display:flex;animation:fade .2s ease}
@@ -1592,10 +1600,11 @@
   .ci-drawer .cb-tile,.ci-drawer .cb-notes li,.ci-drawer .cb-send{background:var(--card-2)}
   .ci-drawer .cb-tile-big{font-size:30px}
   @media (max-width:639px){
-    .ci-head h2{font-size:38px}
-    .ci-board{grid-template-columns:none !important;grid-auto-flow:column;grid-auto-columns:76%;scroll-snap-type:x mandatory}
+    .ci-how{margin-left:0;text-align:left;flex:1 1 100%}
+    .ci-board{grid-template-columns:none !important;grid-auto-flow:column;grid-auto-columns:70%;scroll-snap-type:x mandatory}
     .ci-col{scroll-snap-align:start}
-    .ci-tick{width:38px;height:38px}
+    .ci-name{font-size:14.5px}
+    .ci-due{font-size:13px}
     .ci-drawer{padding:18px 16px 40px}
     .ci-title{font-size:34px}
     .ci-acts .ci-full{margin-left:0}
@@ -4861,14 +4870,14 @@ function retDoneTodayHtml(){
    their own at the front, because their check-ins run off real days until the six weeks start. */
 const CI_SEQ = ['d1_text','wk2','wk3','wk4','wk5','wk6'];
 const CI_COLS = [
-  {key:'free', title:'Free', sub:'weeks before week 1'},
-  {key:'w1', title:'Day 1', sub:'morning-after text'},
-  {key:'w2', title:'Week 2', sub:'check-in'},
-  {key:'w3', title:'Week 3', sub:'check-in'},
-  {key:'w4', title:'Week 4', sub:'check-in'},
-  {key:'w5', title:'Week 5', sub:'check-in'},
-  {key:'w6', title:'Week 6', sub:'check-in'},
-  {key:'done', title:'All done', sub:'membership chat'}
+  {key:'free', title:'Free weeks', tip:'On their free weeks, before the six weeks start'},
+  {key:'w1', title:'Day 1 text', tip:'Waiting for the morning-after-first-session text'},
+  {key:'w2', title:'Week 2', tip:'Waiting for their week 2 check-in'},
+  {key:'w3', title:'Week 3', tip:'Waiting for their week 3 check-in'},
+  {key:'w4', title:'Week 4', tip:'Waiting for their week 4 check-in'},
+  {key:'w5', title:'Week 5', tip:'Waiting for their week 5 check-in'},
+  {key:'w6', title:'Week 6', tip:'Waiting for their week 6 check-in'},
+  {key:'done', title:'All done', tip:'Every check-in done. The membership chat is next'}
 ];
 let ciTarget = null, ciDragId = null;
 
@@ -4912,28 +4921,36 @@ function renderCheckins(){
   const cols = CI_COLS.filter(c=> c.key!=='free' || people.some(p=>p.col==='free'));
   const summary = !people.length ? 'Nobody is on the clock yet.'
     : !owed.length ? 'Everyone is checked in. Nothing is owed today.'
-    : [today ? `<b>${today}</b> due today` : '', late ? `<b class="ci-latecount">${late}</b> late` : ''].filter(Boolean).join(', ') + '.';
+    : [late ? `<span class="ci-pill late">${late} late</span>` : '', today ? `<span class="ci-pill today">${today} due today</span>` : ''].join('');
   el.innerHTML = `<div class="ci-head"><h2>Check-ins</h2><p class="ci-sum">${summary}</p>
-      <p class="ci-how">Each column is the check-in someone is waiting for. Tick a card, or drag it one column along, when you have checked in.</p></div>`
-    + `<div class="ci-board" style="grid-template-columns:repeat(${cols.length},minmax(132px,1fr))">`
+      <p class="ci-how">A card sits under the check-in that person is waiting for. Checked in? Tick it, or drag it one column along.</p></div>`
+    + `<div class="ci-board" style="grid-template-columns:repeat(${cols.length},minmax(124px,1fr))">`
     + cols.map(c=>{
         const mine = people.filter(p=>p.col===c.key).sort((a,b)=> (a.paused-b.paused) || ((b.late==null?-999:b.late)-(a.late==null?-999:a.late)) || a.m.name.localeCompare(b.m.name));
         return `<section class="ci-col${c.key==='done'?' ci-done':''}" data-col="${c.key}" ondragover="ciDragOver(event,this)" ondragleave="ciDragLeave(this)" ondrop="ciDrop(event,'${c.key}',this)">
-          <header class="ci-colhead"><span class="ci-coltitle">${c.title}</span><span class="gcount">${mine.length}</span><span class="ci-colsub">${c.sub}</span></header>`
+          <header class="ci-colhead" title="${c.tip}"><span class="ci-coltitle">${c.title}</span><span class="ci-n">${mine.length}</span></header>`
           + (mine.length ? mine.map(ciCardHtml).join('') : `<div class="ci-empty">Nobody waiting</div>`)
           + `</section>`;
       }).join('')
     + `</div>`;
   renderCiDrawer();
 }
+/* A name typed in all capitals (or none) is shown in ordinary case on the card, so one shouted
+   name does not stand out from the rest. Display only: the record keeps what was typed, and a
+   name with its own mix of cases (McHugh) is left exactly as it is. */
+function ciName(name){
+  const n = String(name||'').trim();
+  if(n !== n.toUpperCase() && n !== n.toLowerCase()) return n;
+  return n.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (x,a,b)=> a+b.toUpperCase());
+}
 function ciCardHtml(p){
   const m = p.m, st = ciState(p);
   return `<div class="ci-card ${st}" draggable="true" data-id="${m.id}" role="button" tabindex="0"
       ondragstart="ciDragStart(event,'${m.id}',this)" ondragend="ciDragEnd(this)" onclick="ciOpen('${m.id}')"
       onkeydown="if(event.key==='Enter'){ciOpen('${m.id}')}">
-      <span class="ci-name">${esc(m.name)}</span>
-      <span class="ci-foot"><span class="ci-due">${esc(ciDueWord(p))}</span>
-      ${p.item ? `<button type="button" class="ci-tick" title="Checked in with ${esc(firstNameOf(m))}" aria-label="Checked in with ${esc(m.name)}" onclick="event.stopPropagation();ciDone('${m.id}')">✓</button>` : ''}</span>
+      <span class="ci-name">${esc(ciName(m.name))}</span>
+      <span class="ci-due">${esc(ciDueWord(p))}</span>
+      ${p.item ? `<button type="button" class="ci-tick" title="Checked in with ${esc(firstNameOf(m))}" aria-label="Checked in with ${esc(m.name)}" onclick="event.stopPropagation();ciDone('${m.id}')">✓</button>` : ''}
     </div>`;
 }
 

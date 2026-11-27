@@ -74,7 +74,7 @@
     --spark:#f3662e; --spark-deep:#b84311; --spark-rgb:243,102,46;
     --watch:#c98a12;
     --side:#0c0c0c; --side-2:#1c1c1d; --side-ink:#ffffff; --side-dim:#a5a29b; --side-line:#2c2c2d;
-    --side-w:252px;
+    --side-w:252px; --side-rail:68px;
   }
   /* border-box on pseudo-elements too, not just real ones — the bare "*" selector never
      matched ::before/::after, so those were still sizing on content-box. (The one rule that
@@ -1527,20 +1527,25 @@
   .ci-sum b{color:var(--ink);font-weight:700}
   .ci-sum b.ci-latecount{color:var(--red)}
   .ci-how{flex:1 1 100%;font-size:13.5px;color:var(--ink-faint);max-width:80ch}
-  .ci-board{display:grid;gap:10px;align-items:start;overflow-x:auto;padding-bottom:10px}
-  .ci-col{min-width:0;background:var(--navy-2);border-radius:14px;padding:10px 6px 8px;min-height:180px;
+  .ci-board{display:grid;gap:12px;align-items:stretch;overflow-x:auto;padding-bottom:10px}
+  .ci-col{min-width:0;background:var(--navy-2);border-radius:16px;padding:10px 8px 10px;min-height:260px;
     border:2px solid transparent;transition:border-color .12s ease,background .12s ease}
   .ci-col.over{border-color:var(--spark);background:rgba(var(--spark-rgb),.1)}
   .ci-col.ci-done{background:rgba(var(--green-rgb),.1)}
-  .ci-colhead{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;padding:2px 6px 10px}
-  .ci-coltitle{font-family:var(--display);font-size:21px;line-height:1.1;letter-spacing:.03em;text-transform:uppercase;color:var(--ink)}
+  /* every column head is the same two lines — title and count, then one line under — so the
+     first card in every column starts at the same height */
+  .ci-colhead{display:grid;grid-template-columns:minmax(0,max-content) max-content minmax(0,1fr);align-items:center;
+    gap:3px 8px;padding:4px 8px 12px}
+  .ci-coltitle{font-family:var(--display);font-size:21px;line-height:1.1;letter-spacing:.03em;text-transform:uppercase;
+    color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ci-colhead .gcount{font-size:12.5px;font-weight:650;color:var(--ink-dim);background:var(--card);border-radius:999px;
     padding:1px 8px;min-width:22px;text-align:center}
-  .ci-colsub{flex:1 1 100%;font-size:12.5px;font-weight:500;color:var(--ink-faint)}
+  .ci-colsub{grid-column:1 / -1;font-size:12.5px;font-weight:500;color:var(--ink-faint);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
   .ci-card{display:flex;flex-direction:column;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:11px;
-    padding:10px 7px 9px 13px;margin-bottom:6px;cursor:grab;position:relative;user-select:none;-webkit-user-select:none;
+    padding:12px 9px 10px 16px;margin-bottom:8px;cursor:grab;position:relative;user-select:none;-webkit-user-select:none;
     transition:border-color .12s ease,box-shadow .12s ease,transform .12s ease}
-  .ci-card::before{content:"";position:absolute;left:4px;top:10px;bottom:10px;width:3px;border-radius:3px;background:var(--line)}
+  .ci-card::before{content:"";position:absolute;left:6px;top:11px;bottom:11px;width:3px;border-radius:3px;background:var(--line)}
   .ci-card.late::before{background:var(--red)}
   .ci-card.today::before{background:var(--spark)}
   .ci-card.clear::before{background:var(--green)}
@@ -1548,12 +1553,12 @@
   .ci-card:active{cursor:grabbing}
   .ci-card.dragging{opacity:.35}
   .ci-card.paused{background:repeating-linear-gradient(135deg,var(--card),var(--card) 10px,var(--card-2) 10px,var(--card-2) 20px)}
-  .ci-foot{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:26px}
-  .ci-name{font-size:14px;font-weight:650;line-height:1.25;color:var(--ink);overflow-wrap:break-word}
+  .ci-foot{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:28px}
+  .ci-name{font-size:14.5px;font-weight:650;line-height:1.25;color:var(--ink);overflow-wrap:break-word}
   .ci-due{font-size:12.5px;font-weight:500;color:var(--ink-faint);white-space:nowrap}
   .ci-card.late .ci-due{color:var(--red);font-weight:700}
   .ci-card.today .ci-due{color:var(--spark-deep);font-weight:700}
-  .ci-tick{flex:0 0 auto;appearance:none;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);
+  .ci-tick{flex:0 0 auto;appearance:none;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--line);
     background:var(--card);color:var(--ink-faint);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;
     transition:background .12s ease,color .12s ease,border-color .12s ease}
   .ci-tick:hover{background:var(--green);border-color:var(--green);color:var(--on-green)}
@@ -1688,6 +1693,39 @@
     .brand .btxt{display:none}
     .brand .brand-fixed{display:flex}
     .sync-banner{left:var(--side-w)}
+  }
+
+  /* ---------- the board gets the room: the side menu folds to a rail ----------
+     Eight columns and a 252px menu do not both fit a laptop, and the board is the screen
+     somebody sits in. So on Check-ins the menu folds down to a narrow rail — the logo, the
+     search and home icons, and the lit marker for where you are — and opens again the moment
+     the pointer (or the keyboard) goes into it, laid OVER the board rather than shoving it
+     along. It is the same menu clipped, not a second one: clip-path hides everything right of
+     the rail, and what is hidden takes no clicks. Only where there is a pointer to hover with;
+     on a touch screen the menu stays as it is, because a menu you cannot open is no menu. */
+  @media (min-width:1024px) and (hover:hover){
+    body:has(#view-checkins.active){padding-left:var(--side-rail)}
+    body:has(#view-checkins.active) header.mast{clip-path:inset(0 calc(var(--side-w) - var(--side-rail)) 0 0);
+      transition:clip-path .22s cubic-bezier(.2,.7,.2,1) .12s,box-shadow .22s ease .12s}
+    body:has(#view-checkins.active) header.mast:hover,
+    body:has(#view-checkins.active) header.mast:focus-within{clip-path:inset(0 -80px 0 0);
+      box-shadow:30px 0 60px -24px rgba(var(--backdrop-rgb),.55);transition-delay:0s}
+    /* folded: the words go, the icons stay */
+    body:has(#view-checkins.active) header.mast:not(:hover):not(:focus-within) :is(.brand-fixed,.nav-label,.mast-meta,
+      .findbtn kbd,nav.tabs button > *){opacity:0}
+    body:has(#view-checkins.active) header.mast:not(:hover):not(:focus-within) :is(.findbtn,.homebtn,nav.tabs button){
+      color:transparent;border-color:transparent}
+    body:has(#view-checkins.active) header.mast:not(:hover):not(:focus-within) :is(.findbtn,nav.tabs button){background:none}
+    body:has(#view-checkins.active) header.mast:not(:hover):not(:focus-within) :is(.findbtn,.homebtn) svg{color:var(--side-dim)}
+    body:has(#view-checkins.active) header.mast :is(.brand-fixed,.nav-label,.mast-meta,.findbtn kbd){transition:opacity .15s ease}
+    /* three short lines under the icons: there is a menu here */
+    body:has(#view-checkins.active) header.mast::after{content:"";order:2;flex:0 0 auto;width:18px;height:12px;
+      margin:22px 0 0 26px;border-top:2px solid var(--side-dim);border-bottom:2px solid var(--side-dim);
+      background:linear-gradient(var(--side-dim),var(--side-dim)) 0 50%/100% 2px no-repeat;transition:opacity .15s ease}
+    body:has(#view-checkins.active) header.mast:hover::after,
+    body:has(#view-checkins.active) header.mast:focus-within::after{opacity:0;width:0;height:0;margin:0;border:0}
+    body:has(#view-checkins.active) .sync-banner{left:var(--side-rail)}
+    body:has(#view-checkins.active) .toast{left:calc(50% + var(--side-rail) / 2)}
   }
 
   /* ---------- buttons, chips, fields ---------- */
@@ -4823,14 +4861,14 @@ function retDoneTodayHtml(){
    their own at the front, because their check-ins run off real days until the six weeks start. */
 const CI_SEQ = ['d1_text','wk2','wk3','wk4','wk5','wk6'];
 const CI_COLS = [
-  {key:'free', title:'Free weeks', sub:'before the six weeks'},
+  {key:'free', title:'Free', sub:'weeks before week 1'},
   {key:'w1', title:'Day 1', sub:'morning-after text'},
   {key:'w2', title:'Week 2', sub:'check-in'},
   {key:'w3', title:'Week 3', sub:'check-in'},
   {key:'w4', title:'Week 4', sub:'check-in'},
   {key:'w5', title:'Week 5', sub:'check-in'},
   {key:'w6', title:'Week 6', sub:'check-in'},
-  {key:'done', title:'All done', sub:'membership chat next'}
+  {key:'done', title:'All done', sub:'membership chat'}
 ];
 let ciTarget = null, ciDragId = null;
 
@@ -4877,7 +4915,7 @@ function renderCheckins(){
     : [today ? `<b>${today}</b> due today` : '', late ? `<b class="ci-latecount">${late}</b> late` : ''].filter(Boolean).join(', ') + '.';
   el.innerHTML = `<div class="ci-head"><h2>Check-ins</h2><p class="ci-sum">${summary}</p>
       <p class="ci-how">Each column is the check-in someone is waiting for. Tick a card, or drag it one column along, when you have checked in.</p></div>`
-    + `<div class="ci-board" style="grid-template-columns:repeat(${cols.length},minmax(130px,1fr))">`
+    + `<div class="ci-board" style="grid-template-columns:repeat(${cols.length},minmax(132px,1fr))">`
     + cols.map(c=>{
         const mine = people.filter(p=>p.col===c.key).sort((a,b)=> (a.paused-b.paused) || ((b.late==null?-999:b.late)-(a.late==null?-999:a.late)) || a.m.name.localeCompare(b.m.name));
         return `<section class="ci-col${c.key==='done'?' ci-done':''}" data-col="${c.key}" ondragover="ciDragOver(event,this)" ondragleave="ciDragLeave(this)" ondrop="ciDrop(event,'${c.key}',this)">

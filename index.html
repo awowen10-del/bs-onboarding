@@ -1539,7 +1539,8 @@
   .ci-col{min-width:0;background:rgba(var(--lift-rgb),.04);border-radius:10px;padding:6px 6px 10px;min-height:220px;
     outline:2px solid transparent;outline-offset:-2px;transition:outline-color .12s ease,background .12s ease}
   .ci-col.over{outline-color:var(--spark);background:rgba(var(--spark-rgb),.08)}
-  .ci-colhead{display:flex;align-items:center;gap:7px;padding:5px 6px 9px;min-width:0}
+  .ci-colhead{display:flex;flex-wrap:wrap;align-items:center;gap:1px 7px;padding:5px 6px 9px;min-width:0}
+  .ci-kick{flex:0 0 100%;font-size:11.5px;font-weight:500;color:var(--ink-faint)}
   .ci-coltitle{font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ci-col.ci-done .ci-coltitle{color:var(--green)}
   .ci-n{flex:0 0 auto;font-size:12.5px;font-weight:500;color:var(--ink-faint)}
@@ -1559,6 +1560,8 @@
   .ci-card.late .ci-due::before,.ci-card.today .ci-due::before{content:"";width:6px;height:6px;border-radius:50%;
     background:currentColor}
   .ci-card.clear .ci-due{color:var(--green)}
+  .ci-card.stale .ci-due{color:var(--amber);font-weight:650}
+  .ci-how b{color:var(--ink-dim);font-weight:700}
   .ci-card.paused{box-shadow:0 0 0 1px rgba(var(--lift-rgb),.07);background:var(--card-2)}
   .ci-card.paused .ci-name{color:var(--ink-dim);font-weight:500}
   .ci-tick{position:absolute;right:7px;top:50%;margin-top:-13px;appearance:none;width:26px;height:26px;border-radius:50%;
@@ -1584,9 +1587,15 @@
   .ci-title{display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;font-family:var(--display);font-weight:400;
     font-size:44px;line-height:1;text-transform:uppercase;letter-spacing:.012em;color:var(--ink)}
   .ci-meta{margin-top:10px;font-size:14.5px;color:var(--ink-dim)}
-  .ci-duechip{font-weight:700;color:var(--ink)}
-  .ci-duechip.late{color:var(--red)} .ci-duechip.today{color:var(--spark-deep)}
   .ci-remember{margin-top:10px;font-size:14.5px;line-height:1.5;color:var(--ink)}
+  .ci-why{margin-top:14px;display:grid;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:12px 16px;font-size:14.5px}
+  .ci-why > div{display:flex;flex-wrap:wrap;gap:2px 12px}
+  .ci-why span{flex:0 0 104px;color:var(--ink-faint);font-weight:500}
+  .ci-why b{font-weight:650;color:var(--ink)}
+  .ci-why b.late{color:var(--red)} .ci-why b.today{color:var(--spark-deep)}
+  .ci-stale{margin-top:10px;background:rgba(var(--amber-rgb),.09);border:1px solid rgba(var(--amber-rgb),.35);border-radius:12px;
+    padding:12px 16px;font-size:14px;line-height:1.55;color:var(--ink)}
   .ci-rail{margin:22px 6px 0}
   .ci-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
   .ci-acts .btn{padding:10px 16px;font-size:14px}
@@ -4937,14 +4946,42 @@ function ciSequence(m){
 function ciNext(m){
   const free = inFreeWeeks(m);
   const item = ciSequence(m).find(it=>!isHandled(m,it.id)) || null;
-  if(!item) return {col: free ? 'free' : 'done', item:null, late:null};
   const cd = free ? realDay(m) : currentDay(m);
+  if(!item) return {col: free ? 'free' : 'done', item:null, late:null, day:cd};
   const ed = free ? item.day : effectiveDay(item,m);
-  return {col: free ? 'free' : 'w'+(CI_SEQ.indexOf(item.id)+1), item, late: cd-ed};
+  return {col: free ? 'free' : 'w'+(CI_SEQ.indexOf(item.id)+1), item, late: cd-ed, day:cd};
+}
+/* Ticks that are older than the person's start date. It happens when somebody comes back for a
+   second challenge and their record is given a new start without the old ticks being cleared:
+   the board then believes check-ins from the first time round and puts them further along than
+   they are (or under All done in their fourth week). Nothing is changed here — it is only
+   spotted, so the card can say so and a coach can put it right with Move back a step.
+   doneMeta's stamp has a day and a month but no year, so it is read in the start date's year
+   and pushed back a year if that lands it in the future of the start. Pure. */
+const CI_MONTHS = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function ciStaleTicks(m){
+  if(!m || !m.day0) return [];
+  const start = new Date(m.day0);
+  return ciSequence(m).filter(it=>{
+    if(!isDone(m,it.id)) return false;
+    const mm = /(\d{1,2})\s+([A-Za-z]{3})/.exec(String((m.doneMeta||{})[it.id]||''));
+    if(!mm || CI_MONTHS[mm[2].toLowerCase()]==null) return false;
+    let d = new Date(start.getFullYear(), CI_MONTHS[mm[2].toLowerCase()], Number(mm[1])).getTime();
+    if(d - m.day0 > 200*MS_DAY) d = new Date(start.getFullYear()-1, CI_MONTHS[mm[2].toLowerCase()], Number(mm[1])).getTime();
+    return d < m.day0 - 2*MS_DAY;
+  });
 }
 function ciPeople(){
   return members.filter(m=> hasStarted(m) && !isInactive(m) && (status(m)==='live' || status(m)==='paused'))
-    .map(m=>Object.assign({m, paused: status(m)==='paused'}, ciNext(m)));
+    .map(m=>Object.assign({m, paused: status(m)==='paused', stale: ciStaleTicks(m).length>0}, ciNext(m)));
+}
+/* The line under the name on a card. Somebody not yet due shows the day they are ON as well as
+   the day the check-in falls, because the column alone was misread: a card under "Week 4" on
+   day 16 is in their third week, waiting for the week 4 check-in. */
+function ciCardWord(p){
+  if(p.stale && !p.paused) return 'Old ticks, check';
+  const w = ciDueWord(p);
+  return (!p.paused && p.item && p.late < 0) ? 'Day '+p.day+' · '+w : w;
 }
 function ciDueWord(p){
   if(p.paused) return 'Paused';
@@ -4955,7 +4992,7 @@ function ciDueWord(p){
   // (weekday and day only: it is always within the coming week, and the card is narrow)
   return new Date(addDays(today0(), -p.late)).toLocaleDateString('en-GB',{weekday:'short',day:'numeric'});
 }
-function ciState(p){ return p.paused ? 'paused' : !p.item ? 'clear' : p.late>0 ? 'late' : p.late===0 ? 'today' : 'soon'; }
+function ciState(p){ return p.paused ? 'paused' : p.stale ? 'stale' : !p.item ? 'clear' : p.late>0 ? 'late' : p.late===0 ? 'today' : 'soon'; }
 
 function renderCheckins(){
   const el = document.getElementById('ciBoard');
@@ -4970,12 +5007,13 @@ function renderCheckins(){
     : !owed.length ? 'Everyone is checked in. Nothing is owed today.'
     : [late ? `<span class="ci-pill late">${late} late</span>` : '', today ? `<span class="ci-pill today">${today} due today</span>` : ''].join('');
   el.innerHTML = `<div class="ci-head"><h2>Check-ins</h2><p class="ci-sum">${summary}</p>
-      <p class="ci-how">A card sits under the check-in that person is waiting for. Checked in? Tick it, or drag it one column along.</p></div>`
+      <p class="ci-how">Columns are the <b>next check-in due</b>, not the week someone is in. Checked in? Tick the card, or drag it one column along.</p></div>`
     + `<div class="ci-board" style="grid-template-columns:repeat(${cols.length},minmax(124px,1fr))">`
     + cols.map(c=>{
         const mine = people.filter(p=>p.col===c.key).sort((a,b)=> (a.paused-b.paused) || ((b.late==null?-999:b.late)-(a.late==null?-999:a.late)) || a.m.name.localeCompare(b.m.name));
         return `<section class="ci-col${c.key==='done'?' ci-done':''}" data-col="${c.key}" ondragover="ciDragOver(event,this)" ondragleave="ciDragLeave(this)" ondrop="ciDrop(event,'${c.key}',this)">
-          <header class="ci-colhead" title="${c.tip}"><span class="ci-coltitle">${c.title}</span><span class="ci-n">${mine.length}</span></header>`
+          <header class="ci-colhead" title="${c.tip}"><span class="ci-kick">${c.key==='done' ? 'Nothing left' : 'Next check-in'}</span>
+            <span class="ci-coltitle">${c.title}</span><span class="ci-n">${mine.length}</span></header>`
           + (mine.length ? mine.map(ciCardHtml).join('') : `<div class="ci-empty">Nobody waiting</div>`)
           + `</section>`;
       }).join('')
@@ -4996,7 +5034,7 @@ function ciCardHtml(p){
       ondragstart="ciDragStart(event,'${m.id}',this)" ondragend="ciDragEnd(this)" onclick="ciOpen('${m.id}')"
       onkeydown="if(event.key==='Enter'){ciOpen('${m.id}')}">
       <span class="ci-name">${esc(ciName(m.name))}</span>
-      <span class="ci-due">${esc(ciDueWord(p))}</span>
+      <span class="ci-due">${esc(ciCardWord(p))}</span>
       ${p.item ? `<button type="button" class="ci-tick" title="Checked in with ${esc(firstNameOf(m))}" aria-label="Checked in with ${esc(m.name)}" onclick="event.stopPropagation();ciDone('${m.id}')">✓</button>` : ''}
     </div>`;
 }
@@ -5067,9 +5105,20 @@ function renderCiDrawer(){
   if(!box || !ciTarget) return;
   const m = members.find(x=>x.id===ciTarget);
   if(!m || !hasStarted(m) || isInactive(m)){ ciClose(); return; }
-  const p = Object.assign({m, paused: status(m)==='paused'}, ciNext(m));
+  const stale = ciStaleTicks(m);
+  const p = Object.assign({m, paused: status(m)==='paused', stale: stale.length>0}, ciNext(m));
   const it = p.item, st = ciState(p), tot = totalDays(m), cd = currentDay(m);
-  const where = inFreeWeeks(m) ? 'Free weeks, day '+realDay(m) : 'Day '+cd+' of '+tot;
+  const where = inFreeWeeks(m) ? 'Free weeks, day '+realDay(m) : 'Day '+cd+' of '+tot+' (week '+Math.min(6, Math.floor(cd/7)+1)+')';
+  // why this card is in this column, in two lines: the last check-in they had, and the next one
+  const had = ciSequence(m).filter(x=>isHandled(m,x.id)), last = had[had.length-1];
+  const lastStamp = last ? (m.doneMeta||{})[last.id] : '';
+  const lastLine = !last ? 'No check-in yet.'
+    : esc(tpTitle(last)) + (isMissed(m,last.id) ? ', couldn’t reach them' : ', done'+(lastStamp ? ' '+esc(/^\d/.test(lastStamp) ? lastStamp : '('+lastStamp.toLowerCase()+')') : ''));
+  const nextWhen = !it ? '' : p.late>0 ? p.late+' day'+(p.late===1?'':'s')+' late' : p.late===0 ? 'due today'
+    : 'due '+new Date(addDays(today0(), -p.late)).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+' (day '+(p.day-p.late)+')';
+  const whyHere = `<div class="ci-why"><div><span>Last check-in</span><b>${lastLine}</b></div>
+      <div><span>Next</span><b class="${st}">${it ? esc(tpTitle(it))+', '+nextWhen : (p.col==='free' ? 'Up to date for now' : 'Nothing left: the membership chat')}</b></div></div>`
+    + (stale.length ? `<p class="ci-stale"><b>Check these ticks.</b> ${stale.length} of their check-ins ${stale.length===1?'is':'are'} dated before they started on ${fmt(m.day0)}, so ${stale.length===1?'it looks':'they look'} left over from an earlier challenge. If ${esc(firstNameOf(m))} has started again, use <b>Move back a step</b> until the board shows the check-in they are really waiting for.</p>` : '');
   const hadOne = ciSequence(m).some(x=>isHandled(m,x.id));
   const acts = (it ? `<button type="button" class="btn primary ci-go" onclick="ciDone('${m.id}')">✓ Checked in</button>
         <button type="button" class="btn" onclick="ciMissed('${m.id}')">Couldn’t reach them</button>` : '')
@@ -5079,7 +5128,8 @@ function renderCiDrawer(){
   box.innerHTML = `<div class="ci-top"><span class="ci-kicker">${it ? esc(tpTitle(it)) : (p.col==='free' ? 'Free weeks' : 'All six check-ins done')}</span>
         <button type="button" class="btn sm ghost" onclick="ciClose()">Close</button></div>
       <h3 class="ci-title">${esc(m.name)}${notesBtn(m)}</h3>
-      <p class="ci-meta">Coach ${esc(m.coach)} · ${where} · <span class="ci-duechip ${st}">${esc(ciDueWord(p))}</span></p>
+      <p class="ci-meta">Coach ${esc(m.coach)} · ${where}${p.paused ? ' · Paused' : ''}</p>
+      ${whyHere}
       ${m.personal ? `<p class="ci-remember"><b>Remember:</b> ${esc(m.personal)}</p>` : ''}
       <div class="rail ci-rail"><div class="track"><div class="fill ${p.paused?'paused-fill':''}" style="width:${railAt(cd,tot).toFixed(1)}%"></div>${railStops(m,tot)}</div>
         <div class="ticks"><span>Day 0</span><span>Day ${tot}</span></div></div>

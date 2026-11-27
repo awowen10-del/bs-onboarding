@@ -609,6 +609,22 @@ const countBadge = (html) => {
   assert.strictEqual(app.ctx.ciNext(app.find("a")).col, "w3", "checked in, so they move one column along");
   app.ctx.ciBack("a");
   assert.strictEqual(app.ctx.ciNext(app.find("a")).col, "w2", "and one step back opens that check-in up again");
+
+  // The card says the day they are ON as well as the day the check-in falls, because the
+  // column alone was misread: under "Week 3" on day 8 means in week 2, waiting for week 3's.
+  app.ctx.toggleDone("a", "wk2", true);
+  const card = app.ctx.ciPeople().find((p) => p.m.id === "a");
+  assert.ok(/^Day 8 · /.test(app.ctx.ciCardWord(card)), "not yet due: the day they are on, then when it falls");
+
+  // Ticks dated before the start date are left over from an earlier challenge. They are
+  // flagged, never silently believed and never silently removed.
+  const sam = app.find("a");
+  assert.strictEqual(app.ctx.ciStaleTicks(sam).length, 0, "ticks made today are not stale");
+  const longAgo = new Date(sam.day0 - 40 * 86400000).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  sam.doneMeta.d1_text = longAgo; sam.doneMeta.wk2 = "Off tracker";
+  assert.strictEqual(app.ctx.ciStaleTicks(sam).map((x) => x.id).join(), "d1_text", "a tick 40 days before they started is flagged; one with no date is left alone");
+  assert.ok(app.ctx.ciPeople().find((p) => p.m.id === "a").stale, "…and the card carries the flag");
+  assert.ok((sam.completed || []).includes("d1_text"), "…but nothing was un-ticked for them");
 }
 
 /* ---------- 15: the retention tracker was left alone ---------- */

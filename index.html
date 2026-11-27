@@ -3364,7 +3364,7 @@ function cbWhen(iso){
 function cbChips(b){
   const out = [];
   const s = b.sessions||{}, f = (b.app&&b.app.food)||{};
-  out.push(`<span class="cb-chip">${CB_ICON.gym}${s.found ? `${s.lastWeek} session${s.lastWeek===1?'':'s'} last week` : 'Not on TeamUp'}</span>`);
+  out.push(`<span class="cb-chip">${CB_ICON.gym}${s.found ? `${s.lastWeek} session${s.lastWeek===1?'':'s'} that week` : 'Not on TeamUp'}</span>`);
   out.push(`<span class="cb-chip">${CB_ICON.food}${!b.app||!b.app.found ? 'Not on Trainerize' : f.daysLogged ? `Food ${f.daysLogged}/7 days` : 'No food logged'}</span>`);
   if((b.slack||[]).length) out.push(`<span class="cb-chip">${CB_ICON.notes}${b.slack.length} coach note${b.slack.length===1?'':'s'}</span>`);
   return `<div class="cb-chips">${out.join('')}</div>`;
@@ -3381,8 +3381,8 @@ function cbTile(icon, label, big, sub, tone){
 function cbSessionsTile(s){
   if(!s || !s.found) return cbTile(CB_ICON.gym,'Sessions','?','Not found on TeamUp','grey');
   const tone = s.lastWeek>=2 ? 'good' : s.lastWeek===1 ? 'watch' : 'flag';
-  const next = s.booked ? `${s.booked} booked next 7 days` : `<b>Nothing booked</b> next 7 days`;
-  return cbTile(CB_ICON.gym,'Sessions last 7 days', String(s.lastWeek), `${next}<br>${s.total} since they started`, s.booked ? tone : (tone==='good'?'watch':'flag'));
+  const next = s.booked ? `${s.booked} booked this week` : `<b>Nothing booked</b> this week`;
+  return cbTile(CB_ICON.gym,'Sessions that week', String(s.lastWeek), `${next}<br>${s.total} since they started`, s.booked ? tone : (tone==='good'?'watch':'flag'));
 }
 function cbFoodTile(a){
   if(!a || !a.found) return cbTile(CB_ICON.food,'Food logged','?','Not found on Trainerize','grey');
@@ -3415,7 +3415,8 @@ function cbDetailHtml(m, item){
   if(!b) return `<div class="cb"><div class="cb-head"><span class="cb-title">${first}'s week at a glance</span>${refresh}</div>
       <p class="cb-empty">Nothing pulled for ${first} yet. It runs every morning, or press Refresh.</p></div>`;
   const when = new Date(b.at), stale = Date.now()-when.getTime() > 30*3600000;
-  const per = b.period ? `${cbDay(b.period.from)} to ${cbDay(b.period.to)}` : 'the last 7 days';
+  // the one week everything below is from: Monday to Sunday (see checkInWeek in the function)
+  const per = b.period ? `${cbDay(b.period.from)} to ${cbDay(b.period.to)}` : 'last week';
   const notes = (b.slack||[]).map(x=>`<li><div class="cb-note-meta"><b>${esc(x.coach ? x.coach.charAt(0).toUpperCase()+x.coach.slice(1) : 'Coach')}</b> · ${esc(cbDay(x.day))}${x.check?' · <span class="cb-warn">check it’s them</span>':''}</div>${esc(x.text)}</li>`).join('');
   const send = (kind,label,hint,text) => text ? `<div class="cb-send">
         <div class="cb-send-head"><span><b>${label}</b><span class="cb-send-hint">${hint}</span></span><button class="btn sm" onclick="event.stopPropagation();cbCopy('${m.id}','${kind}',this)">Copy</button></div>
@@ -3430,8 +3431,8 @@ function cbDetailHtml(m, item){
       <div class="cb-tiles">${cbSessionsTile(b.sessions)}${cbFoodTile(b.app)}${cbAppTile(b.app)}</div>
       <div class="cb-legend"><span class="cb-dot cb-good"></span>On track <span class="cb-dot cb-watch"></span>Worth a word <span class="cb-dot cb-flag"></span>Raise it</div>
 
-      <div class="cb-step"><span class="cb-num">2</span>What the coaches said in their shift notes</div>
-      ${notes ? `<ul class="cb-notes">${notes}</ul>` : `<p class="cb-empty">Nothing about ${first} in the last two weeks.</p>`}
+      <div class="cb-step"><span class="cb-num">2</span>What the coaches said that week</div>
+      ${notes ? `<ul class="cb-notes">${notes}</ul>` : `<p class="cb-empty">Nothing about ${first} in the coaches’ notes that week.</p>`}
 
       ${(b.points||[]).length ? `<div class="cb-step"><span class="cb-num">3</span>What to bring up</div>
       <ol class="cb-points">${b.points.map(p=>`<li>${esc(p.replace(/^named win:\s*/i,'Win: '))}</li>`).join('')}</ol>` : ''}

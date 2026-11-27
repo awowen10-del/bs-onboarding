@@ -1,7 +1,7 @@
 // Check-in briefs: who gets one, the food maths, the coaches' notes, and the tracker wiring.
 const assert = require("assert");
 const fs = require("fs"); const path = require("path");
-const { onJourney, journeyDay, trainingSessions, foodWeek, checklistLines, mentionsOf, plausible, weekJob, factsFor } = require("../netlify/functions/checkin-brief-background.js")._test;
+const { onJourney, journeyDay, trainingSessions, foodWeek, checklistLines, mentionsOf, plausible, weekJob, factsFor, checkInWeek, shiftDay, weekWords } = require("../netlify/functions/checkin-brief-background.js")._test;
 const HTML = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 const D = 86400000, NOW = new Date(2026, 10, 26, 10).getTime(), T0 = new Date(2026, 10, 26).getTime();
 
@@ -80,4 +80,29 @@ assert.ok(HTML.includes("${ci ? cbDetailHtml(m, item) : ''}"));
 assert.ok(HTML.includes("cbOpen.has(m.id+'-'+item.id)"));
 // scheduled every morning after the attendance sync
 assert.ok(/\[functions\."checkin-brief-daily"\]\s+schedule = "50 6 \* \* \*"/.test(fs.readFileSync(path.join(__dirname, "..", "netlify.toml"), "utf8")));
+// ---- the week a check-in is about: the last FULL Monday to Sunday, whatever day you look ----
+// (Ash, 27 Nov 2026: check-ins are done on a Monday or Tuesday about the week just gone.)
+const at = (iso) => Date.parse(iso);
+assert.deepEqual([checkInWeek(at("2026-11-30T09:00:00Z")).from, checkInWeek(at("2026-11-30T09:00:00Z")).to], ["2026-11-23", "2026-11-29"], "Monday: the week just finished");
+assert.deepEqual([checkInWeek(at("2026-12-01T18:00:00Z")).from, checkInWeek(at("2026-12-01T18:00:00Z")).to], ["2026-11-23", "2026-11-29"], "Tuesday: the same week");
+assert.deepEqual([checkInWeek(at("2026-11-27T10:00:00Z")).from, checkInWeek(at("2026-11-27T10:00:00Z")).to], ["2026-11-16", "2026-11-22"], "a Friday still shows the last FULL week, not this one so far");
+assert.deepEqual([checkInWeek(at("2026-11-29T23:00:00Z")).from, checkInWeek(at("2026-11-29T23:00:00Z")).to], ["2026-11-16", "2026-11-22"], "Sunday night: this week is not over yet");
+// the gym's day, not the server's: 00:30 on a June Monday in Warrington is still Sunday in UTC
+assert.deepEqual([checkInWeek(at("2026-06-28T23:30:00Z")).from, checkInWeek(at("2026-06-28T23:30:00Z")).to], ["2026-06-22", "2026-06-28"], "British Summer Time does not slip the week");
+assert.equal(weekWords(checkInWeek(at("2026-11-30T09:00:00Z"))), "Monday 23 November to Sunday 29 November");
+
+// a checklist is dated by the SHIFT it is about, not by when it was written up
+assert.equal(shiftDay("*Gaz*  •  Thu 26 Nov, 11:50, Wednesday - Late", at("2026-11-26T11:50:00Z")), "2026-11-25", "Wednesday's late shift, posted Thursday morning");
+assert.equal(shiftDay("*Gaz*  •  Sat 21 Nov, 13:52, Saturday - Early", at("2026-11-21T13:52:00Z")), "2026-11-21", "posted the same day");
+assert.equal(shiftDay("*Grace Terry*  •  Mon 30 Nov at 08:10, Friday - Late", at("2026-11-30T08:10:00Z")), "2026-11-27", "Friday's shift written up on Monday stays in Friday's week");
+assert.equal(shiftDay("no shift named", at("2026-11-24T21:00:00Z")), "2026-11-24", "no shift named: the day it was posted");
+const dated = checklistLines([{ ts: String(at("2026-11-26T11:50:00Z") / 1000), text: "Post-Shift Checklist\n*Gaz*  •  Thu 26 Nov, 11:50, Wednesday - Late\n> :white_check_mark:  *Any new trialists on their first week?*  Yes\n> &gt; Paul - did elevated RDL" }]);
+assert.equal(dated[0].day, "2026-11-25", "the note carries the shift's day");
+
+// what Claude is told names the week and says to call it last week
+const fx = factsFor({ name: "Emma Dalby", coach: "Dan" }, { free: false, day: 9 }, { found: true, lastWeek: 2, total: 3, last: "2026-11-27T09:00:00Z", booked: 1 }, { found: false }, [], checkInWeek(at("2026-11-30T09:00:00Z")));
+assert.equal(fx.theWeek, "Monday 23 November to Sunday 29 November (last week)");
+assert.equal(fx.sessions.attendedInTheWeek, 2); assert.equal(fx.sessions.bookedForTheRestOfThisWeek, 1);
+assert.ok(!/SevenDays|last 7 days|last 2 weeks/.test(JSON.stringify(fx)), "nothing in the facts still talks about a rolling seven days");
+
 console.log("checkin-brief: OK");

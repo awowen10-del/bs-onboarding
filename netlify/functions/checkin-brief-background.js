@@ -8,11 +8,12 @@
  * recommended written reply / voice note to send."
  *
  * For every challenger on the journey (clock running, or in their free weeks) it reads:
- *   TeamUp      training sessions ATTENDED in the last 7 days, since they started, and what
- *               they have booked in the next 7 days (attended only, same rule as the Attendance tab)
+ *   TeamUp      training sessions ATTENDED in the week the check-in is about (see checkInWeek),
+ *               since they started, and what they have booked for this week (attended only, same
+ *               rule as the Attendance tab)
  *   Trainerize  food logged each day against their calorie and protein targets, workouts and
  *               cardio ticked off in the app, body stats, when they last opened the app
- *   Slack       lines in the 6 Week Challenge part (new trialists + 6WC updates) of the coaches’ Post-Shift Checklist posts (#general) that name them, last 14 days
+ *   Slack       lines in the 6 Week Challenge part (new trialists + 6WC updates) of the coaches’ Post-Shift Checklist posts (#general) that name them, for shifts in that same week
  * then Claude writes the few things worth raising, a message to send and a voice note to record,
  * in the Bodysculpt check-in voice. Nothing is sent anywhere: the coach reads it, tweaks it, sends it.
  *
@@ -34,7 +35,7 @@ const TZ = 'https://api.trainerize.com/v03/';
 const GENERAL_CHANNEL = 'C05H1U54JKU';   // #general, where the Post-Shift Checklist posts land
 const ROW = 'checkin-briefs';
 const DAY = 86400000;
-const SLACK_DAYS = 14;
+const SLACK_DAYS = 16;     // far enough back to hold the whole of last week, plus a late post or two
 const REFRESH_GAP = 10 * 60000;
 const NOT_TRAINING = /intro|review|workshop|quiz|goal setting|cold water|games|social|consult|assessment/i;   // same as attendance-sync
 
@@ -46,6 +47,31 @@ const isTraining = (t) => !!t && !NOT_TRAINING.test(t);
 
 /* ---------- who: the same day count as the tracker (currentDay / clockStart in index.html) ---------- */
 function midnight(ms) { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); }
+
+/* ---------- THE WEEK a check-in is about ----------
+   One fixed week, Monday to Sunday: the last FULL one. Ash, 27 Nov 2026: check-ins are done on
+   a Monday or a Tuesday and are about the week just gone, so everything on the brief — sessions,
+   food, the coaches' notes — has to come from that one week and nothing either side of it. It
+   used to be "the last seven days", which slid with the day you looked: a note from the Thursday
+   before last could turn up again in this week's brief after it had already been covered, and
+   "2 sessions in 7 days" meant a different seven days on a Friday than on a Monday.
+
+   Days are Warrington's, not the server's (which runs on UTC): a Sunday 11.30pm in June is
+   still Sunday. londonYmd turns any moment into the gym's calendar date; the week is two of
+   those dates and everything is compared to them as text, so no clock change can move it. Pure. */
+const londonYmd = (ms) => new Date(ms).toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+const addYmd = (day, n) => ymd(Date.parse(day + 'T12:00:00Z') + n * DAY);
+function checkInWeek(now = Date.now()) {
+  const today = londonYmd(now);
+  const dow = (new Date(today + 'T12:00:00Z').getUTCDay() + 6) % 7;     // Monday 0 … Sunday 6
+  const thisMonday = addYmd(today, -dow);
+  return { from: addYmd(thisMonday, -7), to: addYmd(thisMonday, -1), thisMonday, thisSunday: addYmd(thisMonday, 6) };
+}
+const inWeek = (day, wk) => !!day && day >= wk.from && day <= wk.to;
+function weekWords(wk) {
+  const d = (x, o) => new Date(x + 'T12:00:00Z').toLocaleDateString('en-GB', { timeZone: 'UTC', ...o });
+  return 'Monday ' + d(wk.from, { day: 'numeric', month: 'long' }) + ' to Sunday ' + d(wk.to, { day: 'numeric', month: 'long' });
+}
 function onJourney(m, now = Date.now()) {
   if (!m || !m.firstSessionDone || !m.day0) return false;
   if (m.outcome === 'left' || m.left === true || m.pausedAt) return false;
@@ -136,9 +162,11 @@ async function sessionsFor(m, now) {
   if (!c) return { found: false };
   const fields = '&expand=event,event.offering_type&fields=status,event.starts_at,event.offering_type.name&page_size=100';
   const all = trainingSessions(await tuAll(`attendances?customer=${c.id}&status=attended&event_starts_at_gte=${ymd(m.day0 - DAY)}T00:00:00Z&event_starts_at_lte=${new Date(now).toISOString()}${fields}`));
-  const weekFrom = midnight(now) - 7 * DAY;
-  const lastWeek = all.filter((s) => new Date(s.at).getTime() >= weekFrom);
-  const booked = trainingSessions(await tuAll(`attendances?customer=${c.id}&status=plans_to_attend&event_starts_at_gte=${new Date(now).toISOString()}&event_starts_at_lte=${new Date(now + 7 * DAY).toISOString()}${fields}`).catch(() => []));
+  // "lastWeek" is the week the check-in is about, Monday to Sunday (checkInWeek), by the gym's dates
+  const wk = checkInWeek(now);
+  const lastWeek = all.filter((s) => inWeek(londonYmd(new Date(s.at).getTime()), wk));
+  // …and "booked" is what they have down for the rest of THIS week, up to Sunday night
+  const booked = trainingSessions(await tuAll(`attendances?customer=${c.id}&status=plans_to_attend&event_starts_at_gte=${new Date(now).toISOString()}&event_starts_at_lte=${wk.thisSunday}T23:59:59Z${fields}`).catch(() => []));
   return { found: true, lastWeek: lastWeek.length, lastWeekList: lastWeek.map((s) => s.at), total: all.length,
     days: [...new Set(all.map((s) => String(s.at).slice(0, 10)))],
     last: all.length ? all[all.length - 1].at : null, booked: booked.length, bookedList: booked.map((s) => s.at) };
@@ -178,7 +206,7 @@ function foodWeek(days, goal) {
 async function appFor(m, now) {
   const u = await trainerizeUser(m);
   if (!u) return { found: false };
-  const from = ymd(midnight(now) - 7 * DAY), to = ymd(midnight(now) - DAY);
+  const { from, to } = checkInWeek(now);          // food and app workouts for that same Monday to Sunday
   const [n, g, cal] = await Promise.all([
     tz('dailyNutrition/getList', { userID: u.id, startDate: from, endDate: to }).catch(() => ({})),
     tz('goal/getList', { userID: u.id, achieved: false, start: 0, count: 10 }).catch(() => ({})),
@@ -210,6 +238,20 @@ function sectionOf(l) {
   if (OTHER_HEADS.test(l)) return 'other';
   return '';
 }
+/* The day a checklist is ABOUT. A late shift is often written up the next morning ("Thu 26 Nov,
+   11:50, Wednesday - Late"), so the post's own date would put Wednesday night's notes on Thursday
+   — and a Sunday shift written up on Monday into the wrong week altogether. The form names the
+   shift, so that is the day used: the most recent such weekday on or before the day it was
+   posted. No shift named (an old post, a test) falls back to the day it was posted. Pure. */
+const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+function shiftDay(text, postedMs) {
+  const posted = londonYmd(postedMs);
+  const m = /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*[-–]\s*(early|late|mid|am|pm)\b/i.exec(String(text || ''));
+  if (!m) return posted;
+  const want = WEEKDAYS.indexOf(m[1].toLowerCase());
+  const back = (new Date(posted + 'T12:00:00Z').getUTCDay() - want + 7) % 7;
+  return addYmd(posted, -back);
+}
 const unescapeSlack = (t) => String(t || '').replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&');
 function checklistLines(messages) {
   const out = [];
@@ -222,7 +264,7 @@ function checklistLines(messages) {
     const all = parts.join('\n');
     if (!/post[- ]?shift checklist/i.test(all)) continue;
     const coach = (all.match(/\*([^*\n]+)\*\s+•/) || [])[1] || '';
-    const day = new Date(Number(m.ts) * 1000).toISOString().slice(0, 10);
+    const day = shiftDay(all, Number(m.ts) * 1000);
     let section = '';
     for (const line of all.split('\n')) {
       const l = unescapeSlack(line).replace(/^>\s?/, '').replace(/^>\s?/, '').replace(/:[a-z_]+:/g, '').replace(/[*_]/g, '').replace(/<@[A-Z0-9]+\|([^>]+)>/g, '@$1').trim();
@@ -300,13 +342,14 @@ How Bodysculpt check-ins sound (learned from Ash's own edits):
 - If they've had pain or a niggle, ask how it is and say we can adapt their sessions.
 - If they're quiet on sessions, ask what's getting in the way and whether a different time would help. No guilt.
 - End with an open door or a bit of encouragement, in your own words for this person. Use 💪🏻 not 💪. At most one or two emojis in the message.
-- Pick the two or three things that matter most this week and leave the rest. Don't cover every number.
+- Every number and note is from ONE fixed week, Monday to Sunday, named in the facts as theWeek. The coach sends this early the week after, so call it "last week". Never "this week", "the last seven days" or a date range.
+- Pick the two or three things that matter most from that week and leave the rest. Don't cover every number.
 - Each check-in must sound written for this one person. Avoid the stock lines "easier said than done", "rinse and repeat", "just shout" and "you've got this" unless one truly fits, and never more than one of them.
 - No sign-off and no name at the end, and don't say who it's from: the coach sends it from their own account.
 - Never say which week or day of the challenge it is (the coach may send it a day or two late).
 - UK spelling. No dashes of any kind. No "not X, it's Y". No corporate words (journey, crush, smash it, incredible, amazing work). No hashtags.
 - Never invent anything: no made-up memories, products, numbers or personal facts. Use only what's in the data and notes. If a coach note only uses their first name and might be someone else, leave it out of the message.
-- Don't quote the data like a report ("you logged 4 of 7 days, averaging 1,612 kcal"). Say it like a person ("you've logged most days this week, which is brilliant").`;
+- Don't quote the data like a report ("you logged 4 of 7 days, averaging 1,612 kcal"). Say it like a person ("you logged most days last week, which is brilliant").`;
 
 async function writeBrief(m, facts) {
   if (!env('ANTHROPIC_API_KEY')) throw new Error('ANTHROPIC_API_KEY not set');
@@ -346,13 +389,13 @@ function weekJob(jd) {
 }
 
 /* What Claude is told, in plain words. Pure. */
-function factsFor(m, jd, sessions, app, mentions) {
-  const f = { name: m.name, coach: m.coach || 'their coach',
+function factsFor(m, jd, sessions, app, mentions, wk = checkInWeek()) {
+  const f = { name: m.name, coach: m.coach || 'their coach', theWeek: weekWords(wk) + ' (last week)',
     where: jd.free ? `Training in their free weeks before the six weeks start, ${jd.day} days in` : `${jd.day} days into the six weeks`,
     thisCheckIn: weekJob(jd), writtenOn: new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/London' }),
     personal: m.personal || undefined, trackerNotes: m.notes || undefined };
   f.sessions = sessions.found
-    ? { lastSevenDays: sessions.lastWeek, sinceTheyStarted: sessions.total, lastSession: sessions.last ? String(sessions.last).slice(0, 10) : 'none yet', bookedNextSevenDays: sessions.booked }
+    ? { attendedInTheWeek: sessions.lastWeek, sinceTheyStarted: sessions.total, lastSession: sessions.last ? String(sessions.last).slice(0, 10) : 'none yet', bookedForTheRestOfThisWeek: sessions.booked }
     : 'Not found on TeamUp, so no session count';
   if (app.found) {
     const fd = app.food;
@@ -362,28 +405,30 @@ function factsFor(m, jd, sessions, app, mentions) {
         daysLoggedOf7: fd.daysLogged, halfLoggedDays: fd.partDays || undefined,
         calorieTarget: fd.calGoal, averageCaloriesOnFullDays: fd.avgCal, daysWithinTarget: fd.onCalDays, daysOverTarget: fd.overCalDays,
         proteinTargetGrams: fd.proGoal, averageProteinGrams: fd.avgPro, daysProteinHit: fd.proHitDays,
-      } : 'No food logged in the last 7 days',
+      } : 'No food logged in the week',
       appWorkoutsTicked: app.workoutsDone, appWorkoutsLeftUnticked: app.workoutsMissed || undefined,
       cardioTicked: app.cardioDone || undefined,
-      bodyStats: app.bodyStats ? 'logged this week' : app.bodyStatsMissed ? 'due this week, not logged' : undefined,
+      bodyStats: app.bodyStats ? 'logged in the week' : app.bodyStatsMissed ? 'due in the week, not logged' : undefined,
     };
   } else f.trainerize = 'Not found on Trainerize';
-  f.coachesShiftNotes = mentions.length ? mentions.map((x) => `[${x.day}, ${x.coach || 'coach'}${x.check ? ', first name only, may be someone else' : ''}] ${x.text}`) : 'Nothing in the coaches’ shift notes in the last 2 weeks';
+  f.coachesShiftNotes = mentions.length ? mentions.map((x) => `[${x.day}, ${x.coach || 'coach'}${x.check ? ', first name only, may be someone else' : ''}] ${x.text}`) : 'Nothing in the coaches’ shift notes for the week';
   return f;
 }
 
 async function briefFor(m, lines, now) {
   const [first, ...rest] = String(m.name || '').trim().split(/\s+/);
   const jd = journeyDay(m, now);
-  const out = { name: m.name, at: new Date(now).toISOString(), period: { from: ymd(midnight(now) - 7 * DAY), to: ymd(midnight(now) - DAY) }, free: jd.free, day: jd.day, errors: [] };
+  const wk = checkInWeek(now);
+  const out = { name: m.name, at: new Date(now).toISOString(), period: { from: wk.from, to: wk.to }, free: jd.free, day: jd.day, errors: [] };
   const [sessions, app] = await Promise.all([
     sessionsFor(m, now).catch((e) => { out.errors.push('TeamUp: ' + e.message.slice(0, 120)); return { found: false, error: true }; }),
     appFor(m, now).catch((e) => { out.errors.push('Trainerize: ' + e.message.slice(0, 120)); return { found: false, error: true }; }),
   ]);
-  const mentions = lines ? plausible(mentionsOf(lines, first, rest.join(' ')), sessions.found ? sessions.days : null) : [];
+  // only what the coaches wrote about shifts IN that week: last week's notes were last week's check-in
+  const mentions = lines ? plausible(mentionsOf(lines.filter((x) => inWeek(x.day, wk)), first, rest.join(' ')), sessions.found ? sessions.days : null) : [];
   const { days, ...sessionsKept } = sessions;
   Object.assign(out, { sessions: sessionsKept, app, slack: mentions.map(({ day, coach, text, full, check }) => ({ day, coach, text, full, check: !!check })) });
-  try { Object.assign(out, await writeBrief(m, factsFor(m, jd, sessions, app, mentions))); }
+  try { Object.assign(out, await writeBrief(m, factsFor(m, jd, sessions, app, mentions, wk))); }
   catch (e) { out.errors.push('Message: ' + e.message.slice(0, 160)); }
   return out;
 }
@@ -418,4 +463,4 @@ exports.handler = async (event) => {
   return { statusCode: 202 };
 };
 exports.run = run;
-exports._test = { onJourney, journeyDay, trainingSessions, foodWeek, checklistLines, mentionsOf, plausible, weekJob, factsFor };
+exports._test = { onJourney, journeyDay, trainingSessions, foodWeek, checklistLines, mentionsOf, plausible, weekJob, factsFor, checkInWeek, shiftDay, weekWords };

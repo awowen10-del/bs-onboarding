@@ -162,14 +162,70 @@ async function sessionsFor(m, now) {
   if (!c) return { found: false };
   const fields = '&expand=event,event.offering_type&fields=status,event.starts_at,event.offering_type.name&page_size=100';
   const all = trainingSessions(await tuAll(`attendances?customer=${c.id}&status=attended&event_starts_at_gte=${ymd(m.day0 - DAY)}T00:00:00Z&event_starts_at_lte=${new Date(now).toISOString()}${fields}`));
-  // "lastWeek" is the week the check-in is about, Monday to Sunday (checkInWeek), by the gym's dates
+  // "lastWeek" is the week the check-in is about, Monday to Sunday (checkInWeek), by the gym's dates;
+  // "thisWeek" is the one we are in, Monday up to now — the other half of the profile's toggle
   const wk = checkInWeek(now);
-  const lastWeek = all.filter((s) => inWeek(londonYmd(new Date(s.at).getTime()), wk));
+  const dayOf = (x) => londonYmd(new Date(x.at).getTime());
+  const lastWeek = all.filter((x) => inWeek(dayOf(x), wk));
+  const thisWeek = all.filter((x) => dayOf(x) >= wk.thisMonday);
   // …and "booked" is what they have down for the rest of THIS week, up to Sunday night
   const booked = trainingSessions(await tuAll(`attendances?customer=${c.id}&status=plans_to_attend&event_starts_at_gte=${new Date(now).toISOString()}&event_starts_at_lte=${wk.thisSunday}T23:59:59Z${fields}`).catch(() => []));
-  return { found: true, lastWeek: lastWeek.length, lastWeekList: lastWeek.map((s) => s.at), total: all.length,
-    days: [...new Set(all.map((s) => String(s.at).slice(0, 10)))],
-    last: all.length ? all[all.length - 1].at : null, booked: booked.length, bookedList: booked.map((s) => s.at) };
+  // who took each of those sessions. Its own small lookup, and allowed to fail on its own: a
+  // brief without the coaches' names is still a brief.
+  let coaches = { names: {} };
+  try { coaches = await sessionCoaches(c.id, wk, now); } catch (e) { coaches = { names: {}, error: e.message.slice(0, 120) }; }
+  const row = (x) => ({ at: x.at, type: x.type, with: coaches.names[x.at] || null });
+  return { found: true, lastWeek: lastWeek.length, lastWeekList: lastWeek.map((x) => x.at), list: lastWeek.map(row),
+    thisWeek: thisWeek.length, thisWeekList: thisWeek.map(row), total: all.length,
+    days: [...new Set(all.map((x) => String(x.at).slice(0, 10)))],
+    last: all.length ? all[all.length - 1].at : null, booked: booked.length, bookedList: booked.map((x) => x.at),
+    coachError: coaches.error || undefined };
+}
+
+/* ---------- TeamUp: who took the session ----------
+   An event carries its instructors, but in what form depends on how it is asked for: whole
+   people when they are expanded, bare ids when they are not. So this asks three ways, most
+   exact first, and takes the first TeamUp will answer; and it reads a name out of whichever
+   form comes back, looking an id up (once per run) when an id is all there is. */
+function instructorName(o) {
+  if (!o || typeof o !== 'object') return '';
+  const u = o.user && typeof o.user === 'object' ? o.user : {};
+  return String(o.name || [o.first_name, o.last_name].filter(Boolean).join(' ') || o.display_name
+    || u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || '').trim();
+}
+const instructorCache = new Map();
+async function instructorById(id) {
+  if (!instructorCache.has(id)) {
+    const j = await tu(`instructors/${id}`).catch(() => null);
+    instructorCache.set(id, j ? instructorName(j) : '');
+  }
+  return instructorCache.get(id);
+}
+async function instructorNames(list) {
+  const names = [];
+  for (const it of Array.isArray(list) ? list : (list == null ? [] : [list])) {
+    if (it && typeof it === 'object') names.push(instructorName(it) || (it.id != null ? await instructorById(it.id) : ''));
+    else if (it != null) names.push(await instructorById(it));
+  }
+  return [...new Set(names.filter(Boolean))].join(' & ') || null;
+}
+async function sessionCoaches(customerId, wk, now) {
+  const base = `attendances?customer=${customerId}&status=attended&event_starts_at_gte=${wk.from}T00:00:00Z&event_starts_at_lte=${new Date(now).toISOString()}&page_size=100`;
+  const ways = ['&expand=event,event.instructors&fields=status,event.starts_at,event.instructors', '&expand=event,event.instructors', '&expand=event'];
+  let rows = null, lastError = null;
+  for (const w of ways) { try { rows = await tuAll(base + w); break; } catch (e) { lastError = e; } }
+  if (!rows) throw lastError || new Error('no answer');
+  const names = {}; let seen = 0, shape = '';
+  for (const a of rows) {
+    const ev = a && a.event; if (!ev || typeof ev !== 'object' || !ev.starts_at) continue;
+    seen++;
+    const who = ev.instructors != null ? ev.instructors : ev.instructor;
+    if (!shape) shape = who == null ? 'no instructors field' : Array.isArray(who) ? 'list of ' + (who.length ? typeof who[0] + (who[0] && typeof who[0] === 'object' ? ' {' + Object.keys(who[0]).slice(0, 8).join(',') + '}' : '') : 'nothing') : typeof who;
+    const n = await instructorNames(who);
+    if (n) names[ev.starts_at] = n;
+  }
+  // sessions but not one name: say what came back, so it can be put right
+  return { names, error: seen && !Object.keys(names).length ? 'coach names not read (' + shape + ')' : undefined };
 }
 
 /* ---------- Trainerize: the app ---------- */
@@ -203,25 +259,30 @@ function foodWeek(days, goal) {
     source: (logged[0] && logged[0].source) || (goal && goal.trackingType) || null,
   };
 }
-async function appFor(m, now) {
-  const u = await trainerizeUser(m);
-  if (!u) return { found: false };
-  const { from, to } = checkInWeek(now);          // food and app workouts for that same Monday to Sunday
-  const [n, g, cal] = await Promise.all([
+/* One week of the app: food, and what was ticked on the calendar. */
+async function appWeek(u, goal, from, to) {
+  const [n, cal] = await Promise.all([
     tz('dailyNutrition/getList', { userID: u.id, startDate: from, endDate: to }).catch(() => ({})),
-    tz('goal/getList', { userID: u.id, achieved: false, start: 0, count: 10 }).catch(() => ({})),
     tz('calendar/getList', { userID: u.id, startDate: from, endDate: to, unitWeight: 'kg' }).catch(() => ({})),
   ]);
-  const goal = (g.goals || []).find((x) => x.type === 'nutritionGoal') || null;
   const items = (cal.calendar || []).flatMap((d) => (d.items || []).map((i) => ({ ...i, date: d.date })));
   const count = (type, st) => items.filter((i) => (type instanceof RegExp ? type.test(i.type) : i.type === type) && (!st || i.status === st)).length;
   return {
-    found: true, id: u.id, lastIn: u.latestSignedIn || null,
     food: foodWeek(n.nutrition || [], goal),
     workoutsDone: count(/^workout/, 'tracked'), workoutsMissed: count(/^workout/, 'scheduled'),
     cardioDone: count('cardio', 'tracked'),
     bodyStats: count('bodyStat', 'tracked') > 0, bodyStatsMissed: count('bodyStat', 'scheduled') > 0,
   };
+}
+async function appFor(m, now) {
+  const u = await trainerizeUser(m);
+  if (!u) return { found: false };
+  const wk = checkInWeek(now), today = londonYmd(now);
+  const g = await tz('goal/getList', { userID: u.id, achieved: false, start: 0, count: 10 }).catch(() => ({}));
+  const goal = (g.goals || []).find((x) => x.type === 'nutritionGoal') || null;
+  // the week the check-in is about, and the week we are in so far (the profile's toggle)
+  const [last, current] = await Promise.all([appWeek(u, goal, wk.from, wk.to), appWeek(u, goal, wk.thisMonday, today)]);
+  return { found: true, id: u.id, lastIn: u.latestSignedIn || null, ...last, current };
 }
 
 /* ---------- Slack: the coaches' Post-Shift Checklist posts (same reading as the welcome card) ---------- */
@@ -388,6 +449,13 @@ function weekJob(jd) {
   return 'Week ' + wk + ' check-in: reference their effort, give a named win, set one focus for the week.';
 }
 
+/* "Monday: BUILD with Gareth Scott" — a week's sessions as lines a person would say. Pure. */
+function sessionLines(list) {
+  const rows = (list || []).map((x) => new Date(x.at).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'Europe/London' })
+    + ': ' + x.type + (x.with ? ' with ' + x.with : ''));
+  return rows.length ? rows : undefined;
+}
+
 /* What Claude is told, in plain words. Pure. */
 function factsFor(m, jd, sessions, app, mentions, wk = checkInWeek()) {
   const f = { name: m.name, coach: m.coach || 'their coach', theWeek: weekWords(wk) + ' (last week)',
@@ -395,7 +463,7 @@ function factsFor(m, jd, sessions, app, mentions, wk = checkInWeek()) {
     thisCheckIn: weekJob(jd), writtenOn: new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/London' }),
     personal: m.personal || undefined, trackerNotes: m.notes || undefined };
   f.sessions = sessions.found
-    ? { attendedInTheWeek: sessions.lastWeek, sinceTheyStarted: sessions.total, lastSession: sessions.last ? String(sessions.last).slice(0, 10) : 'none yet', bookedForTheRestOfThisWeek: sessions.booked }
+    ? { attendedInTheWeek: sessions.lastWeek, theSessions: sessionLines(sessions.list), sinceTheyStarted: sessions.total, lastSession: sessions.last ? String(sessions.last).slice(0, 10) : 'none yet', bookedForTheRestOfThisWeek: sessions.booked }
     : 'Not found on TeamUp, so no session count';
   if (app.found) {
     const fd = app.food;
@@ -427,7 +495,15 @@ async function briefFor(m, lines, now) {
   // only what the coaches wrote about shifts IN that week: last week's notes were last week's check-in
   const mentions = lines ? plausible(mentionsOf(lines.filter((x) => inWeek(x.day, wk)), first, rest.join(' ')), sessions.found ? sessions.days : null) : [];
   const { days, ...sessionsKept } = sessions;
-  Object.assign(out, { sessions: sessionsKept, app, slack: mentions.map(({ day, coach, text, full, check }) => ({ day, coach, text, full, check: !!check })) });
+  const slim = (xs) => xs.map(({ day, coach, text, full, check }) => ({ day, coach, text, full, check: !!check }));
+  // the week we are in, so far: the same three things, for the "This week" side of the toggle.
+  // No message is written for it — the check-in is about last week.
+  const today = londonYmd(now);
+  const nowNotes = lines ? plausible(mentionsOf(lines.filter((x) => x.day >= wk.thisMonday && x.day <= today), first, rest.join(' ')), sessions.found ? sessions.days : null) : [];
+  const dow = (new Date(today + 'T12:00:00Z').getUTCDay() + 6) % 7;
+  Object.assign(out, { sessions: sessionsKept, app, slack: slim(mentions),
+    current: { period: { from: wk.thisMonday, to: today }, days: dow + 1, slack: slim(nowNotes) } });
+  if (sessions.coachError) out.errors.push('TeamUp coaches: ' + sessions.coachError);
   try { Object.assign(out, await writeBrief(m, factsFor(m, jd, sessions, app, mentions, wk))); }
   catch (e) { out.errors.push('Message: ' + e.message.slice(0, 160)); }
   return out;
@@ -463,4 +539,4 @@ exports.handler = async (event) => {
   return { statusCode: 202 };
 };
 exports.run = run;
-exports._test = { onJourney, journeyDay, trainingSessions, foodWeek, checklistLines, mentionsOf, plausible, weekJob, factsFor, checkInWeek, shiftDay, weekWords };
+exports._test = { onJourney, journeyDay, trainingSessions, foodWeek, checklistLines, mentionsOf, plausible, weekJob, factsFor, checkInWeek, shiftDay, weekWords, instructorName, sessionLines };

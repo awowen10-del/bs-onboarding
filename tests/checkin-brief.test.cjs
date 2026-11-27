@@ -1,7 +1,7 @@
 // Check-in briefs: who gets one, the food maths, the coaches' notes, and the tracker wiring.
 const assert = require("assert");
 const fs = require("fs"); const path = require("path");
-const { onJourney, journeyDay, trainingSessions, foodWeek, checklistLines, mentionsOf, plausible, weekJob, factsFor, checkInWeek, shiftDay, weekWords } = require("../netlify/functions/checkin-brief-background.js")._test;
+const { onJourney, journeyDay, trainingSessions, foodWeek, checklistLines, mentionsOf, plausible, weekJob, factsFor, checkInWeek, shiftDay, weekWords, instructorName, sessionLines } = require("../netlify/functions/checkin-brief-background.js")._test;
 const HTML = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 const D = 86400000, NOW = new Date(2026, 10, 26, 10).getTime(), T0 = new Date(2026, 10, 26).getTime();
 
@@ -104,5 +104,15 @@ const fx = factsFor({ name: "Emma Dalby", coach: "Dan" }, { free: false, day: 9 
 assert.equal(fx.theWeek, "Monday 23 November to Sunday 29 November (last week)");
 assert.equal(fx.sessions.attendedInTheWeek, 2); assert.equal(fx.sessions.bookedForTheRestOfThisWeek, 1);
 assert.ok(!/SevenDays|last 7 days|last 2 weeks/.test(JSON.stringify(fx)), "nothing in the facts still talks about a rolling seven days");
+
+// who took a session: a name is read out of whichever form TeamUp sends
+assert.equal(instructorName({ name: "Gareth Scott" }), "Gareth Scott");
+assert.equal(instructorName({ first_name: "Daniel", last_name: "Baker" }), "Daniel Baker");
+assert.equal(instructorName({ id: 7, user: { first_name: "Grace", last_name: "Terry" } }), "Grace Terry");
+assert.equal(instructorName(12345), "", "a bare id has no name in it (it is looked up instead)");
+// …and a week's sessions read as a person would say them, in the gym's own day
+assert.deepEqual(sessionLines([{ at: "2026-11-16T18:00:00Z", type: "BUILD", with: "Gareth Scott" }, { at: "2026-11-18T09:00:00Z", type: "Bodysculpt PT", with: null }]),
+  ["Monday: BUILD with Gareth Scott", "Wednesday: Bodysculpt PT"]);
+assert.equal(sessionLines([]), undefined);
 
 console.log("checkin-brief: OK");

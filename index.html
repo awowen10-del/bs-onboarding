@@ -1863,6 +1863,21 @@
   .nut-big{background:var(--card);border-radius:10px}
   .nut-num{font-family:var(--display);font-weight:400;font-size:34px;letter-spacing:.01em}
 
+  /* the check-in brief: which week, and the week's sessions one to a line */
+  .cb-head{flex-wrap:wrap}
+  .cb-week{margin-left:auto;background:var(--navy-2)}
+  .cb-week button{padding:6px 13px;min-height:32px;font-size:13px}
+  .cb-sess{list-style:none;margin:12px 0 0;display:grid;gap:6px}
+  .cb-sess li{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;background:var(--card);border:1px solid var(--line);
+    border-radius:10px;padding:8px 12px;font-size:14px;color:var(--ink)}
+  .ci-drawer .cb-sess li{background:var(--card-2)}
+  .cb-sess b{flex:0 0 96px;font-weight:700}
+  .cb-sess-what{color:var(--ink-dim)}
+  .cb-sess-with{margin-left:auto;font-weight:600}
+  .cb-lastnote{margin-top:18px}
+  .cb-link{appearance:none;border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--ink);cursor:pointer;
+    text-decoration:underline;text-underline-offset:3px}
+  .cb-link:hover{color:var(--spark-deep)}
   /* the check-in brief */
   .cb{border-radius:14px;background:var(--card-2);padding:18px 18px 18px}
   .cb-title{font-size:16px;font-weight:700}
@@ -3364,7 +3379,7 @@ function cbWhen(iso){
 function cbChips(b){
   const out = [];
   const s = b.sessions||{}, f = (b.app&&b.app.food)||{};
-  out.push(`<span class="cb-chip">${CB_ICON.gym}${s.found ? `${s.lastWeek} session${s.lastWeek===1?'':'s'} that week` : 'Not on TeamUp'}</span>`);
+  out.push(`<span class="cb-chip">${CB_ICON.gym}${s.found ? `${s.lastWeek} session${s.lastWeek===1?'':'s'} last week` : 'Not on TeamUp'}</span>`);
   out.push(`<span class="cb-chip">${CB_ICON.food}${!b.app||!b.app.found ? 'Not on Trainerize' : f.daysLogged ? `Food ${f.daysLogged}/7 days` : 'No food logged'}</span>`);
   if((b.slack||[]).length) out.push(`<span class="cb-chip">${CB_ICON.notes}${b.slack.length} coach note${b.slack.length===1?'':'s'}</span>`);
   return `<div class="cb-chips">${out.join('')}</div>`;
@@ -3378,16 +3393,20 @@ function cbTile(icon, label, big, sub, tone){
       <div class="cb-tile-sub">${sub}</div>
     </div>`;
 }
-function cbSessionsTile(s){
+/* `days` is only passed for the week we are still in: how many of its days have happened so
+   far. A part-week is judged gently — nobody is "raise it" for one session by Tuesday. */
+function cbSessionsTile(s, days){
   if(!s || !s.found) return cbTile(CB_ICON.gym,'Sessions','?','Not found on TeamUp','grey');
-  const tone = s.lastWeek>=2 ? 'good' : s.lastWeek===1 ? 'watch' : 'flag';
-  const next = s.booked ? `${s.booked} booked this week` : `<b>Nothing booked</b> this week`;
-  return cbTile(CB_ICON.gym,'Sessions that week', String(s.lastWeek), `${next}<br>${s.total} since they started`, s.booked ? tone : (tone==='good'?'watch':'flag'));
+  const early = days && days<=3;
+  const tone = s.lastWeek>=2 ? 'good' : (s.lastWeek===1 || early) ? 'watch' : 'flag';
+  const next = s.booked ? `${s.booked} more booked this week` : `<b>Nothing${days?' more':''} booked</b> this week`;
+  return cbTile(CB_ICON.gym, days ? 'Sessions this week so far' : 'Sessions last week', String(s.lastWeek),
+    `${next}<br>${s.total} since they started`, s.booked ? tone : (tone==='good'?'watch':'flag'));
 }
-function cbFoodTile(a){
+function cbFoodTile(a, days){
   if(!a || !a.found) return cbTile(CB_ICON.food,'Food logged','?','Not found on Trainerize','grey');
-  const f = a.food||{};
-  const tone = f.daysLogged>=5 ? 'good' : f.daysLogged>=2 ? 'watch' : 'flag';
+  const f = a.food||{}, of = days||7;
+  const tone = f.daysLogged>=of*5/7 ? 'good' : f.daysLogged>=of*2/7 ? 'watch' : 'flag';
   let sub;
   if(!f.daysLogged) sub = f.calGoal ? `Nothing logged<br>Target ${cbN(f.calGoal)} kcal · ${cbN(f.proGoal)}g protein` : 'Nothing logged, no targets set';
   else {
@@ -3395,8 +3414,22 @@ function cbFoodTile(a){
     const pro = f.proGoal && f.avgPro!=null ? `Protein: avg ${cbN(f.avgPro)}g of ${cbN(f.proGoal)}g` : '';
     sub = [cal, pro, f.partDays ? `${f.partDays} day${f.partDays===1?'':'s'} only half logged` : ''].filter(Boolean).join('<br>');
   }
-  return cbTile(CB_ICON.food,'Food logged', `${f.daysLogged}<small>/7 days</small>`, sub, tone);
+  return cbTile(CB_ICON.food,'Food logged', `${f.daysLogged}<small>/${of} day${of===1?'':'s'}</small>`, sub, tone);
 }
+/* The week's sessions, one to a line: the day, what it was, and who took it. */
+function cbSessionList(list){
+  if(!(list||[]).length) return '';
+  return `<ul class="cb-sess">` + list.map(x=>{
+    const d = new Date(x.at);
+    return `<li><b>${esc(isNaN(d) ? '' : d.toLocaleDateString('en-GB',{weekday:'long'}))}</b><span class="cb-sess-what">${esc(x.type||'Session')}</span>`
+      + (x.with ? `<span class="cb-sess-with">with ${esc(x.with)}</span>` : '') + `</li>`;
+  }).join('') + `</ul>`;
+}
+/* Which week the brief is showing: the one the check-in is about (last week, the default) or
+   the one we are in so far. In memory only, and one switch for everybody's brief — a coach who
+   wants this week for one person wants it for the next one too. */
+let cbWeekView = 'last';
+function cbSetWeek(v){ cbWeekView = v==='current' ? 'current' : 'last'; renderAll(); }
 function cbAppTile(a){
   if(!a || !a.found) return cbTile(CB_ICON.app,'Trainerize app','?','Not found on Trainerize','grey');
   const d = a.lastIn ? Math.floor((today0() - new Date(String(a.lastIn).replace(' ','T')).setHours(0,0,0,0))/MS_DAY) : 99;
@@ -3415,9 +3448,19 @@ function cbDetailHtml(m, item){
   if(!b) return `<div class="cb"><div class="cb-head"><span class="cb-title">${first}'s week at a glance</span>${refresh}</div>
       <p class="cb-empty">Nothing pulled for ${first} yet. It runs every morning, or press Refresh.</p></div>`;
   const when = new Date(b.at), stale = Date.now()-when.getTime() > 30*3600000;
-  // the one week everything below is from: Monday to Sunday (see checkInWeek in the function)
-  const per = b.period ? `${cbDay(b.period.from)} to ${cbDay(b.period.to)}` : 'last week';
-  const notes = (b.slack||[]).map(x=>`<li><div class="cb-note-meta"><b>${esc(x.coach ? x.coach.charAt(0).toUpperCase()+x.coach.slice(1) : 'Coach')}</b> · ${esc(cbDay(x.day))}${x.check?' · <span class="cb-warn">check it’s them</span>':''}</div>${esc(x.text)}</li>`).join('');
+  // The one week everything below is from. "Last week" is the last full Monday to Sunday, the
+  // week the check-in is about (see checkInWeek in the function); "This week" is Monday to today.
+  const cur = cbWeekView==='current' && b.current ? b.current : null;
+  const pd = cur ? cur.period : b.period;
+  const per = pd ? `${cbDay(pd.from)} to ${cbDay(pd.to)}` : 'last week';
+  const sAll = b.sessions||{};
+  const sView = cur ? Object.assign({}, sAll, {lastWeek: sAll.thisWeek||0}) : sAll;
+  const aView = cur && b.app && b.app.found ? Object.assign({}, b.app, b.app.current||{}) : b.app;
+  const sessList = cbSessionList(cur ? sAll.thisWeekList : sAll.list);
+  const weekToggle = b.current ? `<div class="ta-seg cb-week" role="group" aria-label="Which week to show">
+        <button type="button" aria-pressed="${cur?'false':'true'}" onclick="event.stopPropagation();cbSetWeek('last')">Last week</button>
+        <button type="button" aria-pressed="${cur?'true':'false'}" onclick="event.stopPropagation();cbSetWeek('current')">This week</button></div>` : '';
+  const notes = ((cur ? cur.slack : b.slack)||[]).map(x=>`<li><div class="cb-note-meta"><b>${esc(x.coach ? x.coach.charAt(0).toUpperCase()+x.coach.slice(1) : 'Coach')}</b> · ${esc(cbDay(x.day))}${x.check?' · <span class="cb-warn">check it’s them</span>':''}</div>${esc(x.text)}</li>`).join('');
   const send = (kind,label,hint,text) => text ? `<div class="cb-send">
         <div class="cb-send-head"><span><b>${label}</b><span class="cb-send-hint">${hint}</span></span><button class="btn sm" onclick="event.stopPropagation();cbCopy('${m.id}','${kind}',this)">Copy</button></div>
         <div class="cb-send-text">${esc(text)}</div></div>` : '';
@@ -3425,21 +3468,24 @@ function cbDetailHtml(m, item){
       <div class="cb-head">
         <div class="cb-head-txt"><span class="cb-title">${first}'s week at a glance</span>
           <span class="cb-at${stale?' cb-warn':''}">${esc(per)} · ${stale?'from':'updated'} ${esc(when.toLocaleString('en-GB',{weekday:'short',hour:'numeric',minute:'2-digit'}))}</span></div>
-        ${refresh}</div>
+        ${weekToggle}${refresh}</div>
 
       <div class="cb-step"><span class="cb-num">1</span>The numbers</div>
-      <div class="cb-tiles">${cbSessionsTile(b.sessions)}${cbFoodTile(b.app)}${cbAppTile(b.app)}</div>
+      <div class="cb-tiles">${cbSessionsTile(sView, cur ? cur.days : 0)}${cbFoodTile(aView, cur ? cur.days : 0)}${cbAppTile(aView)}</div>
       <div class="cb-legend"><span class="cb-dot cb-good"></span>On track <span class="cb-dot cb-watch"></span>Worth a word <span class="cb-dot cb-flag"></span>Raise it</div>
+      ${sessList}
 
-      <div class="cb-step"><span class="cb-num">2</span>What the coaches said that week</div>
-      ${notes ? `<ul class="cb-notes">${notes}</ul>` : `<p class="cb-empty">Nothing about ${first} in the coaches’ notes that week.</p>`}
+      <div class="cb-step"><span class="cb-num">2</span>${cur ? 'What the coaches have said this week' : 'What the coaches said last week'}</div>
+      ${notes ? `<ul class="cb-notes">${notes}</ul>` : `<p class="cb-empty">Nothing about ${first} in the coaches’ notes ${cur ? 'so far this week' : 'last week'}.</p>`}
 
+      ${cur ? `<p class="cb-empty cb-lastnote">What to bring up and the message are written from last week.
+        <button type="button" class="cb-link" onclick="event.stopPropagation();cbSetWeek('last')">Back to last week</button></p>` : `
       ${(b.points||[]).length ? `<div class="cb-step"><span class="cb-num">3</span>What to bring up</div>
       <ol class="cb-points">${b.points.map(p=>`<li>${esc(p.replace(/^named win:\s*/i,'Win: '))}</li>`).join('')}</ol>` : ''}
 
       <div class="cb-step"><span class="cb-num">${(b.points||[]).length?4:3}</span>Send one of these on Trainerize</div>
       ${send('voice','Voice note', item && item.seed ? 'Say it your way, then finish with the line above' : 'Say it your way, don’t read it word for word', b.voice)}
-      ${send('message','Or a written message','Tweak it, then copy and send', b.message)}
+      ${send('message','Or a written message','Tweak it, then copy and send', b.message)}`}
       ${(b.errors||[]).length?`<p class="cb-empty">Couldn’t read everything: ${esc(b.errors.join('; '))}</p>`:''}
     </div>`;
 }

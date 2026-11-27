@@ -8815,23 +8815,48 @@ function seedIfEmpty(pushAfter){
   const gateLogo=document.getElementById('gateLogo');
   if(logoImg && gateLogo){ gateLogo.src=logoImg.src; gateLogo.alt='Bodysculpt'; }
 
+  /* Remembering this device. Typing the password on every refresh was the price of a gate
+     that forgot you the moment the page reloaded. The browser now keeps a note that this device
+     has been let in, good for 30 days from the last visit. The note is not the password: it is
+     a scrambled copy of it and a date, so changing GYM_PASSWORD shuts every device out again at
+     once. (It lives in localStorage rather than a cookie — same job, and it is never sent
+     anywhere.) */
+  const GATE_KEY='bsj_gate', GATE_DAYS=30;
+  const want=()=> (window.BSJ_CONFIG&&window.BSJ_CONFIG.GYM_PASSWORD)||'';
+  const scramble=s=>{ let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))>>>0; return h.toString(36); };
+  function remembered(){
+    try{ const r=JSON.parse(localStorage.getItem(GATE_KEY)); return !!r && r.k===scramble(want()) && Date.now()-r.at < GATE_DAYS*MS_DAY; }
+    catch(e){ return false; }
+  }
+  function remember(){
+    try{ localStorage.setItem(GATE_KEY, JSON.stringify({k:scramble(want()), at:Date.now()})); }catch(e){}
+  }
+  // a bookmark ending #check-ins opens straight on the board, for whoever lives on it
+  function followHash(){
+    if(typeof location!=='undefined' && /^#check-?ins$/i.test(location.hash||'')){
+      activeTab.onboarding = 'checkins'; showTracker('onboarding');
+    }
+  }
+  function enter(){
+    gate.classList.add('hide');
+    remember();               // every visit pushes the 30 days out again
+    bootData();               // only load data once they're in
+    followHash();
+  }
+  // …and if the page is already open when the bookmark is used, it goes there too
+  if(typeof window!=='undefined' && typeof window.addEventListener==='function'){
+    window.addEventListener('hashchange', ()=>{ if(gate.classList.contains('hide')) followHash(); });
+  }
   function tryEnter(){
-    const want=(window.BSJ_CONFIG&&window.BSJ_CONFIG.GYM_PASSWORD)||'';
-    if(pw.value===want){
-      gate.classList.add('hide');
-      bootData();               // only load data once they're in
-      // a bookmark ending #check-ins opens straight on the board, for whoever lives on it
-      if(typeof location!=='undefined' && /^#check-?ins$/i.test(location.hash||'')){
-        activeTab.onboarding = 'checkins'; showTracker('onboarding');
-      }
-    }else{
+    if(pw.value===want()) enter();
+    else{
       err.textContent='Wrong password — try again.';
       pw.value=''; pw.focus();
     }
   }
   btn.addEventListener('click', tryEnter);
   pw.addEventListener('keydown', e=>{ if(e.key==='Enter') tryEnter(); });
-  pw.focus();
+  if(remembered()) enter(); else pw.focus();
 })();
 </script>
 </body>

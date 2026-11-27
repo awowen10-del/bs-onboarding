@@ -281,7 +281,9 @@ const lit = (isoDob) => boot({ members: [live("a", "A", 8, { dob: isoDob })] })
   assert.ok(/id="todayCount"/.test(tab(ob, "today")), "Today's moves keeps its count badge");
   assert.ok(/tab-star/.test(tab(ob, "playbook")), "The Playbook keeps its star");
   assert.ok(/id="bdayDot"/.test(tab(ob, "birthdays")), "Birthdays keeps its dot");
-  assert.strictEqual((ob.match(/<button/g) || []).length, 4, "and there are four of them");
+  // five since v410: the weekly check-ins were given a screen of their own, with its own count
+  assert.ok(/id="ciCount"/.test(tab(ob, "checkins")), "Check-ins has its count badge");
+  assert.strictEqual((ob.match(/<button/g) || []).length, 5, "and there are five of them");
 }
 
 console.log("header.test.cjs: OK");

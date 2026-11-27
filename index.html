@@ -1518,6 +1518,83 @@
     .pbx-link{padding-top:8px;padding-bottom:6px}
     .mcard .name .ta-open{min-height:32px}
   }
+  /* ---------- Check-ins: the board ---------- */
+  body:has(#view-checkins.active) main.wrap{max-width:1640px;padding-left:28px;padding-right:28px}
+  .ci-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 20px;margin-bottom:22px}
+  .ci-head h2{font-family:var(--display);font-weight:400;font-size:46px;line-height:1;text-transform:uppercase;
+    letter-spacing:.012em}
+  .ci-sum{font-size:16px;font-weight:500;color:var(--ink-dim)}
+  .ci-sum b{color:var(--ink);font-weight:700}
+  .ci-sum b.ci-latecount{color:var(--red)}
+  .ci-how{flex:1 1 100%;font-size:13.5px;color:var(--ink-faint);max-width:80ch}
+  .ci-board{display:grid;gap:10px;align-items:start;overflow-x:auto;padding-bottom:10px}
+  .ci-col{min-width:0;background:var(--navy-2);border-radius:14px;padding:10px 6px 8px;min-height:180px;
+    border:2px solid transparent;transition:border-color .12s ease,background .12s ease}
+  .ci-col.over{border-color:var(--spark);background:rgba(var(--spark-rgb),.1)}
+  .ci-col.ci-done{background:rgba(var(--green-rgb),.1)}
+  .ci-colhead{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;padding:2px 6px 10px}
+  .ci-coltitle{font-family:var(--display);font-size:21px;line-height:1.1;letter-spacing:.03em;text-transform:uppercase;color:var(--ink)}
+  .ci-colhead .gcount{font-size:12.5px;font-weight:650;color:var(--ink-dim);background:var(--card);border-radius:999px;
+    padding:1px 8px;min-width:22px;text-align:center}
+  .ci-colsub{flex:1 1 100%;font-size:12.5px;font-weight:500;color:var(--ink-faint)}
+  .ci-card{display:flex;flex-direction:column;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:11px;
+    padding:10px 7px 9px 13px;margin-bottom:6px;cursor:grab;position:relative;user-select:none;-webkit-user-select:none;
+    transition:border-color .12s ease,box-shadow .12s ease,transform .12s ease}
+  .ci-card::before{content:"";position:absolute;left:4px;top:10px;bottom:10px;width:3px;border-radius:3px;background:var(--line)}
+  .ci-card.late::before{background:var(--red)}
+  .ci-card.today::before{background:var(--spark)}
+  .ci-card.clear::before{background:var(--green)}
+  .ci-card:hover{border-color:var(--ink);box-shadow:var(--shadow);transform:translateY(-1px)}
+  .ci-card:active{cursor:grabbing}
+  .ci-card.dragging{opacity:.35}
+  .ci-card.paused{background:repeating-linear-gradient(135deg,var(--card),var(--card) 10px,var(--card-2) 10px,var(--card-2) 20px)}
+  .ci-foot{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:26px}
+  .ci-name{font-size:14px;font-weight:650;line-height:1.25;color:var(--ink);overflow-wrap:break-word}
+  .ci-due{font-size:12.5px;font-weight:500;color:var(--ink-faint);white-space:nowrap}
+  .ci-card.late .ci-due{color:var(--red);font-weight:700}
+  .ci-card.today .ci-due{color:var(--spark-deep);font-weight:700}
+  .ci-tick{flex:0 0 auto;appearance:none;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);
+    background:var(--card);color:var(--ink-faint);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;
+    transition:background .12s ease,color .12s ease,border-color .12s ease}
+  .ci-tick:hover{background:var(--green);border-color:var(--green);color:var(--on-green)}
+  .ci-empty{font-size:12.5px;color:var(--ink-faint);text-align:center;padding:22px 6px;border:1.5px dashed var(--line);
+    border-radius:11px}
+  /* the panel a card opens */
+  .ci-bg{position:fixed;inset:0;z-index:45;display:none;justify-content:flex-end;background:rgba(var(--backdrop-rgb),.45)}
+  .ci-bg.show{display:flex;animation:fade .2s ease}
+  .ci-drawer{width:min(720px,100%);height:100%;overflow-y:auto;background:var(--navy);padding:22px 30px 48px;
+    box-shadow:-24px 0 60px -20px rgba(var(--backdrop-rgb),.5);animation:ci-in .26s cubic-bezier(.2,.7,.2,1);
+    overscroll-behavior:contain}
+  @keyframes ci-in{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+  .ci-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .ci-kicker{font-size:14px;font-weight:650;color:var(--spark-deep)}
+  .ci-title{display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;font-family:var(--display);font-weight:400;
+    font-size:44px;line-height:1;text-transform:uppercase;letter-spacing:.012em;color:var(--ink)}
+  .ci-meta{margin-top:10px;font-size:14.5px;color:var(--ink-dim)}
+  .ci-duechip{font-weight:700;color:var(--ink)}
+  .ci-duechip.late{color:var(--red)} .ci-duechip.today{color:var(--spark-deep)}
+  .ci-remember{margin-top:10px;font-size:14.5px;line-height:1.5;color:var(--ink)}
+  .ci-rail{margin:22px 6px 0}
+  .ci-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+  .ci-acts .btn{padding:10px 16px;font-size:14px}
+  .ci-acts .ci-go{padding:10px 20px}
+  .ci-acts .ci-full{margin-left:auto}
+  .ci-for{margin-top:22px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .ci-forhead{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:6px}
+  .ci-for p{font-size:14.5px;line-height:1.6;color:var(--ink-dim)}
+  .ci-for p b{color:var(--ink)}
+  .ci-drawer .cb{margin-top:14px;background:var(--card)}
+  .ci-drawer .cb-tile,.ci-drawer .cb-notes li,.ci-drawer .cb-send{background:var(--card-2)}
+  .ci-drawer .cb-tile-big{font-size:30px}
+  @media (max-width:639px){
+    .ci-head h2{font-size:38px}
+    .ci-board{grid-template-columns:none !important;grid-auto-flow:column;grid-auto-columns:76%;scroll-snap-type:x mandatory}
+    .ci-col{scroll-snap-align:start}
+    .ci-tick{width:38px;height:38px}
+    .ci-drawer{padding:18px 16px 40px}
+    .ci-title{font-size:34px}
+    .ci-acts .ci-full{margin-left:0}
+  }
   .wins{display:flex;flex-wrap:wrap;gap:8px}
   .win{display:inline-flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);
     border-radius:999px;padding:6px 16px 6px 7px;font-size:13.5px;font-weight:650}
@@ -2328,6 +2405,7 @@
     <div class="nav-label" aria-hidden="true"><b>Onboarding</b>the first 42 days</div>
     <nav class="tabs" id="tabs-onboarding" data-tracker="onboarding" role="tablist">
       <button role="tab" aria-selected="true" class="tab-lead" data-tracker="onboarding" data-view="today">Today's moves <span class="count" id="todayCount">0</span></button>
+      <button role="tab" aria-selected="false" data-tracker="onboarding" data-view="checkins">Check-ins <span class="count" id="ciCount">0</span></button>
       <button role="tab" aria-selected="false" data-tracker="onboarding" data-view="members">Challengers</button>
       <button role="tab" aria-selected="false" data-tracker="onboarding" data-view="birthdays">Birthdays<span class="tab-dot" id="bdayDot" role="img" aria-label="A birthday is coming up"></span></button>
       <button role="tab" aria-selected="false" class="tab-core" data-tracker="onboarding" data-view="playbook"><span class="tab-star" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M12 2.6l2.95 5.98 6.6.96-4.77 4.65 1.12 6.57L12 17.66l-5.9 3.1 1.12-6.57L2.45 9.54l6.6-.96z"/></svg></span>The Playbook</button>
@@ -2413,6 +2491,14 @@
   </section>
 
   <!-- ===== MEMBERS ===== -->
+  <!-- ===== CHECK-INS — the board =====
+       The weekly check-in is the heart of the 42 days, so it has a screen of its own: one
+       column for each check-in, one card for each person, sitting in the column of the
+       check-in they are waiting for. Check in and they move along. -->
+  <section class="view" id="view-checkins" data-tracker="onboarding">
+    <div id="ciBoard"></div>
+  </section>
+
   <!-- ===== CHALLENGERS =====
        No heading and no blurb, the same as the Today and Birthdays screens. "+ Add challenger"
        lived in that heading row, so it moves into the toolbar it now sits above — still the
@@ -2593,6 +2679,9 @@
 </div>
 
 <!-- ===== One challenger's card, opened from a name on Today's moves ===== -->
+<div class="ci-bg" id="ciBg" onclick="if(event.target===this)ciClose()">
+  <aside class="ci-drawer" role="dialog" aria-modal="true" aria-label="Check-in" id="ciDrawer"></aside>
+</div>
 <div class="toast hide" id="toast" role="status" aria-live="polite"></div>
 <div class="modal-bg" id="findBg" onclick="if(event.target===this)closeFind()">
   <div class="modal find-modal" role="dialog" aria-modal="true" aria-label="Find anyone">
@@ -4718,6 +4807,188 @@ function retDoneTodayHtml(){
     + rows.map(r=>`<div class="win"><span class="win-tick" aria-hidden="true">✓</span><span class="nm">${esc(r.name)}</span><span class="ttl">${esc(r.title)}</span></div>`).join('')
     + `</div>`;
 }
+
+/* ---------------- Check-ins: the board ----------------
+   One column for each check-in, in the order they happen; one card for each person on the
+   clock, sitting in the column of the check-in they are WAITING for. So the board reads left
+   to right as the six weeks, and a card only moves when a coach has actually checked in:
+
+     - the tick on a card, or dragging it one column to the right  = checked in (Done)
+     - dragging it one column back                                 = that check-in is un-done
+     - "Couldn't reach them" in the card's panel                   = Missed, and they move on
+
+   Nothing new is stored. A card's column is worked out from the same completed / missed lists
+   every other screen reads, so the board, Today's moves and the Whole journey grid are three
+   views of one set of ticks and cannot disagree. People on their free weeks have a column of
+   their own at the front, because their check-ins run off real days until the six weeks start. */
+const CI_SEQ = ['d1_text','wk2','wk3','wk4','wk5','wk6'];
+const CI_COLS = [
+  {key:'free', title:'Free weeks', sub:'before the six weeks'},
+  {key:'w1', title:'Day 1', sub:'morning-after text'},
+  {key:'w2', title:'Week 2', sub:'check-in'},
+  {key:'w3', title:'Week 3', sub:'check-in'},
+  {key:'w4', title:'Week 4', sub:'check-in'},
+  {key:'w5', title:'Week 5', sub:'check-in'},
+  {key:'w6', title:'Week 6', sub:'check-in'},
+  {key:'done', title:'All done', sub:'membership chat next'}
+];
+let ciTarget = null, ciDragId = null;
+
+/* everything this person is checked in on, in order — their free-weeks ones or the six weeks' */
+function ciSequence(m){
+  if(inFreeWeeks(m)) return [JOURNEY.find(j=>j.id==='d1_text')].concat(freeWeekCheckIns(m)).filter(Boolean);
+  return CI_SEQ.map(id=>JOURNEY.find(j=>j.id===id)).filter(Boolean);
+}
+/* the check-in they are waiting for, which column that puts them in, and how late it is */
+function ciNext(m){
+  const free = inFreeWeeks(m);
+  const item = ciSequence(m).find(it=>!isHandled(m,it.id)) || null;
+  if(!item) return {col: free ? 'free' : 'done', item:null, late:null};
+  const cd = free ? realDay(m) : currentDay(m);
+  const ed = free ? item.day : effectiveDay(item,m);
+  return {col: free ? 'free' : 'w'+(CI_SEQ.indexOf(item.id)+1), item, late: cd-ed};
+}
+function ciPeople(){
+  return members.filter(m=> hasStarted(m) && !isInactive(m) && (status(m)==='live' || status(m)==='paused'))
+    .map(m=>Object.assign({m, paused: status(m)==='paused'}, ciNext(m)));
+}
+function ciDueWord(p){
+  if(p.paused) return 'Paused';
+  if(!p.item) return p.col==='free' ? 'Up to date' : 'All six done';
+  if(p.late > 0) return p.late+' day'+(p.late===1?'':'s')+' late';
+  if(p.late === 0) return 'Due today';
+  // not due yet: just the day it comes due — the column already says what for
+  // (weekday and day only: it is always within the coming week, and the card is narrow)
+  return new Date(addDays(today0(), -p.late)).toLocaleDateString('en-GB',{weekday:'short',day:'numeric'});
+}
+function ciState(p){ return p.paused ? 'paused' : !p.item ? 'clear' : p.late>0 ? 'late' : p.late===0 ? 'today' : 'soon'; }
+
+function renderCheckins(){
+  const el = document.getElementById('ciBoard');
+  if(!el) return;
+  const people = ciPeople();
+  const owed = people.filter(p=>p.item && !p.paused && p.late>=0);
+  const badge = document.getElementById('ciCount');
+  if(badge) badge.textContent = owed.length;
+  const late = owed.filter(p=>p.late>0).length, today = owed.length-late;
+  const cols = CI_COLS.filter(c=> c.key!=='free' || people.some(p=>p.col==='free'));
+  const summary = !people.length ? 'Nobody is on the clock yet.'
+    : !owed.length ? 'Everyone is checked in. Nothing is owed today.'
+    : [today ? `<b>${today}</b> due today` : '', late ? `<b class="ci-latecount">${late}</b> late` : ''].filter(Boolean).join(', ') + '.';
+  el.innerHTML = `<div class="ci-head"><h2>Check-ins</h2><p class="ci-sum">${summary}</p>
+      <p class="ci-how">Each column is the check-in someone is waiting for. Tick a card, or drag it one column along, when you have checked in.</p></div>`
+    + `<div class="ci-board" style="grid-template-columns:repeat(${cols.length},minmax(130px,1fr))">`
+    + cols.map(c=>{
+        const mine = people.filter(p=>p.col===c.key).sort((a,b)=> (a.paused-b.paused) || ((b.late==null?-999:b.late)-(a.late==null?-999:a.late)) || a.m.name.localeCompare(b.m.name));
+        return `<section class="ci-col${c.key==='done'?' ci-done':''}" data-col="${c.key}" ondragover="ciDragOver(event,this)" ondragleave="ciDragLeave(this)" ondrop="ciDrop(event,'${c.key}',this)">
+          <header class="ci-colhead"><span class="ci-coltitle">${c.title}</span><span class="gcount">${mine.length}</span><span class="ci-colsub">${c.sub}</span></header>`
+          + (mine.length ? mine.map(ciCardHtml).join('') : `<div class="ci-empty">Nobody waiting</div>`)
+          + `</section>`;
+      }).join('')
+    + `</div>`;
+  renderCiDrawer();
+}
+function ciCardHtml(p){
+  const m = p.m, st = ciState(p);
+  return `<div class="ci-card ${st}" draggable="true" data-id="${m.id}" role="button" tabindex="0"
+      ondragstart="ciDragStart(event,'${m.id}',this)" ondragend="ciDragEnd(this)" onclick="ciOpen('${m.id}')"
+      onkeydown="if(event.key==='Enter'){ciOpen('${m.id}')}">
+      <span class="ci-name">${esc(m.name)}</span>
+      <span class="ci-foot"><span class="ci-due">${esc(ciDueWord(p))}</span>
+      ${p.item ? `<button type="button" class="ci-tick" title="Checked in with ${esc(firstNameOf(m))}" aria-label="Checked in with ${esc(m.name)}" onclick="event.stopPropagation();ciDone('${m.id}')">✓</button>` : ''}</span>
+    </div>`;
+}
+
+/* --- the three things a coach can do to a card --- */
+function ciDone(id){
+  const m = members.find(x=>x.id===id); if(!m) return;
+  const n = ciNext(m); if(!n.item) return;
+  toggleDone(id, n.item.id, true);                 // saves, redraws, and offers Undo
+}
+function ciMissed(id){
+  const m = members.find(x=>x.id===id); if(!m) return;
+  const n = ciNext(m); if(!n.item) return;
+  markMissed(id, n.item.id);
+}
+/* one step back: the last check-in that was ticked (or missed) is opened up again */
+function ciBack(id){
+  const m = members.find(x=>x.id===id); if(!m) return;
+  const handled = ciSequence(m).filter(it=>isHandled(m,it.id));
+  const last = handled[handled.length-1];
+  if(!last) return;
+  const before = tpSnapshot(m);
+  m.completed = (m.completed||[]).filter(k=>k!==last.id);
+  m.missed = (m.missed||[]).filter(k=>k!==last.id);
+  if(m.doneMeta) delete m.doneMeta[last.id];
+  save(); renderAll();
+  showToast('Moved back: '+firstNameOf(m)+', '+tpTitle(last), ()=>{
+    const x = members.find(y=>y.id===id); if(!x) return;
+    x.completed = before.completed; x.missed = before.missed; x.doneMeta = before.doneMeta;
+    save(); renderAll();
+  }, true);
+}
+
+/* --- drag and drop: one column forward is Done, one column back is un-done --- */
+function ciDragStart(e,id,el){
+  ciDragId = id;
+  try{ e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', id); }catch(err){}
+  if(el && el.classList) el.classList.add('dragging');
+}
+function ciDragEnd(el){ ciDragId = null; if(el && el.classList) el.classList.remove('dragging'); }
+function ciDragOver(e,col){ if(!ciDragId) return; e.preventDefault(); if(col && col.classList) col.classList.add('over'); }
+function ciDragLeave(col){ if(col && col.classList) col.classList.remove('over'); }
+function ciDrop(e,to,col){
+  e.preventDefault();
+  if(col && col.classList) col.classList.remove('over');
+  const id = ciDragId; ciDragId = null;
+  const m = members.find(x=>x.id===id); if(!m) return;
+  const from = ciNext(m).col;
+  if(from===to) return;
+  const order = CI_COLS.map(c=>c.key), a = order.indexOf(from), b = order.indexOf(to);
+  if(from==='free' || to==='free'){
+    return showToast(from==='free' ? 'Their six weeks have not started yet. Use the tick for a free-weeks check-in.' : 'Only the calendar puts someone in Free weeks.', null, true);
+  }
+  if(b===a+1) return ciDone(id);
+  if(b===a-1) return ciBack(id);
+  showToast('One step at a time: drop them on the very next column.', null, true);
+}
+
+/* --- the panel that opens when you click a card --- */
+function ciOpen(id){
+  if(!members.find(x=>x.id===id)) return;
+  ciTarget = id; renderCiDrawer();
+  const bg = document.getElementById('ciBg'); if(bg && bg.classList) bg.classList.add('show');
+}
+function ciClose(){ ciTarget = null; const bg = document.getElementById('ciBg'); if(bg && bg.classList) bg.classList.remove('show'); }
+function renderCiDrawer(){
+  const box = document.getElementById('ciDrawer');
+  if(!box || !ciTarget) return;
+  const m = members.find(x=>x.id===ciTarget);
+  if(!m || !hasStarted(m) || isInactive(m)){ ciClose(); return; }
+  const p = Object.assign({m, paused: status(m)==='paused'}, ciNext(m));
+  const it = p.item, st = ciState(p), tot = totalDays(m), cd = currentDay(m);
+  const where = inFreeWeeks(m) ? 'Free weeks, day '+realDay(m) : 'Day '+cd+' of '+tot;
+  const hadOne = ciSequence(m).some(x=>isHandled(m,x.id));
+  const acts = (it ? `<button type="button" class="btn primary ci-go" onclick="ciDone('${m.id}')">✓ Checked in</button>
+        <button type="button" class="btn" onclick="ciMissed('${m.id}')">Couldn’t reach them</button>` : '')
+      + (hadOne ? `<button type="button" class="btn ghost" onclick="ciBack('${m.id}')">Move back a step</button>` : '');
+  const seed = it && it.seed ? `<div class="seed-line"><div class="seed-label">End the voice note with this:</div>
+        <div class="seed-text">“${esc(tpSeed(it))}”</div></div>` : '';
+  box.innerHTML = `<div class="ci-top"><span class="ci-kicker">${it ? esc(tpTitle(it)) : (p.col==='free' ? 'Free weeks' : 'All six check-ins done')}</span>
+        <button type="button" class="btn sm ghost" onclick="ciClose()">Close</button></div>
+      <h3 class="ci-title">${esc(m.name)}${notesBtn(m)}</h3>
+      <p class="ci-meta">Coach ${esc(m.coach)} · ${where} · <span class="ci-duechip ${st}">${esc(ciDueWord(p))}</span></p>
+      ${m.personal ? `<p class="ci-remember"><b>Remember:</b> ${esc(m.personal)}</p>` : ''}
+      <div class="rail ci-rail"><div class="track"><div class="fill ${p.paused?'paused-fill':''}" style="width:${railAt(cd,tot).toFixed(1)}%"></div>${railStops(m,tot)}</div>
+        <div class="ticks"><span>Day 0</span><span>Day ${tot}</span></div></div>
+      <div class="ci-acts">${acts}<button type="button" class="btn ghost ci-full" onclick="openPerson('${m.id}')">Their whole journey</button></div>
+      ${it ? `<div class="ci-for"><div class="ci-forhead">What this one is for</div><p>${tpWhatHtml(it)}</p>${seed}</div>` : `<div class="ci-for"><p>${p.col==='free' ? 'Their free-weeks check-ins are up to date. The next one comes due a week after the last.' : 'Every check-in is done. The membership conversation is next: open their whole journey to record what they decide.'}</p></div>`}
+      ${it && isCheckinItem(it) ? cbDetailHtml(m, it) : ''}`;
+}
+if(typeof document.addEventListener==='function') document.addEventListener('keydown', e=>{
+  if(e.key!=='Escape' || !ciTarget) return;
+  if(!document.querySelectorAll('.modal-bg.show').length) ciClose();     // a window opened over the panel closes first
+});
 
 /* ---------------- Find anyone ----------------
    One box that knows everybody on both trackers. ⌘K (or Ctrl K, or /) opens it from any
@@ -8321,7 +8592,7 @@ function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp
 function stripTags(s){ return (s==null?'':String(s)).replace(/<[^>]*>/g,''); }
 
 function renderAll(){
-  renderConvBar(); renderToday(); renderMembers(); renderPerson(); renderBirthdays(); renderPlaybook();
+  renderConvBar(); renderToday(); renderCheckins(); renderMembers(); renderPerson(); renderBirthdays(); renderPlaybook();
   renderRetentionToday(); renderRetentionMembers(); renderAttendance(); renderCatchups();
   if(todayView==='table') renderMemberTable();
   if(retTodayView==='table') renderRetentionTable();
@@ -8412,7 +8683,7 @@ function setTabDot(id, on){
 
    `tracker` is null at home, and 'onboarding' | 'retention' once you are inside one. */
 const TRACKER_TABS = {
-  onboarding:['today','members','birthdays','playbook'],
+  onboarding:['today','checkins','members','birthdays','playbook'],
   retention:['ret-today','ret-members','ret-attendance','ret-catchups','ret-birthdays']
 };
 const TRACKER_LABEL = {
@@ -8549,6 +8820,10 @@ function seedIfEmpty(pushAfter){
     if(pw.value===want){
       gate.classList.add('hide');
       bootData();               // only load data once they're in
+      // a bookmark ending #check-ins opens straight on the board, for whoever lives on it
+      if(typeof location!=='undefined' && /^#check-?ins$/i.test(location.hash||'')){
+        activeTab.onboarding = 'checkins'; showTracker('onboarding');
+      }
     }else{
       err.textContent='Wrong password — try again.';
       pw.value=''; pw.focus();

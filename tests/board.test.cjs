@@ -576,16 +576,39 @@ const countBadge = (html) => {
   assert.strictEqual(openWeek(again), 1, "a fresh load starts from the default, whatever the last did");
 }
 
-/* ---------- 14: nothing drags ----------
-   It is a folder now rather than a board, and it never looked draggable, but the assertion is
-   the same one for the same reason: cards are arranged by the journey, so a coach dragging one
-   somewhere would either be lying to themselves or silently rewriting what is due. */
+/* ---------- 14: nothing drags on Today's moves ----------
+   Its cards are arranged by the journey, so a coach dragging one somewhere would either be
+   lying to themselves or silently rewriting what is due. That has not changed.
+
+   Since v410 there IS one screen where a card drags: the Check-ins board. It does not break the
+   rule above, because of what a column means there. A card sits in the column of the check-in
+   that person is WAITING for, so moving it one column along is precisely "I have checked in"
+   and moving it one back is "no I haven't" — the same Done tick every other screen writes, and
+   nothing else. What is pinned here is that the dragging stays inside that board: Today's cards
+   carry none of it, and every drag handler on the page is one of the board's own. */
 {
-  assert.ok(!/\bdraggable\b/i.test(HTML), "no element is made draggable");
-  assert.ok(!/on(dragstart|dragover|dragend|drop|dragenter|dragleave)/i.test(HTML),
-    "no drag or drop handler anywhere on the page");
+  const app = boot({ members: [live("a", "Sam Live", 8)] });
+  assert.ok(!/draggable|ondrag|ondrop/i.test(app.html("todayList")), "nothing on Today's moves drags");
+  const draggables = HTML.match(/draggable="true"/g) || [];
+  assert.strictEqual(draggables.length, 1, "one thing is draggable: the Check-ins card");
+  assert.ok(/class="ci-card [^>]*draggable="true"/.test(HTML), "…and it is the Check-ins card");
+  for (const m of HTML.matchAll(/on(?:dragstart|dragover|dragend|drop|dragenter|dragleave)="([^"]*)"/g)) {
+    assert.ok(/^ci[A-Z]/.test(m[1]), "every drag handler belongs to the Check-ins board: " + m[1]);
+  }
   assert.ok(!/addEventListener\((['"])(dragstart|dragover|drop|dragend)\1/.test(HTML),
-    "…and none wired up in script either");
+    "…and none is wired up loose in script");
+
+  // a drop can only ever do one of two things, both of them an ordinary tick
+  const drop = /function ciDrop\([\s\S]*?\n\}/.exec(HTML)[0];
+  assert.ok(/return ciDone\(id\)/.test(drop) && /return ciBack\(id\)/.test(drop), "one column on is Done, one back is un-done");
+  assert.ok(!/day0|extraDays|sixStart|booked/.test(drop), "…and it never touches when anything is due");
+
+  // and the board reads the same ticks: do the week 2 check-in and the card is waiting for week 3
+  assert.strictEqual(app.ctx.ciNext(app.find("a")).col, "w1", "nothing ticked: still waiting on the very first one, however far in they are");
+  app.ctx.toggleDone("a", "d1_text", true); app.ctx.toggleDone("a", "wk2", true);
+  assert.strictEqual(app.ctx.ciNext(app.find("a")).col, "w3", "checked in, so they move one column along");
+  app.ctx.ciBack("a");
+  assert.strictEqual(app.ctx.ciNext(app.find("a")).col, "w2", "and one step back opens that check-in up again");
 }
 
 /* ---------- 15: the retention tracker was left alone ---------- */

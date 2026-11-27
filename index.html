@@ -737,6 +737,9 @@
   .cu-seg button{font:inherit;font-size:13px;padding:9px 12px;border-radius:9px;border:1px solid var(--line);background:var(--navy-2);color:var(--ink);cursor:pointer;min-height:40px}
   .cu-seg button[aria-pressed="true"]{background:var(--orange);border-color:var(--orange);color:var(--on-accent)}
   .cu-note{background:var(--navy-2);border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:12px}
+  .ac-copy{margin-top:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+  .ac-copy-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+  .ac-copy-text{white-space:pre-wrap;color:var(--ink)}
   .ch.cu{background:rgba(var(--green-rgb),.14);color:var(--green)}
 
   /* ---------- Modal ---------- */
@@ -3191,6 +3194,70 @@ async function wcMarkSent(contactId){
   }catch(e){ alert('Couldn\'t save: '+e.message); return; }
   renderAll();
 }
+/* 1-year anniversary cards (v314, built on Ash's dashboard site next to the welcome card).
+   Ash: a card and a personalised bottle of fizz, "a year is a big deal". Every 5 minutes it looks
+   at the TeamUp member list: 14 days before someone's first anniversary (up to 30 days after, for
+   anyone it missed) it makes a GHL task for Ash and writes the card here: full name, address,
+   sessions in their year, a message for the card and a line for the bottle. Sent here completes
+   the GHL task; completed in GHL clears it here. A member on the Members tab gets it inside their
+   own 1-year job instead. */
+const AC_ROW_KEY = 'anniversary-cards';
+let acCards = {};                           // { contactId: { name, email, address[], date, since, sessions, partner, card, label, taskId, ghlDone, sent, closed } }
+function acCardFor(m){
+  const e = wcNorm(m && m.email), n = wcNorm(m && m.name);
+  return Object.values(acCards).find(c=>c && ((e && c.email===e) || (n && wcNorm(c.name)===n))) || null;
+}
+function acMemberFor(c){
+  return retention.find(m=>m && ((c.email && wcNorm(m.email)===c.email) || wcNorm(m.name)===wcNorm(c.name))) || null;
+}
+function acLooseCards(){
+  return Object.values(acCards).filter(c=>c && !c.closed && !c.sent && !c.ghlDone && !acMemberFor(c))
+    .sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+}
+const acDay = d => new Date(String(d)+'T12:00:00Z').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'});
+function acDetailHtml(c){
+  if(!c) return '';
+  const addr = (c.address||[]).length ? esc(c.address.join(', ')) : '<b>Not on GHL.</b> Ask them for it.';
+  return `<div class="wc-card" style="margin-top:8px" onclick="event.stopPropagation()">
+    <div><b>Send:</b> a card and a personalised bottle of fizz</div>
+    <div style="margin-top:4px"><b>Name:</b> ${esc(c.name)}</div>
+    <div style="margin-top:4px"><b>Address:</b> ${addr}</div>
+    <div style="margin-top:4px"><b>Their anniversary:</b> ${esc(acDay(c.date))}${c.sessions?` · ${c.sessions} sessions in their first year`:''}</div>
+    ${c.partner?`<div style="margin-top:4px"><b>Joined the same day as ${esc(c.partner)}.</b> One bottle for both?</div>`:''}
+    <div class="ac-copy"><div class="ac-copy-head"><b>For the card</b><button class="btn sm" onclick="acCopy('${esc(c.contactId)}','card',this)">Copy</button></div>
+      <div class="ac-copy-text">${c.card?esc(c.card):'No message yet. Write your own.'}</div></div>
+    <div class="ac-copy"><div class="ac-copy-head"><b>For the bottle label</b><button class="btn sm" onclick="acCopy('${esc(c.contactId)}','label',this)">Copy</button></div>
+      <div class="ac-copy-text">${esc(c.label||'')}</div></div>
+    <div style="margin-top:6px;font-size:12px;color:var(--muted)">Ticking this off also ticks Ash's GHL task.</div></div>`;
+}
+async function acCopy(id, field, btn){
+  const c = acCards[id]; const txt = c && c[field]; if(!txt) return;
+  try{ await navigator.clipboard.writeText(txt); btn.textContent='Copied ✓'; setTimeout(()=>{btn.textContent='Copy';},1600); }
+  catch(e){ prompt('Copy this:', txt); }
+}
+/* An anniversary completed in GHL ticks the member's 1-year job here, the way the welcome card does. */
+function acApplyGhlTicks(){
+  let changed = false;
+  Object.values(acCards).forEach(c=>{
+    if(!c || !c.ghlDone) return;
+    const m = acMemberFor(c);
+    if(m && !isDone(m,'anniversary')){ markTouchpointDone(m,'anniversary',true); changed = true; }
+  });
+  if(changed) saveRetention();
+}
+async function acMarkSent(contactId){
+  const who = taWho() || (prompt("Who sent it? (Ash, Dan, Grace or Gaz)") || '').trim();
+  if(!who) return;
+  taSetWho(who);
+  try{
+    const { data } = await sb.from('bodysculpt').select('value').eq('key', AC_ROW_KEY);
+    const v = (data && data[0] && data[0].value && data[0].value.cards) ? data[0].value : { cards:{} };
+    if(v.cards[contactId]) v.cards[contactId].sent = { by: who, at: new Date().toISOString() };
+    await sb.from('bodysculpt').upsert({ key: AC_ROW_KEY, value: v, updated_at: new Date().toISOString() }, { onConflict:'key' });
+    acCards = v.cards;
+  }catch(e){ alert('Couldn\'t save: '+e.message); return; }
+  renderAll();
+}
 /* ---- Monthly catch-ups (booking page /catch-up, function catchup.js) ----
    Members book from their monthly email: in the gym with Dan or on Zoom with Ash, at one of the
    fixed slots below. The function writes bookings to 'catchup-bookings'. Coaches block slots
@@ -3941,7 +4008,7 @@ async function bootData(){
   try{
     // pull the roster, the member list and a one-time "seeded" marker in one go
     const { data, error } = await sb.from('bodysculpt').select('key,value,updated_at')
-      .in('key', [ROW_KEY, RET_ROW_KEY, PB_ROW_KEY, 'seeded', FLAGS_ROW_KEY, TU_ROW_KEY, WC_ROW_KEY, CU_BOOK_KEY, CU_BLOCK_KEY, CB_ROW_KEY]);
+      .in('key', [ROW_KEY, RET_ROW_KEY, PB_ROW_KEY, 'seeded', FLAGS_ROW_KEY, TU_ROW_KEY, WC_ROW_KEY, AC_ROW_KEY, CU_BOOK_KEY, CU_BLOCK_KEY, CB_ROW_KEY]);
     if(error) throw error;
     const rosterRow = (data||[]).find(r=>r.key===ROW_KEY);
     const retRow = (data||[]).find(r=>r.key===RET_ROW_KEY);
@@ -3950,6 +4017,8 @@ async function bootData(){
     challengeFlags = (flagsRow && flagsRow.value && typeof flagsRow.value==='object') ? flagsRow.value : {};
     const tuRow = (data||[]).find(r=>r.key===TU_ROW_KEY);
     tuAtt = (tuRow && tuRow.value && typeof tuRow.value==='object') ? tuRow.value : null;
+    const acRow = (data||[]).find(r=>r.key===AC_ROW_KEY);
+    acCards = (acRow && acRow.value && acRow.value.cards && typeof acRow.value.cards==='object') ? acRow.value.cards : {};
     const wcRow = (data||[]).find(r=>r.key===WC_ROW_KEY);
     wcCards = (wcRow && wcRow.value && wcRow.value.cards && typeof wcRow.value.cards==='object') ? wcRow.value.cards : {};
     const cuB = (data||[]).find(r=>r.key===CU_BOOK_KEY), cuK = (data||[]).find(r=>r.key===CU_BLOCK_KEY);
@@ -3968,6 +4037,7 @@ async function bootData(){
     markSeen(seenRosterIds, members);
     markSeen(seenRetentionIds, retention);
     wcApplyGhlTicks();
+    acApplyGhlTicks();
     // Seed the examples ONLY on the very first run ever (no seeded marker yet).
     // After that, an empty list stays empty — removing everyone is respected.
     if(!seededRow){
@@ -7603,11 +7673,11 @@ function renderRetentionToday(){
   // the badge is real work and nothing else — a prop must never make a coach think they have
   // something to do — while the empty state below is "is there anything on this screen"
   const tally = document.getElementById('retTodayCount');
-  const wcLoose = wcLooseCards();
+  const wcLoose = wcLooseCards(), acLoose = acLooseCards();
   const cuNow = cuTodayRows(), cuN = cuNow.today.length + cuNow.fresh.length;
-  if(tally) tally.textContent = rows.length + alerts.length + riskRows.length + bdayRows.length + wcLoose.length + cuN;
+  if(tally) tally.textContent = rows.length + alerts.length + riskRows.length + bdayRows.length + wcLoose.length + acLoose.length + cuN;
 
-  if(!rows.length && !alerts.length && !riskRows.length && !bdayRows.length && !egRows.length && !wcLoose.length && !cuN){
+  if(!rows.length && !alerts.length && !riskRows.length && !bdayRows.length && !egRows.length && !wcLoose.length && !acLoose.length && !cuN){
     list.innerHTML = `<div class="empty"><div class="big">All caught up.</div>
       Nothing due for a member right now. The quiet weeks are the ones that keep people — check the Members tab to see where everyone sits.</div>` + retDoneTodayHtml();
     return;
@@ -7689,8 +7759,26 @@ function renderRetentionToday(){
   groups.forEach(([gid,label,test])=>{
     const g = rows.filter(test);
     const loose = gid==='physical' ? wcLoose : [];
-    if(!g.length && !loose.length) return;
-    html += `<div class="group-label">${label}<span class="gcount">${g.length + loose.length}</span></div>`;
+    const aLoose = gid==='physical' ? acLoose : [];
+    if(!g.length && !loose.length && !aLoose.length) return;
+    html += `<div class="group-label">${label}<span class="gcount">${g.length + loose.length + aLoose.length}</span></div>`;
+    aLoose.forEach(c=>{
+      const days = Math.round((Date.parse(c.date+'T12:00:00') - today0())/MS_DAY);
+      html += `<div class="action physical" id="act-ac-${esc(c.contactId)}">
+        <span class="ch physical">${CH_LABEL.physical}</span>
+        <div class="body" onclick="toggleExpand('ac','${esc(c.contactId)}')">
+          <div class="who"><span class="nm">${esc(c.name)}</span>
+            <span class="ttl">1-year anniversary: card and fizz</span>
+            <span class="day">${days>0?'In '+days+' day'+(days===1?'':'s')+' ('+esc(acDay(c.date))+')':days===0?'Today':esc(acDay(c.date))}</span>
+            ${days<0?'<span class="overdue">'+(-days)+' day'+(days===-1?'':'s')+' ago</span>':''}</div>
+          <div class="detail">A year with us. A full year is a genuine achievement, so mark it properly.${acDetailHtml(c)}</div>
+        </div>
+        <span class="chev" onclick="toggleExpand('ac','${esc(c.contactId)}')">▶</span>
+        <div class="mark-btns">
+          <button class="btn sm primary mark" onclick="event.stopPropagation();acMarkSent('${esc(c.contactId)}')">Card and fizz sent</button>
+        </div>
+      </div>`;
+    });
     loose.forEach(c=>{
       const key = 'wc-'+c.contactId;
       html += `<div class="action physical" id="act-${esc(key)}">
@@ -7718,7 +7806,7 @@ function renderRetentionToday(){
             <span class="day">Day ${memberDay(m)}</span>
             ${overdue?'<span class="overdue">Overdue</span>':''}
           </div>
-          <div class="detail">${esc(stripTags(item.what))}${item.id==='welcome_card'?wcDetailHtml(wcCardFor(m)):''}</div>
+          <div class="detail">${esc(stripTags(item.what))}${item.id==='welcome_card'?wcDetailHtml(wcCardFor(m)):''}${item.id==='anniversary'?acDetailHtml(acCardFor(m)):''}</div>
         </div>
         <span class="chev" onclick="toggleExpand('${m.id}','${item.id}')">▶</span>
         <div class="mark-btns">
